@@ -2,7 +2,10 @@ import {readFileSync, existsSync} from 'node:fs';
 import {spawn,spawnSync} from 'node:child_process';
 const root=new URL('../../',import.meta.url);
 const read=path=>readFileSync(new URL(path,root),'utf8');
-const container=process.argv[2]||'supabase_db_skillpassport';
+const flags=process.argv.slice(2).filter(value=>value.startsWith('--'));
+if(flags.length>1||flags.some(value=>!['--publisher','--scope'].includes(value))) throw new Error('Invalid test mode');
+const mode=flags[0]||'all';
+const container=process.argv.slice(2).find(value=>!value.startsWith('--'))||'supabase_db_skillpassport';
 if(!/^[a-zA-Z0-9_-]+$/.test(container)) throw new Error('Invalid container');
 const name=`zoho_job_test_${process.pid}_${Date.now()}`;
 function docker(args,input){const r=spawnSync('docker',['exec',...(input?['-i']:[]),container,...args],{input,encoding:'utf8',timeout:120000,maxBuffer:2000000});if(r.error||r.status!==0)throw new Error(r.error?.message||r.stderr);return r.stdout;}
@@ -33,6 +36,18 @@ try{
  for(const migration of ['20270128000001_zoho_recruit_approval_control_plane.sql','20270129000000_zoho_recruit_execution_ledger.sql','20270130000000_zoho_recruit_discovery_authority.sql','20270131000000_zoho_recruit_record_recovery.sql','20270201000000_zoho_recruit_live_execution_authority.sql','20270202000000_zoho_recruit_decision_recovery.sql','20270209000000_zoho_candidate_review_binding.sql','20270210000000_zoho_job_publisher.sql','20270211000000_zoho_job_no_effect_receipts.sql','20270212000000_zoho_discovery_incremental.sql','20270214000000_zoho_source_privacy.sql','20270215000000_zoho_payload_retention_fences.sql','20270217010000_zoho_source_lifecycle.sql','20270217011000_zoho_bulk_read.sql','20270217012000_zoho_deleted_scan_cursor.sql','20270221000000_zoho_operator_audit_fixes.sql','20270217030000_zoho_source_quota_key_rotation.sql','20270220000000_zoho_dynamic_source_allocation.sql','20270222000000_zoho_retry_visibility.sql','20270227000000_zoho_job_payload_budget.sql','20270304000000_zoho_job_optional_department.sql','20270305000000_zoho_job_publishing_preflight.sql']){
   if(existsSync(new URL(`supabase/migrations/${migration}`,root)))docker(args,read(`supabase/migrations/${migration}`));
  }
+ docker(args,read('supabase/migrations/20270314000000_zoho_scoped_job_review.sql'));
+ if(mode==='--scope') {
+  // Install the same application migrations in an independent metadata suite.
+  docker(args,`ALTER TABLE public.organizations ADD COLUMN name text;
+   ALTER TABLE public.tenant_entitlement_overrides ADD COLUMN notes text;
+   CREATE UNIQUE INDEX fixture_entitlement_owner_feature ON public.tenant_entitlement_overrides(tenant_id,feature_id);
+   INSERT INTO public.organizations(id,name) VALUES('00000000-0000-0000-0000-000000000001','SkillPassport Platform');
+   INSERT INTO public.features VALUES('10000000-0000-4000-8000-000000000003','active_job_posts');`);
+  for(const migration of ['20270219010000_zoho_console_controls.sql','20270226000000_zoho_discovery_batch_pages.sql','20270228000000_zoho_sync_coordinator.sql','20270301000000_zoho_bulk_capture_coverage.sql','20270302000000_zoho_sync_recovery_fences.sql','20270303000000_zoho_bulk_index_upgrade.sql','20270309000000_zoho_platform_job_ownership.sql','20270310000000_zoho_job_server_write_boundary.sql','20270311000000_zoho_job_staging_deadline.sql']) docker(args,read(`supabase/migrations/${migration}`));
+  docker(['sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -U supabase_admin -d "$1" -v ON_ERROR_STOP=1','scope-test',name],read('functions/__tests__/sql/zoho-job-review-scope.sql'));
+  console.log('Scoped job review assertions passed');
+ } else {
  docker(args,read('functions/__tests__/sql/zoho-job-publisher.sql'));
  docker(args,read('functions/__tests__/sql/zoho-job-payload-budget.sql'));
  const race=async n=>new Promise((resolve,reject)=>{
@@ -133,5 +148,13 @@ try{
   ASSERT NOT has_function_privilege('service_role','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
   ASSERT has_function_privilege('zoho_discovery','public.zoho_claim_discovery_batch(uuid)','EXECUTE');
  END $$;`);
+ // Custom operator-class regression DDL requires the local superuser role.
+ // Keep this confined to the disposable database, with fixture DDL rolled back.
+ if(mode==='all') {
+  docker(['sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -U supabase_admin -d "$1" -v ON_ERROR_STOP=1','scope-test',name],read('functions/__tests__/sql/zoho-job-review-scope.sql'));
+  console.log('Scoped job review and existing publisher assertions passed');
+ }
+ console.log('Existing job publisher assertions passed');
  console.log('Zoho job publisher SQL: approval/receipt/version/Platform-only ownership/quota/no-email/browser-write boundary/deadline paging and cross-connection quota-race assertions passed.');
+}
 }finally{if(created)docker(['dropdb','-U','postgres','--force',name]);}
