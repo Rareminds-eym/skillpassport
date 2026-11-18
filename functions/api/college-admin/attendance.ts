@@ -577,25 +577,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ─────────────────────────────────────────────────
       case 'get-filter-options': {
         const { collegeId } = body;
+        if (!collegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing collegeId', context.request, { startTime });
+
+        // The service-role client bypasses RLS, so the caller must administer the requested college.
+        const actor = getContextUser(context);
+        const permission = await supabase.rpc('external_teaching_college_admin', { p_actor: actor.id, p_college: collegeId });
+        if (permission.error || permission.data !== true) {
+          return apiError(403, 'FORBIDDEN', 'College administration required', context.request, { startTime });
+        }
+
+        // program_sections_view has no college column; scope it through the college's departments.
+        const collegeDepartments = await supabase.from('departments').select('id').eq('college_id', collegeId);
+        if (collegeDepartments.error) return apiDbError(collegeDepartments.error, context.request, { startTime });
+        const departmentIds = (collegeDepartments.data || []).map((d: any) => d.id);
+        const noRows = Promise.resolve({ data: [] as any[], error: null });
+        const collegeSections = (columns: string, requiredColumn: string) => departmentIds.length === 0
+          ? noRows
+          : supabase.from('program_sections_view')
+            .select(columns)
+            .eq('status', 'active')
+            .in('department_id', departmentIds)
+            .not(requiredColumn, 'is', null);
 
         const [departmentsResult, programsResult, semestersResult, sectionsResult, facultyResult, subjectsResult] =
           await Promise.all([
-            supabase.from('program_sections_view')
-              .select('department_name, department_id')
-              .eq('status', 'active')
-              .not('department_name', 'is', null),
-            supabase.from('program_sections_view')
-              .select('program_name, program_id')
-              .eq('status', 'active')
-              .not('program_name', 'is', null),
-            supabase.from('program_sections_view')
-              .select('semester')
-              .eq('status', 'active')
-              .not('semester', 'is', null),
-            supabase.from('program_sections_view')
-              .select('section')
-              .eq('status', 'active')
-              .not('section', 'is', null),
+            collegeSections('department_name, department_id', 'department_name'),
+            collegeSections('program_name, program_id', 'program_name'),
+            collegeSections('semester', 'semester'),
+            collegeSections('section', 'section'),
             supabase.from('college_lecturers')
               .select('id,first_name,last_name,email,department,"collegeId",metadata')
               .eq('"accountStatus"', 'active')
