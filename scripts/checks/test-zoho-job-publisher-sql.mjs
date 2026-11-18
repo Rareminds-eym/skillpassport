@@ -83,7 +83,11 @@ try{
  docker(args,`DO $$ BEGIN ASSERT (SELECT count(*)=1 FROM public.zoho_discovery_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); ASSERT (SELECT count(*)=1 FROM public.zoho_bulk_read_runs WHERE connection_id=(SELECT connection_id FROM public.zoho_sync_recovery_race_fixture)); END $$;`);
  docker(args,read('supabase/migrations/20270303000000_zoho_bulk_index_upgrade.sql'));
  docker(args,read('functions/__tests__/sql/zoho-bulk-index-upgrade.sql'));
- docker(args,read('functions/__tests__/sql/zoho-platform-job-ownership-setup.sql'));
+ const bootstrap=read('supabase/migrations/20270308010000_zoho_platform_publisher_bootstrap.sql').trim().slice('BEGIN;'.length,-'COMMIT;'.length);
+ docker(args,read('functions/__tests__/sql/zoho-platform-job-ownership-setup.sql').replace(
+  "INSERT INTO public.organizations(id,name) VALUES('00000000-0000-0000-0000-000000000001','SkillPassport Platform');", bootstrap));
+ // Replaying the bootstrap must preserve an existing platform organization.
+ docker(args,bootstrap);
  const ownershipMigration=read('supabase/migrations/20270309000000_zoho_platform_job_ownership.sql');
  let blocked=false;
  try{docker(args,ownershipMigration);}catch(error){if(!error.message.includes('Reconcile in-flight'))throw error;blocked=true;}
