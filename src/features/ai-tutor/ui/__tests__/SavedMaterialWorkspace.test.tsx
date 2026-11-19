@@ -5,7 +5,7 @@ vi.mock('@/shared/ui',async()=>({...await import('@/shared/ui/DropdownMenu'),toa
 const exports=vi.hoisted(()=>({exportAs:vi.fn()}));
 vi.mock('../../model/useExport',()=>({useExport:()=>({exportAs:exports.exportAs,isExporting:false})}));
 vi.mock('@/shared/model',()=>({useUser:()=>({id:'student'})}));
-vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='review-detail'?{content:{questions:[{id:'q1',position:1,prompt:'State the discharge equation.'}]},grading_rules:[{questionId:'q1',acceptedAnswers:[String.raw`\(Q = A \times v\)`],rubric:'Use cross-sectional area and average velocity.'}]}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
+vi.mock('../../api/materialService',()=>({materialAction:async(action:string,data?:{kind?:string})=>action==='capabilities'?{enabled:true}:action==='review-detail'?{content:{questions:[{id:'q1',position:1,prompt:'State the discharge equation.'},{id:'q2',position:2,prompt:'Identify the flow.'}]},grading_rules:[{questionId:'q1',acceptedAnswers:[String.raw`\(Q = A \times v\)`],rubric:'Use cross-sectional area and average velocity.'},{questionId:'q2',acceptedAnswers:['Laminar flow'],rubric:'Correct answer is Laminar flow.'}]}:action==='library'?(data?.kind==='lesson_plan'?[{id:'plan',title:'Saved time management plan',content:{markdown:'Lesson objectives and teaching activities'}}]:[{id:'assignment',title:'Worksheet one',content:{questions:[]}},{id:'other',title:'Worksheet two',content:{questions:[]}}]):[{id:'recipient',due_at:'2099-01-01',learner:{name:'Student'},assignment:{id:'assignment',title:'Time management',content:{questions:[]}},submissions:[{id:'submission',file_name:'answer.pdf',results:[{id:'result',status:'review_required'}]}]}]}));
 vi.mock('../SaveGeneratedMaterial',()=>({AllocateSavedMaterial:()=> <span>Assigned</span>}));
 import SavedMaterialWorkspace, {LearnerProgressBrowser,AssignmentOverview,SubmissionCard} from '../SavedMaterialWorkspace';
 afterEach(cleanup);
@@ -163,6 +163,8 @@ it('lets educators open and hide the saved answer key',async()=>{
  await waitFor(()=>expect(answers.querySelector('.katex math')).not.toBeNull());
  expect(answers.querySelector('annotation')?.textContent).toBe(String.raw`Q = A \times v`);
  expect(within(answers).getByText('Use cross-sectional area and average velocity.')).toBeInTheDocument();
+ expect(within(answers).getAllByText('Laminar flow')).toHaveLength(1);
+ expect(within(answers).queryByText('Correct answer is Laminar flow.')).not.toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Hide answers'}));
  expect(screen.queryByRole('region',{name:'Assignment answer key'})).not.toBeInTheDocument();
 });

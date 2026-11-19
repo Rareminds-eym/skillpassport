@@ -1,4 +1,5 @@
 import { formatAssessmentText } from '../model/formatAssessmentText';
+import { answerExplanation } from '../model/answerExplanation';
 import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Search, LayoutGrid, List, ArrowLeft } from 'lucide-react';
@@ -111,7 +112,8 @@ function SavedAnswers({courseId,assignmentId}:{courseId:string;assignmentId:stri
     {open&&<div role="region" aria-label="Assignment answer key" className="mt-2 max-h-72 space-y-4 overflow-y-auto overscroll-contain rounded-lg border border-slate-100 bg-slate-50/50 p-3 text-xs leading-6 [scrollbar-width:thin] [&_p]:!my-1 [&_p]:!text-xs [&_p]:!leading-6">
       {answers.isPending?<PanelLoadingSkeleton label="Loading answer key"/>:answers.isError?<p role="alert">Unable to load answers. <button type="button" onClick={()=>{void answers.refetch();}} className="text-blue-600 underline">Retry</button></p>:answers.data?.content?.questions?.length?answers.data.content.questions.map((question:any)=>{
         const rule=answers.data.grading_rules?.find((item:any)=>item.questionId===question.id);
-        return <div key={question.id}><p className="font-medium text-slate-800">{question.position}. {<MathMarkdown inline>{question.prompt || ''}</MathMarkdown>}</p><p><span className="font-medium text-slate-700">Answer: </span>{rule?.acceptedAnswers?.length?<MathMarkdown inline>{rule.acceptedAnswers.join('; ')}</MathMarkdown>:rule?.rubric?'Assessed using the rubric below.':'No saved answer is available.'}</p>{rule?.rubric&&<p className="text-slate-500">{<MathMarkdown inline>{rule.rubric || ''}</MathMarkdown>}</p>}</div>;
+        const explanation=answerExplanation(rule?.rubric,rule?.acceptedAnswers);
+        return <div key={question.id}><p className="font-medium text-slate-800">{question.position}. {<MathMarkdown inline>{question.prompt || ''}</MathMarkdown>}</p><p><span className="font-medium text-slate-700">Answer: </span>{rule?.acceptedAnswers?.length?<MathMarkdown inline>{rule.acceptedAnswers.join('; ')}</MathMarkdown>:rule?.rubric?'Assessed using the rubric below.':'No saved answer is available.'}</p>{explanation&&<p className="text-slate-500"><MathMarkdown inline>{explanation}</MathMarkdown></p>}</div>;
       }):<p>No saved answers are available.</p>}
     </div>}
   </div>;
