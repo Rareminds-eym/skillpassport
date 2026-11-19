@@ -30,12 +30,9 @@ const ALL_ROLES: UserRole[] = [
 
 // Shown for wrong credentials AND for a role not linked to the account, so the
 // response never reveals whether the email is registered.
-<<<<<<< HEAD
-const INVALID_CREDENTIALS_MESSAGE =
-  'We couldn’t sign you in. Check your email, password, and selected role, then try again';
-=======
-const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
->>>>>>> 3f20e95d783980181ebd80d5a9b5fcdca95072b4
+
+const INVALID_CREDENTIALS_MESSAGE = 'We couldn’t sign you in. Check your email, password, and selected role, then try again';
+
 
 // Messages for ?oauth_error=<code> set by the /api/oauth/google callback.
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
