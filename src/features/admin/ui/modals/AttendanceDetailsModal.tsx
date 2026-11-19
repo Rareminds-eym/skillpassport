@@ -365,6 +365,7 @@ const AttendanceDetailsModal = ({
             learner.semester === subjectGroup.semester &&
             learner.section === subjectGroup.section
     );
+    const displayedTotalLearners = classlearners.length;
 
     // Get today's records (for selected session) with full learner list
     const sessionRecords = allRecords.filter(r => {
@@ -542,7 +543,7 @@ const AttendanceDetailsModal = ({
                         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
                             <div className="text-center p-3 bg-white rounded-lg border border-gray-200">
                                 <p className="text-2xl font-bold text-gray-900">
-                                    {session.totallearners}
+                                    {displayedTotalLearners}
                                 </p>
                                 <p className="text-xs text-gray-600 mt-1">Total Learners</p>
                             </div>

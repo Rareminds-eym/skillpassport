@@ -869,6 +869,15 @@ const AttendanceTracking: React.FC = () => {
         row.faculty_name === subjectGroup.faculty);
       if (trainingRows.length) {
         const rosters = await Promise.all(trainingRows.map((row: any) => teaching('session_roster', { sessionId: row.id })));
+        const currentRosterResponse: any = await apiPost('/college-admin/attendance', {
+          action: 'get-subject-learners',
+          department: subjectGroup.department,
+          course: subjectGroup.course,
+          semester: subjectGroup.semester,
+          section: subjectGroup.section,
+          program_id: trainingRows[0].program_id,
+          session_id: trainingRows[0].id,
+        });
         const trainingSessions = trainingRows.map((row: any) => ({
           id: row.id, date: row.date, startTime: row.start_time, endTime: row.end_time,
           subject: row.subject_name, faculty: row.faculty_name, department: row.department_name,
@@ -883,11 +892,7 @@ const AttendanceTracking: React.FC = () => {
           lateCount: row.late_count, excusedCount: row.excused_count, attendancePercentage: row.attendance_percentage,
           status: row.status, instructorSource: 'platform_staff',
         }));
-        const scopedLearners = rosters.flatMap((roster: any, index: number) => roster.learners.map((learner: any) => ({
-          id: learner.learner_id, name: learner.learner_name, rollNumber: learner.roll_number,
-          department: trainingRows[index].department_name, course: trainingRows[index].program_name,
-          semester: trainingRows[index].semester, section: trainingRows[index].section,
-        })));
+        const scopedLearners = currentRosterResponse.data?.learners || [];
         const scopedRecords = rosters.flatMap((roster: any, index: number) => roster.learners.map((learner: any) => ({
           id: `${trainingRows[index].id}-${learner.learner_id}`, sessionId: trainingRows[index].id,
           learnerId: learner.learner_id, learnerName: learner.learner_name, rollNumber: learner.roll_number,

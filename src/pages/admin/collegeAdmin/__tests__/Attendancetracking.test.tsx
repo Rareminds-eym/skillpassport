@@ -92,7 +92,7 @@ it('opens training card sessions through their scoped roster when the legacy API
  fireEvent.click(await screen.findByText('Training'));
  expect(await screen.findByText('Existing attendance details')).toBeInTheDocument();
  expect(f.teaching).toHaveBeenCalledWith('session_roster',{sessionId:'session'});
- expect(f.api.mock.calls.some(([,params])=>params.action==='get-subject-learners')).toBe(false);
+ expect(f.api).toHaveBeenCalledWith('/college-admin/attendance',expect.objectContaining({action:'get-subject-learners',session_id:'session'}));
 });
 
 it('searches the complete attendance groups without sending a second paginated request', async()=>{
