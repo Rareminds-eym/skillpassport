@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   client: { from: vi.fn(), rpc: vi.fn() },
-  retrieve: vi.fn(), increment: vi.fn(), guide:vi.fn(), roles: ['college_educator'],
+  selectPersona: vi.fn(), retrieve: vi.fn(), increment: vi.fn(), guide:vi.fn(), roles: ['college_educator'],
 }));
 vi.mock('../../../../lib/auth', () => ({
   getContextUser: () => ({ id: 'educator-id', roles: mocks.roles }),
@@ -30,6 +30,7 @@ vi.mock('../../utils/saved-materials', async original => ({
   ...await original<typeof import('../../utils/saved-materials')>(),
   materialContextFingerprint: vi.fn().mockResolvedValue('context-hash'),
 }));
+vi.mock('../../utils/persona-selection', () => ({selectAutomaticPersona:mocks.selectPersona}));
 vi.mock('../../utils/guide-evidence',async original=>({...await original<typeof import('../../utils/guide-evidence')>(),loadGuideEvidence:mocks.guide}));
 vi.mock('../../utils/course-evidence', () => ({
   buildCourseEvidence: async (db:any, env:any, user:string, course:string, input:any) => {
@@ -43,6 +44,7 @@ describe('tutor conversation persistence', () => {
   let saveResult: { data: { id: string } | null; error: { message: string } | null };
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.selectPersona.mockResolvedValue('facilitator-of-learning');
     mocks.roles = ['college_educator'];
     mocks.retrieve.mockResolvedValue([{chunk_id:'source',analysis_id:'a',lesson_id:'l',resource_id:'r',content:'Verified course topic',source_location:{name:'Source PPTX'},similarity:1}]);
     saveResult = { data: { id: 'saved-conversation' }, error: null };
@@ -185,7 +187,43 @@ describe('tutor conversation persistence', () => {
     expect(payload.messages[0].content).toContain('for learners.');
     expect(payload.messages[0].content).not.toContain('for educators.');
     expect(stream).toContain(facilitatorMode);
+    expect(mocks.selectPersona).not.toHaveBeenCalled();
     expect(mocks.guide).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['Plan my study schedule','organizer'],
+    ['Use guided questions','facilitator-of-learning'],
+    ['Adapt this explanation','individualized-support'],
+    ['Give me 5 practice questions','resource-provider'],
+    ['I am confused','problem-solver'],
+    ['Give me feedback','mentor-and-guide'],
+  ])('automatically selects learner persona for %s', async (message, facilitator) => {
+    mocks.roles=['learner'];
+    mocks.selectPersona.mockResolvedValue(facilitator);
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message,facilitatorMode:'auto'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    expect(response.status).toBe(200);
+    const stream=await response.text();
+    expect(stream).toContain(`"facilitator":"${facilitator}"`);
+    expect(mocks.selectPersona).toHaveBeenCalledWith(expect.objectContaining({message,educator:false,courseTitle:'Time Management'}));
+    expect(stream).toContain('"worksheetAvailable":false');
+    const payload=JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(payload.messages[0].content).toContain('for learners.');
+    expect(payload.messages[0].content).not.toContain('for educators.');
+    expect(mocks.guide).not.toHaveBeenCalled();
+  });
+  it('uses semantic selection for educator chat without routing keywords', async () => {
+    mocks.selectPersona.mockResolvedValue('individualized-support');
+    const message='The same explanation works for everyone else, but one student needs a different way in.';
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message,facilitatorMode:'auto'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();
+    expect(stream).toContain('"facilitator":"individualized-support"');
+    expect(mocks.selectPersona).toHaveBeenCalledWith(expect.objectContaining({message,educator:true}));
+    const payload=JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
+    expect(payload.messages[0].content).toContain('for educators.');
+  });
+  it('keeps worksheet tool ownership without an extra selection call', async () => {
+    await generate();
+    expect(mocks.selectPersona).not.toHaveBeenCalled();
   });
   it('requires a verified teaching level for typed generation', async () => {
     mocks.client.rpc.mockResolvedValue({ data: null, error: null });

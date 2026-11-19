@@ -18,6 +18,19 @@ export function isPersona(value: unknown): value is Persona {
   return typeof value === 'string' && Object.prototype.hasOwnProperty.call(PERSONAS, value);
 }
 
+/** Share intent detection without giving learners educator generation or assignment actions. */
+export function routeLearnerMessage(message: string, history: TeachingMessage[], requested?: Persona | 'auto') {
+  const routed = routeTeachingMessage(message, history, requested);
+  return {
+    facilitator: routed.mode === 'auto' ? routed.facilitator : routed.mode,
+    mode: routed.mode,
+    worksheetConfig: undefined,
+    lessonPlanConfig: undefined,
+    assignmentReviewRequested: false,
+    assignmentSourceId: undefined,
+  };
+}
+
 /** Conservative command routing: questions about resources do not regenerate them. */
 export function routeTeachingMessage(message: string, history: TeachingMessage[], requested?: Persona | 'auto') {
   let text = message.toLowerCase();
@@ -80,14 +93,8 @@ export function routeTeachingMessage(message: string, history: TeachingMessage[]
       else if (level) { worksheetConfig.difficulty = level; worksheetConfig.difficultyLevels = [level]; }
     }
   }
-  const automatic: Persona = status || /\b(feedback|rubric|review|evaluate)\b/.test(text) ? 'mentor-and-guide'
-    : supportRequirements ? 'individualized-support'
-    : diagnosticDiscussion ? 'problem-solver'
-    : inquiryDiscussion ? 'facilitator-of-learning'
-    : /\b(misconception|confused|struggling|hint|problem|mistake|incorrect|error)\b/.test(text) ? 'problem-solver'
-    : /\b(differentiat|scaffold|accessible|individual|adapt)\w*\b/.test(text) ? 'individualized-support'
-    : lessonPlanConfig || /\b(plan|schedule|organize|timing)\b/.test(text) ? 'organizer'
-    : worksheetConfig || assign ? 'resource-provider' : previous.find(m => isPersona(m.facilitator))?.facilitator ?? 'facilitator-of-learning';
+  // Semantic selection happens in the chat handler; retain continuity until it resolves.
+  const automatic: Persona = previous.find(m => isPersona(m.facilitator))?.facilitator ?? 'facilitator-of-learning';
   const facilitator = resolveEducatorFacilitator(mode === 'auto' ? automatic : mode, worksheetConfig ? 'worksheet' : lessonPlanConfig ? 'lesson-plan' : 'chat');
   return { assignmentReviewRequested: assign, mode, facilitator, worksheetConfig, lessonPlanConfig,
     assignmentSourceId: assign ? previous.find(m => m.worksheetVariants?.length)?.id : undefined };

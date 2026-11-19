@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPersona, routeTeachingMessage } from '../teaching-conversation';
+import { isPersona, routeTeachingMessage, routeLearnerMessage } from '../teaching-conversation';
 import { DEFAULT_WORKSHEET_CONFIG } from '../../types/worksheet';
 import { DEFAULT_LESSON_PLAN_CONFIG } from '../../types/lesson-plan';
 
@@ -9,15 +9,15 @@ describe('continuous teaching conversation', () => {
   });
   it('keeps support specifications and explanations out of the worksheet generator', () => {
     const history = [{id:'worksheet',worksheetConfig:DEFAULT_WORKSHEET_CONFIG}];
-    expect(routeTeachingMessage('Recommend scaffolding requirements for these questions', history)).toMatchObject({facilitator:'individualized-support',worksheetConfig:undefined});
+    expect(routeTeachingMessage('Recommend scaffolding requirements for these questions', history)).toMatchObject({worksheetConfig:undefined});
     expect(routeTeachingMessage('Simplify the explanation for this learner', history, 'individualized-support').worksheetConfig).toBeUndefined();
   });
   it('keeps feedback requests out of generation while allowing practice about feedback', () => {
     expect(routeTeachingMessage('Give me feedback on these 5 questions', []).worksheetConfig).toBeUndefined();
     expect(routeTeachingMessage('Give me 5 questions about feedback', []).facilitator).toBe('resource-provider');
   });
-  it('keeps short diagnostic and inquiry questions with SOLVE and EXPLORE', () => {
-    expect(routeTeachingMessage('Give me 2 diagnostic questions for this misconception', [])).toMatchObject({facilitator:'problem-solver',worksheetConfig:undefined});
+  it('keeps diagnostic and inquiry discussion out of artifact generation', () => {
+    expect(routeTeachingMessage('Give me 2 diagnostic questions for this misconception', [])).toMatchObject({worksheetConfig:undefined});
     expect(routeTeachingMessage('Create an inquiry activity with 3 guided questions', [])).toMatchObject({facilitator:'facilitator-of-learning',worksheetConfig:undefined});
     expect(routeTeachingMessage('Create a worksheet with diagnostic questions', []).facilitator).toBe('resource-provider');
   });
@@ -75,13 +75,10 @@ describe('continuous teaching conversation', () => {
   it('retains a manually chosen persona until automatic is selected', () => {
     const pinned = [{ id: 'reply', facilitatorMode: 'problem-solver' as const }];
     expect(routeTeachingMessage('Plan a lesson', pinned).facilitator).toBe('problem-solver');
-    expect(routeTeachingMessage('Plan a lesson', pinned, 'auto').facilitator).toBe('organizer');
+    expect(routeTeachingMessage('Plan a lesson', pinned, 'auto').mode).toBe('auto');
   });
-  it.each([
-    ['Help with a misconception', 'problem-solver'], ['Give feedback on this response', 'mentor-and-guide'],
-    ['Differentiate this activity', 'individualized-support'], ['Explain this concept', 'facilitator-of-learning'],
-  ])('automatically selects an appropriate persona for %s', (message, persona) => {
-    expect(routeTeachingMessage(message, []).facilitator).toBe(persona);
+  it('does not infer a chat persona from keywords before semantic selection', () => {
+    expect(routeTeachingMessage('I am confused and need feedback', []).facilitator).toBe('facilitator-of-learning');
   });
   it('pins personas requested in conversation and returns to automatic on request', () => {
     expect(routeTeachingMessage('Act as a problem solver', []).mode).toBe('problem-solver');
@@ -93,5 +90,22 @@ describe('continuous teaching conversation', () => {
   it('accepts only known persona identifiers', () => {
     expect(isPersona('problem-solver')).toBe(true);
     expect(isPersona('__proto__')).toBe(false);
+  });
+});
+
+
+describe('learner automatic personas', () => {
+  it('leaves automatic chat selection to AI and strips educator actions', () => {
+    expect(routeLearnerMessage('Plan my study schedule', [])).toEqual({facilitator:'facilitator-of-learning',mode:'auto',worksheetConfig:undefined,lessonPlanConfig:undefined,assignmentReviewRequested:false,assignmentSourceId:undefined});
+  });
+  it('preserves manual selection, conversation continuity and explicit auto reset', () => {
+    expect(routeLearnerMessage('Generate a worksheet', [], 'mentor-and-guide').facilitator).toBe('mentor-and-guide');
+    const history = [{id:'one',facilitator:'problem-solver' as const,facilitatorMode:'auto' as const}];
+    expect(routeLearnerMessage('Explain more',history).facilitator).toBe('problem-solver');
+    expect(routeLearnerMessage('Plan my study', [{id:'one',facilitatorMode:'problem-solver'}], 'auto').mode).toBe('auto');
+    expect(routeLearnerMessage('Hello', []).facilitator).toBe('facilitator-of-learning');
+  });
+  it('never routes learner assignment commands to publishing actions', () => {
+    expect(routeLearnerMessage('Assign this worksheet', [])).toMatchObject({assignmentReviewRequested:false,worksheetConfig:undefined});
   });
 });

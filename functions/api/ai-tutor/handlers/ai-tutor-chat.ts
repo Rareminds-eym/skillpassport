@@ -30,8 +30,9 @@ import { hasReachedLimit, incrementGenerationCount } from '../utils/generation-l
 import { createLogger } from '../../../lib/logger';
 import { WORKSHEET_ASSIGNMENT_FORMAT } from '../utils/worksheet-content';
 
-import { isPersona, routeTeachingMessage, type Persona } from '../utils/teaching-conversation';
+import { isPersona, routeTeachingMessage, routeLearnerMessage, type Persona } from '../utils/teaching-conversation';
 import { buildEducatorFacilitatorPrompt, resolveEducatorFacilitator } from '../utils/facilitator-prompts';
+import { selectAutomaticPersona } from '../utils/persona-selection';
 import { buildCourseEvidence } from '../utils/course-evidence';
 import { materialRequestFingerprint, materialContextFingerprint, savedAssignmentMarkdown } from '../utils/saved-materials';
 
@@ -205,11 +206,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const inheritedGuide = [...existingMessages].reverse().find(m => m.guideSubmissionId)?.guideSubmissionId;
     const guideSubmissionId = body.guideSubmissionId ?? (educator && body.facilitatorMode === 'mentor-and-guide' ? inheritedGuide : undefined);
     if (guideSubmissionId !== undefined && (!educator || typeof guideSubmissionId !== 'string')) return apiError(403, 'FORBIDDEN', 'Educator access and a valid submission are required.', request);
-    const teaching = educator ? routeTeachingMessage(message, existingMessages, guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode) : { facilitator: 'facilitator-of-learning' as Persona, mode: body.facilitatorMode ?? 'auto', worksheetConfig: undefined, lessonPlanConfig: undefined, assignmentReviewRequested: false, assignmentSourceId: undefined };
-    if (!educator) {
-      teaching.facilitator = body.facilitatorMode && body.facilitatorMode !== 'auto' ? body.facilitatorMode : 'facilitator-of-learning';
-      teaching.mode = body.facilitatorMode ?? 'auto';
-    }
+    const teaching = educator
+      ? routeTeachingMessage(message, existingMessages, guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode)
+      : routeLearnerMessage(message, existingMessages, body.facilitatorMode);
     // Submission guidance is a distinct feedback operation. Assignment titles and
     // learner names must never be interpreted as generation/publication commands.
     if (guideSubmissionId) {
@@ -263,6 +262,9 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const courseContext = await buildCourseContext(supabase, courseId, lessonId || null, learnerId);
     if (body.contextScope && !['course', 'lesson', 'all-lessons'].includes(body.contextScope)) return apiError(400, 'VALIDATION_ERROR', 'Invalid context scope', request);
     if (body.contextScope === 'lesson' && !lessonId) return apiError(400, 'VALIDATION_ERROR', 'Select a lesson for lesson scope', request);
+    const automaticPersona = teaching.mode === 'auto' && !isWorksheetGeneration && !isLessonPlanGeneration && !guideSubmissionId
+      ? selectAutomaticPersona({message,history:existingMessages,educator,courseTitle:courseContext.courseTitle,apiKey:openRouterKey,signal:request.signal})
+      : undefined;
     const evidenceSignal = AbortSignal.any([request.signal, AbortSignal.timeout(180000)]);
     const result = await buildCourseEvidence(supabase, env, learnerId, courseId, {
       question: message, history: existingMessages, scope: body.contextScope,
@@ -292,6 +294,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     if (isWorksheetGeneration || isLessonPlanGeneration) {
       retrievedContext += '\nGENERATION GROUNDING: Base concepts, equations, examples and assessed skills on the supplied indexed sources, not merely the course title. Name the source topics used. Keep all phases connected to those topics. Cite supplied source names and slide references where available. Do not replace the supplied topics with a generic lesson. Label added teaching activities as proposed activities, not source content. If time is limited, select a coherent subset and state the topics deferred. Section timings must sum exactly to the selected duration.';
     }
+    if (automaticPersona) teaching.facilitator = await automaticPersona;
     let systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig, teaching.facilitator);
     systemPrompt += retrievedContext;
     if (guideSubmissionId) {
