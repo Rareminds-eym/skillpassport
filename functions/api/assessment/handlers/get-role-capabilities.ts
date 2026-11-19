@@ -106,6 +106,7 @@ export async function getRoleCapabilitiesHandler(context: AuthenticatedContext<E
       .eq('role_id', roleId)
       .eq('assessment_result_id', assessmentResultId)
       .eq('status', 'active')
+      .not('capability_id', 'is', null)
       .order('relevance_score', { ascending: false });
 
     // If found in cache, show LTE display names (cached rows are read, never modified)

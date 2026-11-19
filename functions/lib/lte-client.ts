@@ -68,7 +68,7 @@ export type LteRoleCapabilitiesResult =
   | { ok: true; capabilities: LteCapability[] }
   | { ok: false; reason: string };
 
-const LTE_CAPABILITIES_TIMEOUT_MS = 5000;
+const LTE_CAPABILITIES_TIMEOUT_MS = 20000;
 
 /**
  * Fetches a role's capabilities (including `displayName`) from LTE.
@@ -76,11 +76,13 @@ const LTE_CAPABILITIES_TIMEOUT_MS = 5000;
  * An empty capability list is a success (`ok: true`).
  */
 export async function fetchLteRoleCapabilities(
-  env: { LTE_APP_URL?: unknown },
+  env: { LTE_APP_URL?: unknown; LTE_API_URL?: unknown },
   roleId: string,
   timeoutMs: number = LTE_CAPABILITIES_TIMEOUT_MS,
 ): Promise<LteRoleCapabilitiesResult> {
-  const baseUrl = typeof env.LTE_APP_URL === 'string' ? env.LTE_APP_URL.trim().replace(/\/$/, '') : '';
+  const configuredUrl = typeof env.LTE_API_URL === 'string' && env.LTE_API_URL.trim()
+    ? env.LTE_API_URL : env.LTE_APP_URL;
+  const baseUrl = typeof configuredUrl === 'string' ? configuredUrl.trim().replace(/\/$/, '') : '';
   if (!baseUrl) {
     return { ok: false, reason: 'LTE_APP_URL not configured' };
   }

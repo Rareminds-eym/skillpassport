@@ -19,9 +19,9 @@ import { generateLteCode } from '@/features/auth/api/lteSsoApi';
 const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, attemptId, learnerId, assessmentResultId: assessmentResultIdProp }) => {
     const navigate = useNavigate();
     const authUser = useAuthStore.getState().user;
-    const effectiveLearnerId = authUser?.id || learnerId || '';
+    const effectiveLearnerId = learnerId || results?.learnerId || authUser?.id || '';
     // Use assessmentResultId prop, or get from results object (id field)
-    const effectiveAssessmentResultId = assessmentResultIdProp || results?.id || '';
+    const effectiveAssessmentResultId = assessmentResultIdProp || results?.id || results?._original?.id || '';
     const [selectedRole, setSelectedRole] = useState(null);
     const [currentPage, setCurrentPage] = useState(0); // 0 = role selection, 1-5 = wizard pages
     const [showReminderModal, setShowReminderModal] = useState(false);
@@ -132,6 +132,7 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
 
             const roleName = getRoleName(selectedRole);
             const occupationId = selectedRole?.occupationId;
+            setAiMatchedCourses([]);
             setCourseMatchingLoading(true);
 
             try {
@@ -192,9 +193,10 @@ const CareerTrackModal = ({ selectedTrack, onClose, skillGap, roadmap, results, 
                     console.warn('[CareerTrackModal] HTTP endpoint failed, trying RAG fallback:', httpError);
                 }
 
-                // Fallback: Use RAG for old assessments (non-college)
+                // A mapped role must use its LTE capabilities. Unrelated LMS matches
+                // must not replace that learning path when LTE is temporarily unavailable.
                 const gradeLevel = results?.gradeLevel || results?.attempt_data?.gradeLevel;
-                if (gradeLevel !== 'college') {
+                if (!occupationId && gradeLevel !== 'college') {
                     console.log('[CareerTrackModal] Using RAG fallback for old assessment');
                     const response = await apiGet('/courses/embeddings');
                     const coursesWithEmbeddings = response?.data || [];

@@ -74,9 +74,8 @@ export const AI_MODELS = {
 
 // Standard model chain - using models that actually exist on OpenRouter
 const STANDARD_MODELS = {
-    primary: 'openai/gpt-3.5-turbo',                 // Reliable and affordable
+    primary: 'openai/gpt-4o-mini',                   // Available model
     fallbacks: [
-        'openai/gpt-4o-mini',                        // Backup OpenAI model
         'google/gemini-2.0-flash-001',               // Google fallback
     ],
 };
@@ -445,7 +444,6 @@ export async function callOpenRouterWithRetry(
 ): Promise<string> {
     const {
         models = [
-            'openai/gpt-3.5-turbo',                  // Reliable and affordable
             'openai/gpt-4o-mini',                    // Backup OpenAI model
             'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
             'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama

@@ -31,6 +31,8 @@ export interface PagesEnv {
   SSO_SERVICE?: SsoWorkerRpc;
   /** LTE app base URL used for cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
+  /** Optional server-to-server URL; local Pages backend can differ from the browser app port. */
+  LTE_API_URL?: string;
   /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;
   SP_DASH_CATALOG_URL?: string;

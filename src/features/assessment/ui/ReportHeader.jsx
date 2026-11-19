@@ -101,6 +101,12 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
     const getRollNumberLabel = () => {
         const level = gradeLevel?.toLowerCase();
 
+        // School assessment context takes precedence over inherited roll-number types.
+        const schoolLevels = ['middle', 'middle_school', 'middleschool', 'high', 'high_school', 'highschool', 'higher_secondary', 'after10'];
+        if (schoolLevels.includes(level) || (!['college', 'university'].includes(level) && learnerInfo.rollNumberType === 'school')) {
+            return 'Roll Number';
+        }
+
         // Check if learner is in college/university using centralized utility
         const isCollege = checkIsCollegeLearner({
             university_college_id: learnerInfo.college && learnerInfo.college !== '—' ? learnerInfo.college : null,
@@ -120,12 +126,21 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
         }
 
         // For school learners
-        return 'School Roll No';
+        return 'Roll Number';
     };
 
     const gradeCourseField = getGradeCourseField();
     const institutionLabel = getInstitutionLabel();
     const rollNumberLabel = getRollNumberLabel();
+    const schoolName = learnerInfo.school && learnerInfo.school !== '—' ? learnerInfo.school : '';
+    const collegeName = learnerInfo.college && learnerInfo.college !== '—' ? learnerInfo.college : '';
+    const institutionName = institutionLabel === 'School'
+        ? (schoolName || collegeName || '—')
+        : (collegeName || schoolName || '—');
+    // Keep the school name compact; retain the full location-qualified name in the title.
+    const schoolDisplayName = institutionName
+        .replace(/\s*\([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\)\s*$/i, '')
+        .split(',')[0].trim();
 
     // Human-readable grade-level category for the "Level" field.
     const getGradeLevelDisplay = () => {
@@ -167,7 +182,7 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
         { label: rollNumberLabel, value: learnerInfo.regNo },
         { label: getStreamLabel(), value: getStreamValue() },
         { label: gradeCourseField.label, value: gradeCourseField.value },
-        { label: institutionLabel, value: (learnerInfo.college && learnerInfo.college !== '—') ? learnerInfo.college : learnerInfo.school, truncate: true },
+        { label: institutionLabel, value: institutionLabel === 'School' ? schoolDisplayName : institutionName, fullValue: institutionName, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
     ];
 
@@ -225,7 +240,7 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
                                 <p className="text-sm text-blue-600 font-medium mb-1.5">
                                     {item.label}
                                 </p>
-                                <p className={`font-medium text-slate-900 text-base md:text-lg ${item.truncate ? 'line-clamp-2' : ''}`}>
+                                <p title={item.fullValue} className={`font-medium text-slate-900 text-base md:text-lg ${item.truncate ? 'line-clamp-2' : ''}`}>
                                     {item.value}
                                 </p>
                             </div>
