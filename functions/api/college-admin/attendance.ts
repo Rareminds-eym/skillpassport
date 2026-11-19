@@ -4,7 +4,7 @@ import { withAuth, getContextUser } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient as getUnscopedServiceClient } from '../../lib/supabase';
 import { legacyTeachingClient } from '../../lib/legacy-teaching-client';
-const getServiceClient=(env:Parameters<typeof getUnscopedServiceClient>[0])=>legacyTeachingClient(getUnscopedServiceClient(env));
+const getServiceClient = (env: Parameters<typeof getUnscopedServiceClient>[0]) => legacyTeachingClient(getUnscopedServiceClient(env));
 import { createLogger } from '../../lib/logger';
 
 const logger = createLogger('college-admin-attendance');
@@ -282,6 +282,7 @@ export async function validateAttendanceImport(supabase: any, body: any, trainin
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
+  const rawDb = getUnscopedServiceClient(env as any);
   const body: any = await context.request.json();
   const { action } = body;
   const startTime = Date.now();
@@ -292,13 +293,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     let importDb = supabase;
     let trainingSession: any = null;
     let trainingRoster: any[] | undefined;
-    if (['get-import-sessions', 'download-attendance-template', 'validate-attendance-import', 'import-attendance'].includes(action)) {
-      if (!body.college_id) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request);
+    if (['get-import-sessions', 'download-attendance-template', 'validate-attendance-import', 'import-attendance', 'submit-attendance'].includes(action)) {
+      // submit-attendance uses collegeId (camelCase); import actions use college_id (snake_case).
+      // For submit-attendance, college_id may not be sent — resolve it from the session row instead.
+      const resolvedCollegeId = body.college_id || body.collegeId;
       const raw = getUnscopedServiceClient(env as any);
       const actor = getContextUser(context);
-      const permission = await raw.rpc('external_teaching_college_admin', { p_actor: actor.id, p_college: body.college_id });
-      if (permission.error || permission.data !== true) return apiError(403, 'FORBIDDEN', 'College administration required', context.request);
-      importDb = raw;
+      if (action === 'submit-attendance' && !resolvedCollegeId) {
+        // Resolve college_id from the session row directly — no need to block.
+        importDb = raw;
+      } else {
+        if (!resolvedCollegeId) return apiError(400, 'VALIDATION_ERROR', 'Missing college_id', context.request);
+        const permission = await raw.rpc('external_teaching_college_admin', { p_actor: actor.id, p_college: resolvedCollegeId });
+        if (permission.error || permission.data !== true) return apiError(403, 'FORBIDDEN', 'College administration required', context.request);
+        importDb = raw;
+      }
       if (body.session_id) {
         const found = await raw.from('college_attendance_sessions').select('*').eq('id', body.session_id).eq('college_id', body.college_id).maybeSingle();
         if (found.error) return apiDbError(found.error, context.request);
@@ -358,7 +367,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (searchQuery) {
           const escapedQuery = escapeLikePattern(searchQuery);
           query = query.or(
-            `subject.ilike.%${escapedQuery}%,faculty.ilike.%${escapedQuery}%,department.ilike.%${escapedQuery}%`
+            `subject.ilike.%${escapedQuery}%,faculty.ilike.%${escapedQuery}%,department.ilike.%${escapedQuery}%,course.ilike.%${escapedQuery}%`
           );
         }
 
@@ -376,7 +385,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             query = query.in('section', filters.sections);
           }
           if (filters.statuses?.length > 0) {
-            query = query.in('latest_status', filters.statuses);
+            const statusVariants = Array.from(new Set(
+              filters.statuses.flatMap((s: string) => [
+                s.toLowerCase(),
+                s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(),
+                s.toUpperCase(),
+              ])
+            ));
+            query = query.in('latest_status', statusVariants);
           }
           if (filters.faculty?.length > 0) {
             query = query.in('faculty', filters.faculty);
@@ -392,6 +408,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             query = query.lte('last_date', dateRange.to);
           }
         }
+
+        query = query.order('subject', { ascending: true });
 
         if (currentPage && itemsPerPage) {
           const startIndex = (currentPage - 1) * itemsPerPage;
@@ -431,7 +449,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        const { data, error } = await supabase
+        const { data, error } = await rawDb
           .from('college_attendance_sessions')
           .select('id,status,attendance_percentage,total_learners,present_count,absent_count')
           .eq('college_id', collegeId)
@@ -447,7 +465,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           : '0';
 
         // Get unique learner count from attendance records
-        const { data: recordsData } = await supabase
+        const { data: recordsData } = await rawDb
           .from('college_attendance_records')
           .select('learner_id')
           .eq('college_id', collegeId)
@@ -479,7 +497,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const last30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        const { data, error } = await supabase
+        const { data, error } = await rawDb
           .from('college_attendance_sessions')
           .select('department_name, attendance_percentage, status')
           .eq('college_id', collegeId)
@@ -536,7 +554,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         const dateStrings = weekData.map(d => d.date);
 
-        const { data, error } = await supabase
+        const { data, error } = await rawDb
           .from('college_attendance_sessions')
           .select('date, attendance_percentage, status')
           .eq('college_id', collegeId)
@@ -599,46 +617,83 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             .in('department_id', departmentIds)
             .not(requiredColumn, 'is', null);
 
-        const [departmentsResult, programsResult, semestersResult, sectionsResult, facultyResult, subjectsResult] =
-          await Promise.all([
-            collegeSections('department_name, department_id', 'department_name'),
-            collegeSections('program_name, program_id', 'program_name'),
-            collegeSections('semester', 'semester'),
-            collegeSections('section', 'section'),
-            supabase.from('college_lecturers')
-              .select('id,first_name,last_name,email,department,"collegeId",metadata')
-              .eq('"accountStatus"', 'active')
-              .eq('"collegeId"', collegeId),
-            supabase.from('college_courses')
-              .select('course_name, course_code, id, college_id')
-              .eq('is_active', true)
-              .eq('college_id', collegeId),
-          ]);
+        const [summaryResult, subjectsResult] = await Promise.all([
+          supabase
+            .from('college_subject_attendance_summary')
+            .select('department, course, semester, section, faculty, latest_status')
+            .eq('college_id', collegeId),
+          supabase.from('college_courses')
+            .select('course_name, course_code, id, college_id')
+            .eq('is_active', true)
+            .eq('college_id', collegeId),
+        ]);
 
-        const departmentsMap = new Map<string, string>();
-        (departmentsResult.data || []).forEach((d: any) => {
-          if (d.department_name) departmentsMap.set(d.department_name, d.department_id);
+        const summaryRows = summaryResult.data || [];
+
+        // Build distinct options with counts directly from the college's attendance summary data
+        const deptCounts = new Map<string, number>();
+        const courseCounts = new Map<string, number>();
+        const semesterCounts = new Map<number, number>();
+        const sectionCounts = new Map<string, number>();
+        const facultyCounts = new Map<string, number>();
+        const statusCounts = new Map<string, number>();
+
+        summaryRows.forEach((row: any) => {
+          if (row.department) {
+            deptCounts.set(row.department, (deptCounts.get(row.department) || 0) + 1);
+          }
+          if (row.course) {
+            courseCounts.set(row.course, (courseCounts.get(row.course) || 0) + 1);
+          }
+          if (row.semester != null) {
+            const semNum = Number(row.semester);
+            semesterCounts.set(semNum, (semesterCounts.get(semNum) || 0) + 1);
+          }
+          if (row.section) {
+            sectionCounts.set(row.section, (sectionCounts.get(row.section) || 0) + 1);
+          }
+          if (row.faculty) {
+            facultyCounts.set(row.faculty, (facultyCounts.get(row.faculty) || 0) + 1);
+          }
+          if (row.latest_status) {
+            const st = String(row.latest_status).toLowerCase();
+            statusCounts.set(st, (statusCounts.get(st) || 0) + 1);
+          }
         });
 
-        const uniqueDepartments = Array.from(departmentsMap.keys());
-        const uniquePrograms = [...new Set((programsResult.data || []).map((p: any) => p.program_name))];
-        const uniqueSemesters = [...new Set((semestersResult.data || []).map((s: any) => s.semester))].sort((a: number, b: number) => a - b);
-        const uniqueSections = [...new Set((sectionsResult.data || []).map((s: any) => s.section))].sort();
+        const departments = Array.from(deptCounts.entries())
+          .map(([name, count]) => ({ value: name, label: name, count }))
+          .sort((a, b) => a.label.localeCompare(b.label));
 
-        const facultyOptions = (facultyResult.data || []).map((f: any) => {
-          const metadata = f.metadata || {};
-          const firstName = metadata.first_name || '';
-          const lastName = metadata.last_name || '';
-          const displayName = firstName && lastName ? `${firstName} ${lastName}` : f.email;
-          return { value: f.id, label: `${displayName} (${f.department || 'No Dept'})` };
-        });
+        const courses = Array.from(courseCounts.entries())
+          .map(([name, count]) => ({ value: name, label: name, count }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const semesters = Array.from(semesterCounts.entries())
+          .map(([sem, count]) => ({ value: sem, label: `Semester ${sem}`, count }))
+          .sort((a, b) => a.value - b.value);
+
+        const sections = Array.from(sectionCounts.entries())
+          .map(([sec, count]) => ({ value: sec, label: `Section ${sec}`, count }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const faculty = Array.from(facultyCounts.entries())
+          .map(([name, count]) => ({ value: name, label: name, count }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const statuses = [
+          { value: 'completed', label: 'Completed', count: statusCounts.get('completed') || 0 },
+          { value: 'ongoing', label: 'Ongoing', count: statusCounts.get('ongoing') || 0 },
+          { value: 'scheduled', label: 'Scheduled', count: statusCounts.get('scheduled') || 0 },
+        ];
 
         return apiSuccess({
-          departments: uniqueDepartments,
-          courses: uniquePrograms,
-          semesters: uniqueSemesters,
-          sections: uniqueSections,
-          faculty: facultyOptions,
+          departments,
+          courses,
+          semesters,
+          sections,
+          faculty,
+          statuses,
           subjects: subjectsResult.data || [],
         }, context.request, { startTime });
       }
@@ -897,11 +952,11 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ─────────────────────────────────────────────────
       case 'create-session': {
         const { sessionData, departmentName, programName, subjectName, facultyName, collegeId } = body;
-        const actor=getContextUser(context);
-        const authority=await supabase.rpc('external_teaching_college_admin',{p_actor:actor.id,p_college:collegeId});
-        if(authority.error||authority.data!==true)return apiError(403,'FORBIDDEN','College administration required',context.request,{startTime});
-        const faculty=await supabase.from('college_lecturers').select('id').eq('id',sessionData?.faculty).eq('collegeId',collegeId).maybeSingle();
-        if(faculty.error||!faculty.data)return apiError(400,'VALIDATION_ERROR','Faculty must belong to the selected college',context.request,{startTime});
+        const actor = getContextUser(context);
+        const authority = await supabase.rpc('external_teaching_college_admin', { p_actor: actor.id, p_college: collegeId });
+        if (authority.error || authority.data !== true) return apiError(403, 'FORBIDDEN', 'College administration required', context.request, { startTime });
+        const faculty = await supabase.from('college_lecturers').select('id').eq('id', sessionData?.faculty).eq('collegeId', collegeId).maybeSingle();
+        if (faculty.error || !faculty.data) return apiError(400, 'VALIDATION_ERROR', 'Faculty must belong to the selected college', context.request, { startTime });
 
         const { error } = await supabase
           .from('college_attendance_sessions')
@@ -1298,7 +1353,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const fromDate = new Date(dateRange.from);
           const dayOfWeek = fromDate.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
           const mondayOffset = dayOfWeek === 0 ? -6 : -(dayOfWeek - 1);
-          
+
           weekStartDate = new Date(fromDate);
           weekStartDate.setDate(fromDate.getDate() + mondayOffset);
         } else {
@@ -1359,14 +1414,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // Count completed sessions per day
         const dateMap = new Map<string, number>();
-        
+
         // Count sessions per department for the week
         const departmentMap = new Map<string, number>();
 
         (data || []).forEach((session: any) => {
           if (session.status === 'completed') {
             dateMap.set(session.date, (dateMap.get(session.date) || 0) + 1);
-            
+
             const dept = session.department_name || 'Unknown';
             departmentMap.set(dept, (departmentMap.get(dept) || 0) + 1);
           }
@@ -1377,7 +1432,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           dayName,
           count: dateMap.get(date) || 0,
         }));
-        
+
         // Convert department map to sorted array
         const departmentBreakdown = Array.from(departmentMap.entries())
           .map(([department, count]) => ({ department, count }))
@@ -1413,7 +1468,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const firstName = metadata.first_name || f.first_name || '';
           const lastName = metadata.last_name || f.last_name || '';
           const fullName = `${firstName} ${lastName}`.trim() || f.email;
-          
+
           return {
             id: f.id,
             name: fullName,
@@ -1440,6 +1495,121 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (error) return apiDbError(error, context.request, { startTime });
 
         return apiSuccess({ deleted: true }, context.request, { startTime });
+      }
+
+      // ─────────────────────────────────────────────────
+      // Manual attendance marking/editing from the modal
+      // Works for both college_admin and platform_staff sessions.
+      // Direct upsert — no RPC, no re-import restriction.
+      // ─────────────────────────────────────────────────
+      case 'submit-attendance': {
+        const { sessionId, records, collegeId: submitCollegeId } = body;
+        if (!sessionId || !Array.isArray(records) || records.length === 0) {
+          return apiError(400, 'VALIDATION_ERROR', 'sessionId and records are required', context.request, { startTime });
+        }
+
+        const user = getContextUser(context);
+
+        // Use importDb (unscoped service client) — same as bulk import, needed to see platform_staff sessions.
+        const { data: sessionRow, error: sessionErr } = await importDb
+          .from('college_attendance_sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+        if (sessionErr) return apiDbError(sessionErr, context.request, { startTime });
+        if (!sessionRow) return apiError(404, 'NOT_FOUND', 'Session not found', context.request, { startTime });
+        if (submitCollegeId && sessionRow.college_id !== submitCollegeId) {
+          return apiError(403, 'FORBIDDEN', 'Session does not belong to your college', context.request, { startTime });
+        }
+        if (sessionRow.status === 'cancelled') {
+          return apiError(400, 'VALIDATION_ERROR', 'Session is cancelled — attendance cannot be marked', context.request, { startTime });
+        }
+        if (sessionRow.locked_at) {
+          return apiError(409, 'CONFLICT', 'Session is locked — attendance cannot be changed', context.request, { startTime });
+        }
+
+        // Check for existing records so we know whether to INSERT or UPDATE.
+        const { data: existing } = await importDb
+          .from('college_attendance_records')
+          .select('learner_id')
+          .eq('session_id', sessionId);
+
+        const existingIds = new Set((existing || []).map((r: any) => r.learner_id));
+
+        const toUpdate = records.filter((r: any) => existingIds.has(r.learnerId));
+        const toInsert = records.filter((r: any) => !existingIds.has(r.learnerId));
+
+        // UPDATE existing rows.
+        for (const r of toUpdate) {
+          await importDb
+            .from('college_attendance_records')
+            .update({
+              status: r.status,
+              time_in: r.timeIn || null,
+              remarks: r.remarks || null,
+              marked_by: user?.id || null,
+              marked_at: new Date().toISOString(),
+            })
+            .eq('session_id', sessionId)
+            .eq('learner_id', r.learnerId);
+        }
+
+        // INSERT new rows (learners who had no record yet).
+        if (toInsert.length > 0) {
+          const insertRows = toInsert.map((r: any) => ({
+            session_id: sessionId,
+            learner_id: r.learnerId,
+            learner_name: r.learnerName || '',
+            roll_number: r.rollNumber || '',
+            department_name: sessionRow.department_name,
+            program_name: sessionRow.program_name,
+            program_id: sessionRow.program_id || null,
+            semester: sessionRow.semester,
+            section: sessionRow.section,
+            date: sessionRow.date,
+            status: r.status,
+            time_in: r.timeIn || null,
+            remarks: r.remarks || null,
+            subject_name: sessionRow.subject_name,
+            faculty_name: sessionRow.faculty_name,
+            college_id: sessionRow.college_id,
+            marked_by: user?.id || null,
+            marked_at: new Date().toISOString(),
+          }));
+          await importDb.from('college_attendance_records').insert(insertRows);
+        }
+
+        // Recount and update session summary.
+        const { data: counts } = await importDb
+          .from('college_attendance_records')
+          .select('status')
+          .eq('session_id', sessionId)
+          .not('status', 'is', null);
+
+        const countRows = counts || [];
+        const present = countRows.filter((r: any) => r.status === 'present').length;
+        const absent = countRows.filter((r: any) => r.status === 'absent').length;
+        const late = countRows.filter((r: any) => r.status === 'late').length;
+        const excused = countRows.filter((r: any) => r.status === 'excused').length;
+        const total = countRows.length;
+        const pct = total > 0 ? Math.round(((present + late + excused) / total) * 100 * 100) / 100 : 0;
+
+        await importDb
+          .from('college_attendance_sessions')
+          .update({
+            present_count: present,
+            absent_count: absent,
+            late_count: late,
+            excused_count: excused,
+            total_learners: total,
+            attendance_percentage: pct,
+            status: 'completed',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', sessionId);
+
+        return apiSuccess({ saved: true, present, absent, late, excused, total, attendance_percentage: pct }, context.request, { startTime });
       }
 
       default:
