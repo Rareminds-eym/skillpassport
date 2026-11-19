@@ -1,0 +1,4 @@
+.tutor-math .katex { font-size: 1.08em; max-width: 100%; }
+.tutor-math .katex:not(.katex-display > .katex) { display: inline-block; overflow-x: auto; overflow-y: hidden; padding-block: .3em; vertical-align: middle; }
+.tutor-math .katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; padding-block: .25rem; margin-block: .75rem; }
+.tutor-math .katex-error { color: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -68,7 +68,7 @@ describe('AI facilitator workspace', () => {
     const paragraphs = first.querySelectorAll('p');
     expect(paragraphs.length).toBeGreaterThan(0);
     expect(paragraphs[0]).not.toHaveClass('whitespace-pre-line');
-    expect(first.closest('div')).toHaveClass('[&_li>p]:!my-0');
+    expect(first.closest('.tutor-math')?.parentElement).toHaveClass('[&_li>p]:!my-0');
   });
   it('shows all six facilitators vertically on hover and opens a chosen role page', () => {
     showPanel();

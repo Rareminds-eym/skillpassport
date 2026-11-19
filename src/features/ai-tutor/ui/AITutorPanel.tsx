@@ -35,7 +35,8 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { useEffect, useLayoutEffect, useState, useRef, useCallback } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import { type Components } from 'react-markdown';
+import MathMarkdown from './MathMarkdown';
 import { stripWorksheetMarkers, formatWorksheetForDisplay } from '@/shared/utils';
 import { useTutorChat, type GenerationUsage } from '@/features/ai-tutor/model/useTutorChat';
 import WorksheetConfigPanel from './WorksheetConfigPanel';
@@ -994,9 +995,9 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
                         {/* Message Content Rendered with Styled Markdown */}
                         {msg.content ? (
                           <div className={`text-slate-800 ${msg.worksheetAvailable || /STUDENT_WORKSHEET/i.test(msg.content) ? '[&_li>p]:!my-0 [&_li>p+p]:!mt-1' : ''}`}>
-                            <ReactMarkdown components={markdownComponents}>
+                            <MathMarkdown components={markdownComponents}>
                               {formatWorksheetForDisplay(msg.content, isLastAssistant && isStreaming)}
-                            </ReactMarkdown>
+                            </MathMarkdown>
 
                             {/* Real-time streaming pulse cursor */}
                             {isStreaming && isLastAssistant && (

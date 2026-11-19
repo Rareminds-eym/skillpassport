@@ -160,7 +160,8 @@ it('lets educators open and hide the saved answer key',async()=>{
  expect(screen.queryByRole('region',{name:'Assignment answer key'})).not.toBeInTheDocument();
  fireEvent.click(buttons[0]);
  const answers=await screen.findByRole('region',{name:'Assignment answer key'});
- expect(await within(answers).findByText('Q = A \u00d7 v')).toBeInTheDocument();
+ await waitFor(()=>expect(answers.querySelector('.katex math')).not.toBeNull());
+ expect(answers.querySelector('annotation')?.textContent).toBe(String.raw`Q = A \times v`);
  expect(within(answers).getByText('Use cross-sectional area and average velocity.')).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Hide answers'}));
  expect(screen.queryByRole('region',{name:'Assignment answer key'})).not.toBeInTheDocument();
