@@ -461,8 +461,9 @@ export function useLearners(options?: UseLearnersOptions) {
   const sortBy = options?.sortBy || 'updated_at'
   const sortOrder = options?.sortOrder || 'desc'
 
-  const fetchlearners = async () => {
-    setLoading(true)
+  // background: refresh without the loading state, so the current list stays on screen.
+  const fetchlearners = async (refreshOptions?: { background?: boolean }) => {
+    if (!refreshOptions?.background) setLoading(true)
     setError(null)
     
     try {
@@ -496,6 +497,7 @@ export function useLearners(options?: UseLearnersOptions) {
       
       const mapped = ((result?.data || []) as LearnerRow[]).map(mapToUICandidate)
       setData(mapped)
+      return mapped // lets callers check whether newly added learners have arrived
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load learners')
     } finally {

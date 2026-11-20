@@ -25,6 +25,7 @@ import { LearnerProfileDrawer, AdmissionNoteModal } from '@/features/learner-pro
 import { AddLearnerModal } from '@/features/college-admin';
 import { useLearners } from '@/entities/learner';
 import { useUser } from '@/shared/model/authStore';
+import { toast } from 'react-hot-toast';
 import { apiPost } from '@/shared/api/apiClient';
 import { AssessmentReportDrawer } from '@/features/assessment';
 // @ts-ignore - JS file without types
@@ -336,9 +337,22 @@ const LearnerDataAdmission = () => {
     fetchCourseMappingData();
   }, [collegeId]);
 
-  const { learners, loading, error } = useLearners({
+  const { learners, loading, error, refetch } = useLearners({
     collegeId,
   });
+
+  // Poll the list (silently) until the imported emails appear, or give up after 90 seconds.
+  const waitForImportedLearners = async (emails: string[], expected: number): Promise<boolean> => {
+    const wanted = new Set(emails.map((email) => email.toLowerCase()));
+    const deadline = Date.now() + 90_000;
+    while (true) {
+      const rows = await refetch({ background: true });
+      const visible = (rows ?? []).filter((row) => wanted.has(String(row.email ?? '').toLowerCase())).length;
+      if (visible >= expected) return true;
+      if (Date.now() >= deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1471,10 +1485,21 @@ const LearnerDataAdmission = () => {
         onClose={() => {
           setShowAddlearnerModal(false);
         }}
-        onSuccess={() => {
-          setShowAddlearnerModal(false);
-          // Trigger a re-fetch by reloading without full page refresh
-          window.location.href = window.location.href.split('#')[0];
+        onSuccess={async (result) => {
+          if (!result?.bulk) {
+            setShowAddlearnerModal(false);
+            toast.success('Learner added successfully');
+            // Background refetch: the list stays visible and the new learner appears in place.
+            refetch({ background: true });
+            return;
+          }
+          // CSV: imported learners reach this list through the sync queue a few at a time.
+          // Refetch in the background until all of them are visible (the modal keeps its loading screen).
+          const allVisible = await waitForImportedLearners(result.emails ?? [], result.expected ?? 0);
+          if (allVisible) toast.success('Learners imported successfully');
+          else toast('Import finished. Some learners are still syncing and will appear shortly.');
+          // Keep the modal open on a partial import so the failed rows stay readable.
+          if (!result.partial) setShowAddlearnerModal(false);
         }}
       />
 

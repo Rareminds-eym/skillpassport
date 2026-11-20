@@ -47,7 +47,8 @@ interface ValidatedLearner {
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onSuccess?: () => void
+  // For CSV imports the page may return a promise that resolves once the imported learners are visible.
+  onSuccess?: (result?: { bulk?: boolean; emails?: string[]; expected?: number; partial?: boolean }) => void | Promise<void>
 }
 
 interface LearnerFormData {
@@ -99,6 +100,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
   const [validatedlearners, setValidatedlearners] = useState<ValidatedLearner[]>([])
   const [showEnhancedPreview, setShowEnhancedPreview] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null)
+  const [finalizingImport, setFinalizingImport] = useState(false)
   const csvValidation = useRef(0)
   const isMounted = useRef(true)
   useEffect(() => {
@@ -433,10 +435,20 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           throw new Error('Enrollment incomplete: document upload failed. Retry documents to upload the remaining files; the account already exists.')
         }
       }
-      try {
-        await updatelearnerDocuments(pending.userId, [...pending.uploaded.values()])
-      } catch (failure) {
-        throw new Error(`Enrollment incomplete: document linking failed. ${failure instanceof Error ? failure.message : 'Please retry documents.'}`)
+      // The learner record in SkillPassport is created by the sync queue a few seconds after the
+      // account. Until then the API answers 409 LEARNER_PROJECTION_PENDING, so wait and retry.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          await updatelearnerDocuments(pending.userId, [...pending.uploaded.values()])
+          break
+        } catch (failure) {
+          const pendingProjection = (failure as { code?: string })?.code === 'LEARNER_PROJECTION_PENDING'
+          if (pendingProjection && attempt < 8 && isMounted.current) {
+            await new Promise(resolve => setTimeout(resolve, 1500))
+            continue
+          }
+          throw new Error(`Enrollment incomplete: document linking failed. ${failure instanceof Error ? failure.message : 'Please retry documents.'}`)
+        }
       }
       rememberEnrollment({ ...pending, complete: true })
       setSuccess(`✅ Learner "${pending.name}" created successfully with ${pending.uploaded.size} document${pending.uploaded.size === 1 ? '' : 's'}!`)
@@ -884,16 +896,31 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
               }
             }
             setUploadProgress(null)
+
+            // Imported accounts reach the learner list through the sync queue, a few at a time.
+            // Stay on the loading screen until the page reports they are visible.
+            if (s.success_count > 0) {
+              setFinalizingImport(true)
+              try {
+                await onSuccess?.({
+                  bulk: true,
+                  emails: importable.map(row => String(row.email || '').trim().toLowerCase()).filter(Boolean),
+                  expected: s.success_count,
+                  partial: s.failed_count > 0,
+                })
+              } finally {
+                if (current()) setFinalizingImport(false)
+              }
+              if (!current()) return
+            }
             setLoading(false)
 
             if (s.success_count > 0 && s.failed_count === 0) {
               setSuccess(`Successfully imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''}!`)
-              onSuccess?.()
               setTimeout(() => { if (current()) onClose() }, 2000)
             } else if (s.success_count > 0 && s.failed_count > 0) {
               setSuccess(`Imported ${s.success_count} learner${s.success_count > 1 ? 's' : ''} successfully`)
               setError(`${s.failed_count} failed:\n${errorList.slice(0, 5).join('\n')}${errorList.length > 5 ? `\n...and ${errorList.length - 5} more` : ''}`)
-              onSuccess?.()
             } else {
               setError(`All imports failed. Errors:\n${errorList.slice(0, 10).join('\n')}${errorList.length > 10 ? `\n...and ${errorList.length - 10} more` : ''}`)
             }
@@ -934,7 +961,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
           </div>
 
-          {enrollment && !enrollment.complete && <p role="status" className="mb-4 text-sm text-amber-800">The account for {enrollment.name} already exists. Retry documents here; do not enroll this learner again. Keep this page open until document linking completes.</p>}
+          {enrollment && !enrollment.complete && !loading && <p role="status" className="mb-4 text-sm text-amber-800">The account for {enrollment.name} was created, but enrollment is not finished. Retry documents here; do not enroll this learner again. Keep this page open until document linking completes.</p>}
           {/* Mode Selection */}
           <div className="flex space-x-2 mb-6">
             <button
@@ -1526,7 +1553,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
                   <div className="flex items-center">
                     <LoadingSpinner />
-                    <span className="text-sm font-medium text-blue-900">Validating CSV and checking classes...</span>
+                    <span className="text-sm font-medium text-blue-900">{finalizingImport ? 'Adding imported learners to your list... this can take a little while.' : 'Validating CSV and checking classes...'}</span>
                   </div>
                 </div>
               )}
