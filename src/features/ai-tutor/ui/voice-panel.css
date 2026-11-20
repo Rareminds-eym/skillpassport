@@ -51,15 +51,10 @@
 
 .voice-panel button:focus-visible, .voice-dock button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 
-.voice-transcript-toggle { margin-top: 22px; min-height: 32px; font-size: 10px; color: hsl(var(--muted-foreground)); }
 
-.voice-transcript { width: 100%; max-width: 400px; max-height: 28dvh; overflow-y: auto; margin-top: 8px; padding: 14px 16px; border: 1px solid var(--voice-hairline); border-radius: calc(var(--radius) + 4px); background: hsl(var(--background) / .6); font-size: 12px; line-height: 1.8; }
 
-.voice-transcript > div + div { margin-top: 12px; }
 
-.voice-transcript p { margin: 2px 0; font-size: 12px; }
 
-.voice-transcript .voice-transcript-author { color: hsl(var(--muted-foreground)); font-size: 10px; }
 
 .voice-dock { display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 10px 7px 4px; border: 1px solid hsl(var(--border)); border-radius: 999px; background: var(--voice-surface); box-shadow: 0 8px 30px hsl(var(--foreground) / .12); }
 

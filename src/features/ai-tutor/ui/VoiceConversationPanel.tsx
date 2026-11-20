@@ -1,22 +1,16 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Lightbulb, Maximize2, Keyboard, Mic, MicOff, Minus, PhoneOff, Square, Volume2 } from 'lucide-react';
 import { useVoiceConversation, type VoiceConversationOptions, type VoiceState } from '../model/useVoiceConversation';
 import type { ChatMessage } from '../api/tutorService';
 import TutorOrb from './TutorOrb';
-import MathMarkdown from './MathMarkdown';
 import './voice-panel.css';
 
 const labels:Record<VoiceState,string>={idle:'Ready when you are',listening:'Listening to you',transcribing:'Understanding your question',thinking:'Thinking it through',compacting:'Compacting conversation',preparing:'Preparing your explanation',speaking:'AI is speaking',paused:'Microphone muted',error:'Letâ€™s try again'};
-const Transcript=memo(function Transcript({messages}:{messages:ChatMessage[]}) {
-  return <div className="voice-transcript">{messages.filter(message=>message.content.trim()).slice(-4).map(message=><div key={message.id}><p className="voice-transcript-author">{message.role==='user'?'You':'AI Facilitator'}</p><MathMarkdown>{message.content}</MathMarkdown></div>)}</div>;
-});
-
-export default function VoiceConversationPanel({courseId,courseName,messages,activeFacilitator,sendMessage,stopGeneration,onClose,minimized=false,onMinimize,onRestore}:VoiceConversationOptions&{
+export default function VoiceConversationPanel({courseId,courseName,activeFacilitator,sendMessage,stopGeneration,onClose,minimized=false,onMinimize,onRestore}:VoiceConversationOptions&{
   courseName:string;messages:ChatMessage[];activeFacilitator?:string;onClose:()=>void;
   minimized?:boolean;onMinimize?:()=>void;onRestore?:()=>void;
 }) {
   const voice=useVoiceConversation({courseId,sendMessage,stopGeneration});
-  const [transcriptOpen,setTranscriptOpen]=useState(false);
   const startedAt=useRef<number>();
   const [elapsed,setElapsed]=useState(0);
   const started=voice.state!=='idle';
@@ -60,8 +54,6 @@ export default function VoiceConversationPanel({courseId,courseName,messages,act
       <p className="voice-intro">Ask a doubt. Talk it through.</p>
       {voice.error&&<p role="alert" className="voice-error">{voice.error}</p>}
       {activeFacilitator&&voice.state!=='idle'&&<span className="sr-only">{activeFacilitator.replace(/-/g,' ')}</span>}
-      {messages.length>0&&voice.state!=='idle'&&<button type="button" className="voice-transcript-toggle" aria-expanded={transcriptOpen} onClick={()=>setTranscriptOpen(value=>!value)}>{transcriptOpen?'Hide transcript':'Show transcript'}</button>}
-      {transcriptOpen&&<Transcript messages={messages}/>}
     </div>
     <footer className="voice-controls">
       <div className="voice-call-wrapper">
