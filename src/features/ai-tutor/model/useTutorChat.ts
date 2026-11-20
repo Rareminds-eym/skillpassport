@@ -36,6 +36,9 @@ export interface UseTutorChatOptions {
   onGenerationUsageUpdate?: (usage: GenerationUsage) => void;
 }
 
+export interface SavedVoiceReply { conversationId: string; messageId: string }
+export interface SendOptions { generate?: boolean; guideSubmissionId?: string; voice?: boolean; onCompacting?: () => void; onSaved?: (reply: SavedVoiceReply) => void }
+
 export interface UseTutorChatReturn {
   facilitatorMode: string;
   setFacilitatorMode: (mode: string) => void;
@@ -49,7 +52,7 @@ export interface UseTutorChatReturn {
   conversationId: string | null;
   conversations: Conversation[];
   suggestedQuestions: string[];
-  sendMessage: (content: string, options?: { generate?: boolean; guideSubmissionId?: string }) => Promise<void>;
+  sendMessage: (content: string, options?: SendOptions) => Promise<void>;
   stopGeneration: () => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
@@ -149,7 +152,7 @@ export function useTutorChat({
 
 
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string, options?: { generate?: boolean; guideSubmissionId?: string }) => {
+  const handleSendMessage = useCallback(async (content: string, options?: SendOptions) => {
     if (!content.trim() || isStreaming) return;
 
     const requestController = new AbortController();
@@ -185,6 +188,7 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: content.trim(),
+        ...(options?.voice ? { inputMode: 'voice' as const } : {}),
         ...(options?.guideSubmissionId ? { guideSubmissionId: options.guideSubmissionId } : {}),
         facilitatorMode: isEducator && options?.guideSubmissionId ? 'mentor-and-guide' : facilitatorMode,
         ...(options?.generate ? { worksheetConfig, lessonPlanConfig } : {}),
@@ -194,7 +198,9 @@ export function useTutorChat({
 
       for await (const chunk of generator) {
         requestController.signal.throwIfAborted();
-        if (chunk.type === 'metadata') {
+        if (chunk.type === 'compacting') {
+          options?.onCompacting?.();
+        } else if (chunk.type === 'metadata') {
           setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId } : msg));
         } else if (chunk.type === 'reasoning' && chunk.reasoning) {
           // AI is thinking/reasoning
@@ -212,6 +218,7 @@ export function useTutorChat({
           );
         } else if (chunk.type === 'done') {
           setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, materialAvailable: chunk.materialAvailable, citations: chunk.citations, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
+          if (chunk.conversationId && chunk.messageId) options?.onSaved?.({conversationId:chunk.conversationId,messageId:chunk.messageId});
           // Stream complete
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);

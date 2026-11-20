@@ -37,6 +37,7 @@ import { handleSavedMaterials } from './handlers/saved-materials';
 import { handleAssignmentSubmission } from './handlers/assignment-submission';
 import { handleCourseIndex } from './handlers/course-index';
 import { handleWorksheets } from './handlers/worksheets';
+import { handleVoice } from './handlers/voice';
 
 export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const { request } = context;
@@ -50,6 +51,7 @@ export const onRequest: PagesFunction<PagesEnv> = async (context) => {
   const path = url.pathname.replace('/api/ai-tutor', '');
 
   try {
+    if (path === '/voice' && request.method === 'GET' || ['/voice/transcribe','/voice/speak'].includes(path) && request.method === 'POST') return withAuth(handleVoice as any)(context);
     if (path === '/materials' && request.method === 'POST') return withAuth(handleSavedMaterials as any)(context);
     if (path === '/assignment-submission' && ['GET','POST'].includes(request.method)) return withAuth(handleAssignmentSubmission as any)(context);
     if (path === '/course-index' && request.method === 'POST') return withAuth(handleCourseIndex as any)(context);

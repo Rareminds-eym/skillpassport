@@ -1,3 +1,4 @@
+import { compactVoiceContext, isContextOverflow } from '../utils/voice-context';
 import { loadGuideEvidence, GuideEvidenceError } from '../utils/guide-evidence';
 /**
  * AI Tutor Chat Handler
@@ -48,6 +49,7 @@ interface RequiredEnv extends PagesEnv {
 type TypedContext = { request: Request; env: RequiredEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 
 interface StoredMessage {
+  inputMode?: 'voice';
   guideSubmissionId?: string;
   materialRequestFingerprint?: string;
   materialContextFingerprint?: string;
@@ -87,6 +89,7 @@ function isValidOpenRouterResponse(data: unknown): data is OpenRouterResponse {
 }
 
 interface AiTutorChatRequest {
+  inputMode?: 'voice';
   guideSubmissionId?: string;
   contextScope?: 'course' | 'lesson' | 'all-lessons';
   facilitatorMode?: Persona | 'auto';
@@ -128,6 +131,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
   const { conversationId, courseId, lessonId, message } = body;
   let { worksheetConfig, lessonPlanConfig } = body;
+  if (body.inputMode !== undefined && body.inputMode !== 'voice' || body.inputMode === 'voice' && (worksheetConfig || lessonPlanConfig || body.guideSubmissionId)) return apiError(400, 'VALIDATION_ERROR', 'Voice mode supports course conversation only.', request);
   if (body.facilitatorMode !== undefined && body.facilitatorMode !== 'auto' && !isPersona(body.facilitatorMode)) {
     return apiError(400, 'VALIDATION_ERROR', 'Invalid facilitator selection.', request);
   }
@@ -209,6 +213,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const teaching = educator
       ? routeTeachingMessage(message, existingMessages, guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode)
       : routeLearnerMessage(message, existingMessages, body.facilitatorMode);
+    if (body.inputMode === 'voice') { teaching.worksheetConfig=undefined; teaching.lessonPlanConfig=undefined; teaching.assignmentReviewRequested=false; teaching.assignmentSourceId=undefined; }
     // Submission guidance is a distinct feedback operation. Assignment titles and
     // learner names must never be interpreted as generation/publication commands.
     if (guideSubmissionId) {
@@ -224,7 +229,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     if (!educator && (worksheetConfig || lessonPlanConfig)) {
       return apiError(403, 'FORBIDDEN', 'Educator access required for teaching tools.', request);
     }
-    if (educator && !guideSubmissionId && !worksheetConfig && !lessonPlanConfig) {
+    if (educator && body.inputMode !== 'voice' && !guideSubmissionId && !worksheetConfig && !lessonPlanConfig) {
       worksheetConfig = teaching.worksheetConfig;
       lessonPlanConfig = teaching.lessonPlanConfig;
       isGenerationRequest = Boolean(worksheetConfig || lessonPlanConfig);
@@ -297,6 +302,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     if (automaticPersona) teaching.facilitator = await automaticPersona;
     let systemPrompt = buildSystemPrompt(courseContext, conversationPhase, userRole, worksheetConfig, lessonPlanConfig, teaching.facilitator);
     systemPrompt += retrievedContext;
+    if (body.inputMode === 'voice') systemPrompt += '\nVOICE CONVERSATION: Answer the current spoken doubt directly using the supplied course evidence and recent conversation. Usually use 80-160 words, short natural sentences, and one clear example. Explain equations in words as well as symbols. Ask one short clarification if the question is unclear. Keep follow-ups connected to the previous explanation. Do not produce worksheets, lesson plans, or claim assignment actions in voice mode; direct those requests to the existing tools. Never omit important source limitations.';
     if (guideSubmissionId) {
       systemPrompt += await loadGuideEvidence(supabase, env, learnerId, courseId, guideSubmissionId);
       systemPrompt += '\nThis is feedback on an existing submission, not material generation. Do not reproduce the worksheet or generate another question set. Briefly identify demonstrated strengths, specific gaps tied to submitted answers and the saved rubric, and one actionable next step. Quote question text only when needed to explain feedback. Do not invent learning objectives or change the saved grade.';
@@ -373,6 +379,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const userMessage: StoredMessage = {
       id: userMessageId,
       role: 'user',
+      ...(body.inputMode === 'voice' ? { inputMode: 'voice' as const } : {}),
       ...(guideSubmissionId ? { guideSubmissionId } : {}),
       content: message,
       timestamp: new Date().toISOString()
@@ -555,7 +562,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 const ids = new Set(questions.map((q: any) => q.id));
                 return savedAssignmentMarkdown({ questions }, cachedMaterial.grading_rules.filter((r: any) => ids.has(r.questionId)));
               })()) : null;
-              const response = cachedText ? new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: cachedText }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`) : await fetch(endpoint, {
+              let response = cachedText ? new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: cachedText }, finish_reason: 'stop' }] })}\n\ndata: [DONE]\n\n`) : await fetch(endpoint, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${openRouterKey}`,
@@ -564,12 +571,22 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                   'X-Title': 'AI Course Tutor',
                 },
                 body: JSON.stringify({
-                  model: chatModel, messages: levelMessages, stream: true,
+                  model: chatModel, messages: body.inputMode === 'voice' ? compactVoiceContext(levelMessages) : levelMessages, stream: true,
                   max_tokens: level ? Math.min(8000, Math.max(2000, worksheetConfig!.questionCount * 250)) : maxTokens,
                   temperature: phaseParams.temperature,
                 }),
                 signal: providerSignal(),
               });
+              if (!response.ok && body.inputMode === 'voice' && isContextOverflow(response.status, await response.clone().text())) {
+                controller.enqueue(encoder.encode(`event: compacting\ndata: {}\n\n`));
+                // Retry once before emitting any answer tokens. Never reset or duplicate saved turns.
+                response = await fetch(endpoint, {
+                  method: 'POST',
+                  headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ model: chatModel, messages: compactVoiceContext(levelMessages, 24000), stream: true, max_tokens: maxTokens, temperature: phaseParams.temperature }),
+                  signal: providerSignal(),
+                });
+              }
               if (!response.ok) {
                 logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
                 throw new Error('AI generation failed. Please try again.');
@@ -635,6 +652,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
             citations: evidence.map(item => ({ chunkId: item.chunk_id, analysisId: item.analysis_id, lessonId: item.lesson_id, resourceId: item.resource_id, location: item.source_location })),
             id: assistantMessageId,
             role: 'assistant',
+            ...(body.inputMode === 'voice' ? { inputMode: 'voice' as const } : {}),
             content: fullResponse,
             timestamp: new Date().toISOString()
           };

@@ -1,0 +1,143 @@
+/* Panel chrome follows shared semantic theme tokens; orb artwork keeps its own palette. */
+.voice-panel, .voice-dock { --voice-surface: hsl(var(--background)); --voice-ink: hsl(var(--foreground)); --voice-hairline: hsl(var(--border)); color: var(--voice-ink); }
+
+.voice-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; background: var(--voice-surface); }
+
+.voice-panel-header { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; min-height: 58px; padding: 8px 12px; border-bottom: 1px solid var(--voice-hairline); }
+
+.voice-header-spacer, .voice-minimize { width: 36px; flex-shrink: 0; }
+
+.voice-course { display: flex; min-width: 0; align-items: center; gap: 5px; font-size: 11px; }
+
+.voice-course > span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+.voice-course svg { width: 12px; height: 12px; flex-shrink: 0; color: hsl(var(--muted-foreground)); }
+
+.voice-minimize { display: grid; height: 36px; place-items: center; color: hsl(var(--muted-foreground)); border-radius: 50%; transition: background .18s, color .18s; }
+
+.voice-minimize svg { width: 15px; height: 15px; }
+
+.voice-minimize:hover { background: hsl(var(--accent)); color: var(--voice-ink); }
+
+.voice-stage { display: flex; min-height: 0; flex: 1; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; overscroll-behavior: contain; padding: 24px 20px 8px; }
+
+.voice-orb-stage { display: flex; position: relative; width: 100%; max-width: 400px; flex-shrink: 0; flex-direction: column; align-items: center; }
+
+.voice-main-orb { max-width: 400px !important; width: 100% !important; margin: 0 !important; }
+
+.voice-status { margin-top: -14px; text-align: center; font-size: 11px; color: hsl(var(--muted-foreground)); }
+
+.voice-action-pill { min-height: 32px; margin-top: 12px; padding: 5px 13px; border: 1px solid hsl(var(--border)); border-radius: 999px; background: hsl(var(--background) / .68); box-shadow: 0 2px 7px hsl(var(--foreground) / .035); color: hsl(var(--muted-foreground)); font-size: 10px; transition: border-color .2s, color .2s, background .2s; }
+
+.voice-action-pill:hover { color: hsl(var(--primary)); border-color: hsl(var(--border)); background: hsl(var(--background)); }
+
+.voice-intro { margin: 22px 0 0; text-align: center; font-size: 12px; color: hsl(var(--muted-foreground)); }
+
+.voice-error { max-width: 340px; margin: 18px 0 0; text-align: center; font-size: 12px; line-height: 1.7; color: hsl(var(--destructive)); }
+
+.voice-controls { display: flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 14px; padding: 28px 20px max(30px,env(safe-area-inset-bottom)); }
+
+.voice-control { display: flex; width: 46px; height: 46px; flex-shrink: 0; align-items: center; justify-content: center; border: 1px solid hsl(var(--border)); border-radius: 50%; background: hsl(var(--background) / .9); color: hsl(var(--muted-foreground)); box-shadow: 0 3px 10px hsl(var(--foreground) / .045), inset 0 0 0 3px hsl(var(--muted) / .65); transition: background .2s, color .2s, box-shadow .2s; }
+
+.voice-control svg { width: 18px; height: 18px; stroke-width: 1.5; }
+
+.voice-control:hover { background: hsl(var(--background)); color: hsl(var(--primary)); box-shadow: 0 4px 14px hsl(var(--foreground) / .1); }
+
+.voice-control-muted { background: hsl(var(--accent)); color: hsl(var(--primary)); }
+
+.voice-control-end { border-color: hsl(var(--destructive) / .4); background: hsl(var(--destructive)); color: hsl(var(--destructive-foreground)); box-shadow: 0 3px 12px hsl(var(--destructive) / .18), inset 0 0 0 3px hsl(var(--background) / .13); }
+
+.voice-control-end:hover { background: hsl(var(--destructive) / .9); color: hsl(var(--destructive-foreground)); }
+
+.voice-panel button:focus-visible, .voice-dock button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+
+.voice-transcript-toggle { margin-top: 22px; min-height: 32px; font-size: 10px; color: hsl(var(--muted-foreground)); }
+
+.voice-transcript { width: 100%; max-width: 400px; max-height: 28dvh; overflow-y: auto; margin-top: 8px; padding: 14px 16px; border: 1px solid var(--voice-hairline); border-radius: calc(var(--radius) + 4px); background: hsl(var(--background) / .6); font-size: 12px; line-height: 1.8; }
+
+.voice-transcript > div + div { margin-top: 12px; }
+
+.voice-transcript p { margin: 2px 0; font-size: 12px; }
+
+.voice-transcript .voice-transcript-author { color: hsl(var(--muted-foreground)); font-size: 10px; }
+
+.voice-dock { display: flex; width: 100%; align-items: center; gap: 8px; padding: 7px 10px 7px 4px; border: 1px solid hsl(var(--border)); border-radius: 999px; background: var(--voice-surface); box-shadow: 0 8px 30px hsl(var(--foreground) / .12); }
+
+.voice-dock-restore { display: flex; min-width: 0; flex: 1; align-items: center; gap: 2px; border-radius: 999px; text-align: left; }
+
+.voice-mini-orb { width: 66px !important; min-width: 66px; margin: -3px 0 !important; }
+
+.voice-dock-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; padding-right: 8px; }
+
+.voice-dock-course { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+
+.voice-dock-state { margin-top: 2px; font-size: 10px; color: hsl(var(--muted-foreground)); }
+
+.voice-control-small { width: 36px; height: 36px; }
+
+.voice-control-small svg { width: 15px; height: 15px; }
+
+.facilitator-orb[data-voice-state=paused] g, .facilitator-orb[data-voice-state=error] g { animation-play-state: paused; }
+
+@media (min-width: 640px) { .voice-course { font-size: 12px; } .voice-stage { padding-top: 36px; padding-bottom: 24px; } .voice-controls { padding-bottom: 38px; } }
+
+.voice-call-wrapper { display: flex; flex-direction: column; align-items: center; max-width: 100%; }
+.voice-call-status { display: flex; align-items: center; gap: 7px; padding: 7px 14px 10px; margin-bottom: -3px; border: 1px solid hsl(var(--border)); border-bottom: 0; border-radius: calc(var(--radius) + 6px) calc(var(--radius) + 6px) 0 0; background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); font-size: 11px; }
+.voice-call-dot { width: 5px; height: 5px; border-radius: 50%; background: hsl(var(--primary)); }
+.voice-call-dot-error { background: hsl(var(--destructive)); }
+.voice-call-duration { padding-left: 7px; border-left: 1px solid hsl(var(--border)); font-variant-numeric: tabular-nums; min-width: 32px; }
+.voice-control-tray { display: flex; justify-content: center; align-items: center; gap: 14px; padding: 10px 14px; border: 1px solid hsl(var(--border)); border-radius: 999px; background: hsl(var(--muted)); box-shadow: 0 5px 20px hsl(var(--foreground) / .07),inset 0 1px 0 hsl(var(--background)); min-width: 242px; }
+.voice-status { display: inline-flex; gap: 6px; align-items: center; justify-content: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); }
+.voice-status svg { width: 14px; height: 14px; }
+.voice-turn-hint { margin: 7px 0 0; max-width: 300px; min-height: 36px; font-size: 11px; line-height: 18px; text-align: center; color: hsl(var(--muted-foreground)); }
+.voice-panel[data-state=listening] .voice-status { background: hsl(var(--primary) / .08); color: hsl(var(--primary)); }
+.voice-panel[data-state=speaking] .voice-status { background: hsl(var(--primary) / .08); color: hsl(var(--primary)); }
+.voice-panel[data-state=listening] .voice-action-pill { color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); background: hsl(var(--primary) / .08); }
+.voice-panel[data-state=speaking] .voice-action-pill { color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); background: hsl(var(--primary) / .08); font-weight: 600; }
+.voice-panel[data-state=listening] .facilitator-orb { --facilitator-orb-lilac: 214 100% 93%; }
+.voice-panel[data-state=speaking] .facilitator-orb { --facilitator-orb-ice: 248 100% 91%; }
+.voice-panel[data-state=listening] .voice-control[aria-label="Mute microphone"] { background: hsl(var(--primary) / .08); color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); }
+.voice-stop { background: hsl(var(--primary) / .08); color: hsl(var(--primary)); border-color: hsl(var(--primary) / .25); }
+.voice-stop:hover { background: hsl(var(--primary) / .14); color: hsl(var(--primary)); }
+.voice-stop svg { fill: currentColor; width: 14px; height: 14px; }
+.voice-dock[data-state=listening] .voice-dock-state { color: hsl(var(--primary)); }
+.voice-dock[data-state=speaking] .voice-dock-state { color: hsl(var(--primary)); }
+.voice-stage { scrollbar-gutter: stable both-edges; }
+.voice-main-orb { aspect-ratio: 4 / 3; overflow: hidden; }
+.facilitator-orb[data-voice-state] .voice-body,
+.facilitator-orb[data-voice-state] .voice-body-breathe,
+.facilitator-orb[data-voice-state] .voice-halo,
+.facilitator-orb[data-voice-state] .voice-orb-mouth { transform: none; animation: none; transition: none; }
+.facilitator-orb[data-voice-state] .animate-facilitator-orbit,
+.facilitator-orb[data-voice-state] .animate-facilitator-orbit-reverse,
+.facilitator-orb[data-voice-state] .animate-facilitator-orbit-slow,
+.facilitator-orb[data-voice-state] .animate-facilitator-particles { animation: none; }
+
+/* Three modes, with audio bands driving independent side ripples. */
+.voice-loading-indicator { display:none; }
+.voice-loading-ring,.voice-loading-inner { transform-origin:200px 151px; }
+.voice-audio-aura { opacity:.12; transform:none; }
+.voice-aura-line { transform-origin:200px 151px; transform:scaleY(calc(.22 + var(--band,0) * .78)) scaleX(calc(.96 + var(--band,0) * .04)); opacity:calc(.18 + var(--band,0) * .8); transition:opacity 90ms linear; animation:none; }
+.facilitator-orb[data-voice-mode=listening] .voice-audio-aura { opacity:.9; }
+.facilitator-orb[data-voice-mode=speaking] .voice-audio-aura { opacity:1; filter:hue-rotate(28deg) saturate(1.25); }
+.facilitator-orb[data-voice-mode=speaking] .voice-aura-line { transform:scaleY(calc(.18 + var(--band,0) * .82)) scaleX(calc(.94 + var(--band,0) * .06)); }
+.facilitator-orb[data-voice-mode=listening] .voice-orb-soft-fill { fill:#afd8fa; opacity:.6; }
+.facilitator-orb[data-voice-mode=speaking] .voice-orb-soft-fill { fill:#c8b5f5; opacity:.8; }
+.facilitator-orb[data-voice-mode=loading] .voice-audio-aura { opacity:0; }
+.facilitator-orb[data-voice-mode=loading] .voice-loading-indicator { display:block; }
+.facilitator-orb[data-voice-mode=loading] .voice-loading-ring { animation:voice-loading-orbit 3.8s linear infinite; }
+.facilitator-orb[data-voice-mode=loading] .voice-loading-inner { animation:voice-loading-orbit 6s linear infinite reverse; }
+.facilitator-orb[data-voice-mode=loading] .voice-orb-soft-fill { fill:#d3c5ef; animation:voice-loading-glow 2.2s ease-in-out infinite; }
+.facilitator-orb[data-voice-state] .voice-orbit-lines { stroke:#9eaac0; }
+.facilitator-orb[data-voice-state] .voice-orbit-lines ellipse { opacity:.13; }
+.facilitator-orb[data-voice-state] .animate-facilitator-particles { display:none; }
+.facilitator-orb[data-voice-state] .voice-orb-fill { opacity:.94; }
+@keyframes voice-loading-orbit { to { transform:rotate(360deg); } }
+@keyframes voice-loading-glow { 0%,100% { opacity:.35; } 50% { opacity:.85; } }
+@media (prefers-reduced-motion:reduce) { .voice-aura-line,.voice-loading-ring,.voice-orb-soft-fill { animation:none !important; transform:none !important; transition:none !important; } }
+
+.facilitator-orb[data-voice-mode=listening] { --voice-orb-top:#eef9ff; --voice-orb-mid:#b9d9f7; --voice-orb-bottom:#c3dcfa; }
+.facilitator-orb[data-voice-mode=speaking] { --voice-orb-top:#f1ebff; --voice-orb-mid:#c7bdf3; --voice-orb-bottom:#d9c5f4; }
+.facilitator-orb[data-voice-mode=loading] { --voice-orb-top:#f7f4ff; --voice-orb-mid:#d0caed; --voice-orb-bottom:#e1d7f2; }
+
+@media (prefers-reduced-motion:reduce) { .voice-loading-ring,.voice-loading-inner { animation:none !important; transform:none !important; } }

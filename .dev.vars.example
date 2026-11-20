@@ -49,6 +49,12 @@ SIGNING_SECRET=your_signing_secret_here
 
 # ==================== AI SERVICE API KEYS ====================
 OPENROUTER_API_KEY=your_openrouter_api_key_here
+# Optional voice-model overrides (uses the existing OpenRouter key)
+# VOICE_MODEL=heygen/heygen-voice-1-turbo:free
+# VOICE_TRANSCRIPTION_MODEL=openai/whisper-large-v3-turbo
+# VOICE_PRESET=nadine
+# VOICE_OUTPUT_FORMAT=pcm
+# VOICE_SAMPLE_RATE=44100
 
 
 

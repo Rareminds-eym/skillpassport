@@ -225,6 +225,13 @@ describe('tutor conversation persistence', () => {
     await generate();
     expect(mocks.selectPersona).not.toHaveBeenCalled();
   });
+  it.each(['learner','college_educator'])('keeps voice turns grounded and saves them in existing conversations for %s', async role => {
+    mocks.roles=[role];
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',conversationId:'existing',message:'Create a worksheet about this concept',inputMode:'voice'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();expect(stream).toContain('event: done');expect(stream).toContain('"worksheetAvailable":false');
+    const requestBody=JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));expect(requestBody.messages[0].content).toContain('VOICE CONVERSATION');expect(requestBody.messages[0].content).toContain('Verified course topic');
+    const append=mocks.client.rpc.mock.calls.find(([name])=>name==='append_tutor_messages');expect(append).toBeDefined();expect(append![1].p_new_messages).toEqual(expect.arrayContaining([expect.objectContaining({role:'user',inputMode:'voice'}),expect.objectContaining({role:'assistant',inputMode:'voice'})]));
+  });
   it('requires a verified teaching level for typed generation', async () => {
     mocks.client.rpc.mockResolvedValue({ data: null, error: null });
     const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Create a worksheet' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY:'test' } } as Parameters<typeof handleAiTutorChat>[0]);

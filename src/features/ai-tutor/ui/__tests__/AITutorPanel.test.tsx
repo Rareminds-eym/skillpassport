@@ -367,3 +367,21 @@ it.each(['Plan', 'Create', 'Guide', 'Solve'])('keeps learner orb %s actions in l
   expect(screen.queryByRole('region', { name: 'Guide a learner response' })).not.toBeInTheDocument();
   expect(mocks.sendMessage).not.toHaveBeenCalled();
 });
+
+it.each([true,false])('opens the voice panel and returns to the same text chat (educator=%s)', async educator=>{
+  mocks.educator=educator;showPanel();
+  fireEvent.click(screen.getByRole('button',{name:'Start voice conversation'}));
+  expect(screen.getByRole('region',{name:'Voice conversation'})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:'Start conversation'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Text chat'}));
+  expect(screen.getByRole('textbox',{name:'Message the AI facilitator'})).toBeInTheDocument();
+  expect(mocks.sendMessage).not.toHaveBeenCalled();
+});
+
+it('keeps the mounted voice session when minimizing and restoring',()=>{
+  showPanel();fireEvent.click(screen.getByRole('button',{name:'Start voice conversation'}));
+  fireEvent.click(screen.getByRole('button',{name:'Minimize voice conversation'}));
+  expect(screen.getByRole('button',{name:'Restore voice conversation'})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button',{name:'Restore voice conversation'}));
+  expect(screen.getByRole('button',{name:'Start conversation'})).toBeInTheDocument();
+});

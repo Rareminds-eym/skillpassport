@@ -3,6 +3,7 @@ import PanelLoadingSkeleton from './PanelLoadingSkeleton';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowRight,
+  Mic,
   BookOpen,
   Brain,
   CalendarDays,
@@ -47,6 +48,7 @@ import SavedMaterialWorkspace from './SavedMaterialWorkspace';
 import FacilitatorHub from './FacilitatorHub';
 import FacilitatorWelcome from './FacilitatorWelcome';
 import TutorOrb from './TutorOrb';
+import VoiceConversationPanel from './VoiceConversationPanel';
 import { FACILITATORS, LEARNER_FACILITATORS, type FacilitatorRole } from '../config/facilitators';
 import { useWorksheetContext } from '../model/worksheetQueries';
 import CourseIndexStatus from './CourseIndexStatus';
@@ -116,6 +118,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   const [adaptationBrief, setAdaptationBrief] = useState<string | null>(null);
   const [showGuidePicker,setShowGuidePicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showVoice,setShowVoice] = useState(false);
+  const [voiceMinimized,setVoiceMinimized] = useState(false);
+  useEffect(()=>{setShowVoice(false);},[courseId]);
+  useEffect(()=>{if(!isExpanded||showHistory)setShowVoice(false);},[isExpanded,showHistory]);
   const [showWorksheets, setShowWorksheets] = useState(false);
   const [notificationNavigation, setNotificationNavigation] = useState(0);
   useEffect(() => {
@@ -248,6 +254,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
   }, []);
 
   const {
+    activeFacilitator,
     messages,
     isLoading,
     isStreaming,
@@ -703,6 +710,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
   // Expanded Main Panel
   const panelWidthClass = 'w-full sm:w-[500px]';
+  const compactVoice=showVoice&&voiceMinimized;
 
   return (
     <motion.div
@@ -713,10 +721,10 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
       role="region"
       aria-label={isEducator ? 'AI facilitator' : 'AI course tutor'}
       data-orb-pointer-area
-      className={`fixed right-0 top-0 h-dvh ${panelWidthClass} max-w-full bg-slate-50/95 backdrop-blur-xl shadow-[-12px_0_48px_-24px_rgba(15,23,42,0.3)] z-50 flex flex-col border-l border-slate-200 text-slate-800 transition-[width] duration-200`}
+      className={compactVoice?"fixed bottom-5 right-4 z-50 w-[calc(100vw-2rem)] max-w-[380px] text-slate-800":"fixed right-0 top-0 h-dvh " + panelWidthClass + " max-w-full bg-slate-50/95 backdrop-blur-xl shadow-[-12px_0_48px_-24px_rgba(15,23,42,0.3)] z-50 flex flex-col border-l border-slate-200 text-slate-800 transition-[width] duration-200"}
     >
       {/* 1. Header (Clean, Professional, No Black, No Vibrant Color) */}
-      <div className="bg-white/85 backdrop-blur-lg border-b border-blue-100 px-4 py-2.5 flex-shrink-0 z-20">
+      <div className={showVoice?"hidden":"bg-white/85 backdrop-blur-lg border-b border-blue-100 px-4 py-2.5 flex-shrink-0 z-20"}>
         <div className="flex items-center justify-between">
           {/* Left: Avatar + Title + Status */}
           <div className="flex items-center gap-3">
@@ -756,6 +764,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             <button
               type="button"
               onClick={() => {
+                setShowVoice(false);
                 startNewConversation();
                 setShowFacilitators(false);
                 setIsConfigExpanded(false);
@@ -807,6 +816,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
         </div>
       </div>
 
+      {showVoice ? <VoiceConversationPanel key={courseId} courseId={courseId} courseName={courseName} messages={messages} activeFacilitator={activeFacilitator} sendMessage={sendMessage} stopGeneration={stopGeneration} minimized={voiceMinimized} onMinimize={()=>setVoiceMinimized(true)} onRestore={()=>setVoiceMinimized(false)} onClose={()=>{setShowVoice(false);setVoiceMinimized(false);}}/> : <>
       {/* 5. Messages Stream Area */}
       <div aria-label="Conversation" aria-busy={isStreaming} className={`flex-1 min-h-0 overflow-y-auto overscroll-contain ${isWelcome ? 'bg-white/90' : 'bg-slate-50/80'} px-4 py-6 sm:px-5 space-y-6`}>
         {isEducator && showGuidePicker && <GuideSubmissionPicker key={courseId} courseId={courseId} disabled={isStreaming} onClose={()=>setShowGuidePicker(false)} onSelect={(id,label)=>{setShowGuidePicker(false);setInput('');void sendMessage(`Guide me on ${label}. Use the saved learner response and grading criteria to give targeted feedback and one next step.`,{guideSubmissionId:id});}}/>}
@@ -1197,6 +1207,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
             className="flex-1 min-w-0 self-center !m-0 !border-0 !rounded-none !p-0 text-[13px] leading-5 text-slate-800 placeholder:text-slate-400 !bg-transparent resize-none !outline-none !ring-0 !shadow-none focus:!outline-none focus:!ring-0 focus-visible:!outline-none focus-visible:!ring-0 disabled:opacity-50 h-5 min-h-5 max-h-[60px] overflow-y-hidden"
           />
 
+          <button type="button" aria-label="Start voice conversation" title="Start voice conversation" disabled={!isAuthenticated||isStreaming||isLoading} onClick={()=>{setShowGuidePicker(false);setIsConfigExpanded(false);setShowFacilitators(false);setVoiceMinimized(false);setShowVoice(true);}} className="flex h-9 w-9 shrink-0 items-center justify-center self-center rounded-full text-slate-500 transition-colors hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40 motion-reduce:transition-none"><Mic aria-hidden="true" className="h-4 w-4"/></button>
           <button
             type="button"
             onClick={isStreaming ? stopGeneration : handleSend}
@@ -1220,6 +1231,7 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
       </div>
 
+      </>}
     </motion.div>
   );
 };

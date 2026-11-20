@@ -125,3 +125,17 @@ describe('material completion state', () => {
   });
 
 });
+
+
+it('sends voice turns through the same chat and reports only saved reply identifiers', async () => {
+  mocks.send.mockImplementation(async function* () {
+    yield {type:'content',content:'A grounded spoken explanation'};
+    yield {type:'done',conversationId:'voice-chat',messageId:'voice-reply'};
+  });
+  const onSaved=vi.fn();
+  const {result}=renderHook(()=>useTutorChat({courseId:'course'}));
+  await act(async()=>{await result.current.sendMessage('Why efficiency?',{voice:true,onSaved});});
+  expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({inputMode:'voice',courseId:'course',message:'Why efficiency?'}),expect.any(AbortSignal));
+  expect(onSaved).toHaveBeenCalledWith({conversationId:'voice-chat',messageId:'voice-reply'});
+  expect(result.current.conversationId).toBe('voice-chat');
+});

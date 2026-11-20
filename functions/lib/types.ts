@@ -89,6 +89,11 @@ export interface PagesEnv {
   // AI API keys
 
   OPENROUTER_API_KEY?: string;
+  VOICE_MODEL?: string;
+  VOICE_TRANSCRIPTION_MODEL?: string;
+  VOICE_PRESET?: string;
+  VOICE_OUTPUT_FORMAT?: string;
+  VOICE_SAMPLE_RATE?: string;
   /** Additional approved resource download hosts, comma-separated (no URLs). */
   AI_RESOURCE_ALLOWED_HOSTS?: string;
 
