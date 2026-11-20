@@ -128,6 +128,10 @@ export async function handleCreateLearner(request: Request, env: PagesEnv, actor
     });
 
     if (!ssoResult.success) {
+      // SSO rejects an email that already has an account; surface it as a clear 409, not a 500.
+      if (/already exists/i.test(ssoResult.error || '')) {
+        return apiError(409, 'LEARNER_ALREADY_EXISTS', `A learner with email ${learner.email.toLowerCase()} already exists.`, request);
+      }
       return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner in SSO', request);
     }
 
