@@ -221,6 +221,13 @@ ${buildThinkingSection(config.templateType)}
 
 **CREATE THE 5E LESSON PLAN:**
 
+Use all five phase headings below in this order and keep their exact time allocations.
+Replace every placeholder with concrete, classroom-ready content grounded in the supplied evidence.
+Use one connected investigation: Explore must let learners investigate before Explain introduces the formal model.
+Include teacher prompts, expected learner responses and observable evidence of learning.
+Evaluate must include actual assessment questions and brief expected answers or success criteria.
+Keep activities feasible within the selected duration; label invented scenarios as proposed teaching activities.
+
 Title: [Inquiry-focused title]
 Duration: ${config.duration} minutes
 Learning Objectives: [Science concepts and inquiry skills]
@@ -343,6 +350,8 @@ Respond with ONLY a structured outline that includes:
 4. Key activities for each section
 5. Assessment approach
 6. Differentiation strategies
+
+${config.templateType === '5e' ? `For this 5E outline, use exactly ENGAGE, EXPLORE, EXPLAIN, ELABORATE, EVALUATE in that order. Preserve the phase timings and inquiry sequence from this required plan structure:\n${build5ELessonPlan(config, context)}` : ''}
 
 Keep it concise - this outline will guide the full lesson plan generation.
 `;

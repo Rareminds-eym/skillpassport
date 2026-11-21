@@ -345,7 +345,17 @@ describe('tutor conversation persistence', () => {
     }
     expect(requests[0].messages.at(-1).content).toContain('12 techniques');
     expect(requests[1].messages.at(-1).content).toContain('A timed outline');
+    expect(requests[1].max_tokens).toBe(5000);
+    expect(requests[0].messages[0].content).toContain('## EVALUATE');
     expect(stream).toContain('"facilitator":"organizer"');
+  });
+  it.each(['length','disconnect'])('does not save a two-pass plan after %s',async failure=>{
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({choices:[{finish_reason:'stop',message:{content:'Five phase outline'}}]}))
+      .mockResolvedValueOnce(new Response(`data: ${JSON.stringify({choices:[{delta:{content:'## ENGAGE only'},...(failure==='length'?{finish_reason:'length'}:{})}]})}\n\n${failure==='length'?'data: [DONE]\n\n':''}`));
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({courseId:'course-id',message:'Generate a 5E lesson plan',lessonPlanConfig:{templateType:'5e',duration:45,useTwoPass:true}})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();
+    expect(stream).toContain('event: error');expect(stream).not.toContain('event: done');
+    expect(mocks.client.from.mock.results.some(result=>result.value.insert.mock.calls.length)).toBe(false);
   });
   it('keeps the ordinary learner tutor free of educator persona prompts', async()=>{
     mocks.roles=['learner'];

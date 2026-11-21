@@ -257,7 +257,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isLessonPlanGeneration = lessonPlanConfig && educator;
     if (educator) teaching.facilitator = resolveEducatorFacilitator(teaching.facilitator, isLessonPlanGeneration ? 'lesson-plan' : isWorksheetGeneration ? 'worksheet' : 'chat');
     // Output budget is independent of conversation length: worked explanations need room to finish.
-    const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : body.inputMode === 'voice' ? 1600 : 2400;
+    const maxTokens = isLessonPlanGeneration ? 5000 : isWorksheetGeneration ? 2000 : body.inputMode === 'voice' ? 1600 : 2400;
 
     logger.info('AI Tutor Chat started', {
       phase: conversationPhase,
@@ -470,6 +470,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
               return;
             }
             const outline = outlineData.choices?.[0]?.message?.content || '';
+            const outlineFinish = (outlineData as {choices?: Array<{finish_reason?: string}>}).choices?.[0]?.finish_reason;
+            if (!outline.trim() || outlineFinish && outlineFinish !== 'stop') throw new Error('The lesson outline was incomplete. Please try again.');
 
             logger.info('Outline generated', { outlineLength: outline.length });
 
@@ -491,7 +493,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 model: chatModel,
                 messages: [...aiMessages.slice(0, -1), { role: 'user', content: finalPrompt }],
                 stream: true,
-                max_tokens: 2000,
+                max_tokens: maxTokens,
                 temperature: 0.7
               })
             });
@@ -512,36 +514,39 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
             const decoder = new TextDecoder();
             let buffer = '';
+            let completed = false;
+            let incomplete = false;
+            const processPlanLine = (line: string) => {
+              if (!line.startsWith('data: ')) return;
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') { completed = true; return; }
+              const parsed = JSON.parse(data);
+              if (parsed.error) throw new Error('The lesson plan provider failed. Please try again.');
+              const choice = parsed.choices?.[0];
+              if (choice?.finish_reason === 'stop') completed = true;
+              if (choice?.finish_reason && choice.finish_reason !== 'stop') incomplete = true;
+              const content = choice?.delta?.content;
+              if (content) {
+                fullResponse += content;
+                controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
+              }
+            };
 
             // Stream final lesson plan to client
+            try {
             while (true) {
               generationAbort.signal.throwIfAborted();
                   const { done, value } = await reader.read();
                   generationAbort.signal.throwIfAborted();
-              if (done) break;
-
-              buffer += decoder.decode(value, { stream: true });
+              buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
               const lines = buffer.split('\n');
               buffer = lines.pop() || '';
 
-              for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                  const data = line.slice(6);
-                  if (data === '[DONE]') continue;
-
-                  try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
-                    if (content) {
-                      fullResponse += content;
-                      controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
-                    }
-                  } catch {
-                    // Skip invalid JSON
-                  }
-                }
-              }
+              for (const line of lines) processPlanLine(line);
+              if (done) { if (buffer.trim()) processPlanLine(buffer); break; }
             }
+            } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+            if (!completed || incomplete || !fullResponse.trim()) throw new Error('The lesson plan did not finish. Please generate it again; the incomplete plan was not saved.');
 
             logger.info('Two-pass lesson plan complete', { responseLength: fullResponse.length });
           } else {

@@ -45,4 +45,8 @@ it.each([15,30,45,60,90])('allocates exactly %i minutes across 5E phases',durati
  const times=[...prompt.matchAll(/## (?:ENGAGE|EXPLORE|EXPLAIN|ELABORATE|EVALUATE) \((\d+) min\)/g)].map(m=>Number(m[1]));
  expect(times).toHaveLength(5);expect(times.reduce((a,b)=>a+b,0)).toBe(duration);
  expect(times.every(n=>n>0)).toBe(true);
+ const outline=buildLessonPlanPrompt({...DEFAULT_LESSON_PLAN_CONFIG,templateType:'5e',duration},context,true);
+ expect(outline).toContain('## ENGAGE');expect(outline).toContain('## EVALUATE');
+ expect(outline).toContain('Explore must let learners investigate before Explain');
+ expect(prompt).toContain('actual assessment questions');
 });
