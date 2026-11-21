@@ -4,7 +4,6 @@ import type { WorksheetConfig, WorksheetTemplateType, DifficultyLevel } from '..
 import { WORKSHEET_TEMPLATES } from '../types/worksheet';
 
 interface WorksheetConfigPanelProps {
-  automaticGrade?: boolean;
   config: WorksheetConfig;
   onChange: (_config: WorksheetConfig) => void;
   onGenerate: () => void;
@@ -23,7 +22,6 @@ const DIFFICULTY_OPTIONS: { value: DifficultyLevel; label: string; desc: string 
 
 const WorksheetConfigPanel = ({
   config,
-  automaticGrade = false,
   onChange,
   onGenerate,
   isGenerating,
@@ -33,7 +31,7 @@ const WorksheetConfigPanel = ({
   isUsageLoading = false
 }: WorksheetConfigPanelProps) => {
   const selectedLevels = config.difficultyLevels ?? [config.difficulty];
-  const isGenerateDisabled = selectedLevels.length === 0 || isGenerating || isUsageLoading || isGenerationLimitReached;
+  const isGenerateDisabled = !config.gradeLevel || selectedLevels.length === 0 || isGenerating || isUsageLoading || isGenerationLimitReached;
 
   const handleChange = <K extends keyof WorksheetConfig>(
     key: K,
@@ -51,7 +49,6 @@ const WorksheetConfigPanel = ({
           <label htmlFor="worksheet-grade" className="block text-xs font-medium text-slate-700 mb-1">
             Grade / Level
           </label>
-          {automaticGrade ? <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-700" aria-label="Grade level">{config.gradeLevel || <PanelLoadingSkeleton label="Loading teaching level"/>}</div> : (
           <select
             id="worksheet-grade"
             value={config.gradeLevel || ''}
@@ -71,7 +68,6 @@ const WorksheetConfigPanel = ({
             <option value="Grade 12">Grade 12</option>
             <option value="College/University">College / University</option>
           </select>
-          )}
         </div>
 
         {/* Template Type */}

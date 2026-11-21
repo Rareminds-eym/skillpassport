@@ -9,14 +9,14 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  setFacilitatorMode: vi.fn(), sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
+  chatConfig: vi.fn(), setFacilitatorMode: vi.fn(), sendMessage: vi.fn(), stopGeneration: vi.fn(), refreshSuggestions: vi.fn(), refreshConversations: vi.fn(),
   persona: undefined as string|undefined, worksheet: false, streaming: false, educator: true, empty: false, content: '## Learning objectives\nPractise time management.', user: { id: 'educator' },
 }));
 vi.mock('@/shared/model', () => ({ useUser: () => mocks.user, useUserRole: () => ({ isEducator: mocks.educator }) }));
 vi.mock('../../api/worksheetService', () => ({ worksheetAction: vi.fn().mockResolvedValue({ organization: { name: 'Mapped College' }, gradeLevel: 'College/University', learnerCount: 8 }) }));
 vi.mock('../../api/materialService', () => ({ materialAction: async (action:string) => action==='capabilities'?{enabled:true}:action==='choice'?{state:'unanswered'}:[] }));
 vi.mock('@/features/ai-tutor/model', () => ({ useLearnerType: () => ({ isTeacher: false, loading: false }) }));
-vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => ({
+vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: (options:unknown) => (mocks.chatConfig(options), {
   facilitatorMode: 'auto', setFacilitatorMode: mocks.setFacilitatorMode, activeFacilitator: 'organizer',
   messages: mocks.empty ? [] : [{ id: '1', role: 'assistant', facilitator: mocks.persona, content: mocks.content, worksheetAvailable: mocks.worksheet, timestamp: new Date() }],
   conversationId: 'saved-conversation', conversations: [], suggestedQuestions: [], isStreaming: mocks.streaming, isLoading: false,
@@ -27,7 +27,7 @@ vi.mock('@/features/ai-tutor/model/useTutorChat', () => ({ useTutorChat: () => (
 vi.mock('@/shared/ui', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/shared/config', () => ({ getLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: vi.fn() } }));
-vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate, config }: { onGenerate: () => void; config: { difficultyLevels?: string[] } }) => <div>Worksheet controls<span>Levels: {config.difficultyLevels?.join(', ')}</span><button onClick={onGenerate}>Generate worksheet</button></div> }));
+vi.mock('../WorksheetConfigPanel', () => ({ default: ({ onGenerate, config, onChange }: { onGenerate: () => void; config: { difficultyLevels?: string[]; gradeLevel?:string }; onChange:(value:unknown)=>void }) => <div>Worksheet controls<span>Levels: {config.difficultyLevels?.join(', ')}</span><label>Grade / Level<select value={config.gradeLevel} onChange={e=>onChange({...config,gradeLevel:e.target.value})}><option value="College/University">College / University</option><option value="Grade 9">Grade 9</option></select></label><button onClick={onGenerate}>Generate worksheet</button></div> }));
 vi.mock('../LessonPlanConfigPanel', () => ({ default: () => <div>Lesson plan controls</div> }));
 vi.mock('../WorksheetExportButton', () => ({ default: () => <button>Export material</button> }));
 import AITutorPanel from '../AITutorPanel';
@@ -206,6 +206,8 @@ describe('AI facilitator workspace', () => {
     showPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Worksheet' }));
     await screen.findByText(/Mapped College/);
+    fireEvent.change(screen.getByRole('combobox',{name:'Grade / Level'}),{target:{value:'Grade 9'}});
+    expect(mocks.chatConfig).toHaveBeenLastCalledWith(expect.objectContaining({worksheetConfig:expect.objectContaining({gradeLevel:'Grade 9'})}));
     fireEvent.click(screen.getByRole('button', { name: 'Generate worksheet' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(mocks.sendMessage).toHaveBeenCalledWith(expect.stringContaining('worksheet'), { generate: true }));

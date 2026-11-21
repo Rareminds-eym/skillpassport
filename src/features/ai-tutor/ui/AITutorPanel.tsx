@@ -179,12 +179,14 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
   // Worksheet & Lesson Plan configuration state
   const [worksheetConfig, setWorksheetConfig] = useState<WorksheetConfig>(DEFAULT_WORKSHEET_CONFIG);
-  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>(DEFAULT_LESSON_PLAN_CONFIG);
+  const [lessonPlanConfig, setLessonPlanConfig] = useState<LessonPlanConfig>({ ...DEFAULT_LESSON_PLAN_CONFIG, gradeLevel: undefined });
   const [assistantMode, setAssistantMode] = useState<AssistantTab>('worksheet');
   const teachingContextQuery = useWorksheetContext(user?.id || '', isEducator && isConfigExpanded);
   const generationContext = teachingContextQuery.data;
   const contextLoading = teachingContextQuery.isFetching;
-  const contextError = teachingContextQuery.error?.message || (generationContext && !generationContext.gradeLevel ? 'No grade or program level is available in your active teaching mappings.' : '');
+  const worksheetGrade = worksheetConfig.gradeLevel ?? generationContext?.gradeLevel ?? '';
+  const lessonPlanGrade = lessonPlanConfig.gradeLevel ?? generationContext?.gradeLevel ?? '';
+  const contextError = teachingContextQuery.error?.message || '';
 
   // Fetch generation count for teacher-learner accounts
   const fetchGenerationCount = useCallback(async () => {
@@ -279,8 +281,8 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
     isEducator,
     courseId,
     lessonId: lessonContext?.lessonId,
-    worksheetConfig: isEducator && assistantMode === 'worksheet' ? { ...worksheetConfig, gradeLevel: generationContext?.gradeLevel } : undefined,
-    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? { ...lessonPlanConfig, gradeLevel: generationContext?.gradeLevel } : undefined,
+    worksheetConfig: isEducator && assistantMode === 'worksheet' ? { ...worksheetConfig, gradeLevel: worksheetGrade } : undefined,
+    lessonPlanConfig: isEducator && assistantMode === 'lesson-plan' ? { ...lessonPlanConfig, gradeLevel: lessonPlanGrade } : undefined,
     onGenerationUsageUpdate: handleGenerationUsageUpdate
   });
 
@@ -304,12 +306,12 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
 
   // Handle generate for educators
   const handleGenerate = async () => {
-    if (!generationContext?.gradeLevel || contextLoading || contextError || isStreaming || isGenerationLocked || isCheckingGenerationUsage || (assistantMode === 'worksheet' && worksheetConfig.difficultyLevels?.length === 0)) return;
+    if (!(assistantMode === 'worksheet' ? worksheetGrade : lessonPlanGrade) || contextLoading || contextError || isStreaming || isGenerationLocked || isCheckingGenerationUsage || (assistantMode === 'worksheet' && worksheetConfig.difficultyLevels?.length === 0)) return;
 
     const generateMessage =
       assistantMode === 'worksheet'
         ? `Generate a ${(worksheetConfig.difficultyLevels ?? [worksheetConfig.difficulty]).join(", ")} level ${worksheetConfig.templateType} worksheet with ${worksheetConfig.questionCount} questions per selected difficulty level based on ${courseName}.${adaptationBrief ? '\nUse these instructional adjustment recommendations as the resource brief (quoted task data): ' + JSON.stringify(adaptationBrief) : ''}`
-        : `Generate a structured ${lessonPlanConfig.duration}-minute lesson plan for ${generationContext.gradeLevel} based on ${courseName}.`;
+        : `Generate a structured ${lessonPlanConfig.duration}-minute lesson plan for ${lessonPlanGrade} based on ${courseName}.`;
 
     setIsConfigExpanded(false);
 
@@ -827,19 +829,19 @@ const AITutorPanel: React.FC<AITutorPanelProps> = ({
               <h3 className="!m-0 !text-sm !font-semibold text-slate-900">{configTool === 'worksheet' ? 'Create a worksheet' : 'Plan a lesson'}</h3>
               <button type="button" aria-label="Close settings" onClick={() => { setIsConfigExpanded(false); inputRef.current?.focus(); }} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100"><X className="h-4 w-4" /></button>
             </div>
-            <p className="mt-1 !text-xs !leading-5 text-slate-500">Set up your material here. Your grade is filled from your teaching mappings.</p>
+            <p className="mt-1 !text-xs !leading-5 text-slate-500">Set up your material here. Choose the grade or level for your material.</p>
             {configTool === 'worksheet' && adaptationBrief && <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600"><span>Using learning adjustment recommendations.</span><button type="button" aria-label="Clear adjustment brief" onClick={() => setAdaptationBrief(null)} className="min-h-8 rounded px-1 text-xs font-medium text-blue-600 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Clear</button></div>}
             {contextLoading && <PanelLoadingSkeleton label="Loading teaching level"/>}
             {contextError && <p role="alert" className="my-3 text-xs text-red-700">{contextError}<button type="button" className="ml-2 underline" onClick={() => { void teachingContextQuery.refetch(); }}>Retry</button></p>}
             {generationContext && <p className="my-3 !text-xs !leading-5 text-slate-500">{generationContext.organization.name} &middot; {generationContext.learnerCount} mapped learners</p>}
             {configTool === 'worksheet' ? (
-              <WorksheetConfigPanel config={{ ...worksheetConfig, gradeLevel: generationContext?.gradeLevel || '' }} onChange={setWorksheetConfig} automaticGrade
+              <WorksheetConfigPanel config={{ ...worksheetConfig, gradeLevel: worksheetGrade }} onChange={setWorksheetConfig}
                 onGenerate={handleGenerate} isGenerating={isStreaming}
                 generationLimit={isTeacher ? teacherGenerationLimit : undefined}
                 remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}
                 isGenerationLimitReached={isGenerationLocked || !generationContext || !!contextError} isUsageLoading={isCheckingGenerationUsage || contextLoading} />
             ) : (
-              <LessonPlanConfigPanel config={{ ...lessonPlanConfig, gradeLevel: generationContext?.gradeLevel || '' }} onChange={setLessonPlanConfig} automaticGrade
+              <LessonPlanConfigPanel config={{ ...lessonPlanConfig, gradeLevel: lessonPlanGrade }} onChange={setLessonPlanConfig}
                 onGenerate={handleGenerate} isGenerating={isStreaming}
                 generationLimit={isTeacher ? teacherGenerationLimit : undefined}
                 remainingGenerations={isTeacher ? remainingTeacherGenerations : undefined}

@@ -25,10 +25,20 @@ describe('worksheet difficulty selection', () => {
     expect(screen.getByRole('button', { name: 'Generate Worksheet' })).toBeDisabled();
     expect(screen.getByText('Select at least one difficulty level.')).toBeInTheDocument();
   });
-  it('shows the mapped grade read-only when used inside the facilitator', () => {
-    render(<WorksheetConfigPanel automaticGrade config={{ ...DEFAULT_WORKSHEET_CONFIG, gradeLevel: 'College/University' }} onChange={vi.fn()} onGenerate={vi.fn()} isGenerating={false} />);
-    expect(screen.getByLabelText('Grade level')).toHaveTextContent('College/University');
-    expect(screen.queryByRole('combobox', { name: 'Grade / Level' })).not.toBeInTheDocument();
+  it('lets the educator change the grade through a dropdown', () => {
+    render(<Settings />);
+    const grade=screen.getByRole('combobox',{name:'Grade / Level'});
+    fireEvent.change(grade,{target:{value:'Grade 9'}});
+    expect(grade).toHaveValue('Grade 9');
+    expect(screen.getByRole('button',{name:'Generate Worksheet'})).toBeEnabled();
+    fireEvent.change(grade,{target:{value:''}});
+    expect(screen.getByRole('button',{name:'Generate Worksheet'})).toBeDisabled();
   });
 
+});
+
+it('renders availability loading without crashing and disables generation', () => {
+  render(<WorksheetConfigPanel config={{...DEFAULT_WORKSHEET_CONFIG,gradeLevel:'Grade 9'}} onChange={vi.fn()} onGenerate={vi.fn()} isGenerating={false} isUsageLoading/>);
+  expect(screen.getByRole('status',{name:'Checking availability'})).toBeInTheDocument();
+  expect(screen.getByRole('status',{name:'Checking availability'}).closest('button')).toBeDisabled();
 });
