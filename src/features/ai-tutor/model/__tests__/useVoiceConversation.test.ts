@@ -57,3 +57,10 @@ it('interrupts playback and listens for a new question without waiting for the o
   const {result}=setup();await act(async()=>{await result.current.start();});await ask();await waitFor(()=>expect(result.current.state).toBe('speaking'));
   const signal=mocks.play.mock.calls[0][2];act(()=>result.current.interrupt());expect(signal.aborted).toBe(true);expect(result.current.state).toBe('listening');expect(mocks.listen).toHaveBeenCalledTimes(2);
 });
+
+it('shows the actual generation failure instead of a save error and never starts TTS',async()=>{
+  send.mockRejectedValueOnce(new Error('The explanation is too long to complete.'));
+  const {result}=setup();await act(async()=>{await result.current.start();});await ask();
+  await waitFor(()=>expect(result.current.state).toBe('error'));
+  expect(result.current.error).toBe('The explanation is too long to complete.');expect(mocks.reply).not.toHaveBeenCalled();
+});

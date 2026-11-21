@@ -254,7 +254,8 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     const isWorksheetGeneration = worksheetConfig && educator;
     const isLessonPlanGeneration = lessonPlanConfig && educator;
     if (educator) teaching.facilitator = resolveEducatorFacilitator(teaching.facilitator, isLessonPlanGeneration ? 'lesson-plan' : isWorksheetGeneration ? 'worksheet' : 'chat');
-    const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : educator ? 1000 : phaseParams.maxTokens;
+    // Output budget is independent of conversation length: worked explanations need room to finish.
+    const maxTokens = (isWorksheetGeneration || isLessonPlanGeneration) ? 2000 : body.inputMode === 'voice' ? 1600 : 2400;
 
     logger.info('AI Tutor Chat started', {
       phase: conversationPhase,
@@ -591,52 +592,74 @@ export const handleAiTutorChat = async (context: TypedContext) => {
                 logger.error('OpenRouter error', new Error(`HTTP ${response.status}`));
                 throw new Error('AI generation failed. Please try again.');
               }
-              const reader = response.body?.getReader();
-              if (!reader) throw new Error('No response stream');
               if (level) {
                 const heading = `\n\n## ${labels[level]} - ${worksheetConfig!.questionCount} questions\n\n`;
                 fullResponse += heading;
                 controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content: heading })}\n\n`));
               }
-              const decoder = new TextDecoder();
-              let buffer = '';
-              let providerCompleted = false;
               let sectionContent = '';
-              const processLine = (line: string) => {
-                if (!line.startsWith('data: ')) return;
-                const data = line.slice(6).trim();
-                if (data === '[DONE]') { providerCompleted = true; return; }
-                let parsed;
-                try { parsed = JSON.parse(data); } catch { throw new Error('The AI returned an invalid response.'); }
-                if (parsed.error) throw new Error('The AI response failed before completion.');
-                const choice = parsed.choices?.[0];
-                if (choice?.finish_reason === 'length') throw new Error('The material exceeded the response limit. Reduce the question count and try again.');
-                if (choice?.finish_reason === 'content_filter') throw new Error('The AI could not complete this material.');
-                const content = choice?.delta?.content;
-                if (content) {
-                  sectionContent += content;
-                  fullResponse += content;
-                  controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
+              for (let continuation = 0; continuation < 2; continuation++) {
+                const reader = response.body?.getReader();
+                if (!reader) throw new Error('No response stream');
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let providerCompleted = false;
+                let lengthReached = false;
+                const processLine = (line: string) => {
+                  if (!line.startsWith('data: ')) return;
+                  const data = line.slice(6).trim();
+                  if (data === '[DONE]') { providerCompleted = true; return; }
+                  let parsed;
+                  try { parsed = JSON.parse(data); } catch { throw new Error('The AI returned an invalid response.'); }
+                  if (parsed.error) throw new Error('The AI response failed before completion.');
+                  const choice = parsed.choices?.[0];
+                  if (choice?.finish_reason === 'length') lengthReached = true;
+                  if (choice?.finish_reason === 'content_filter') throw new Error('The AI could not complete this material.');
+                  const content = choice?.delta?.content;
+                  if (content) {
+                    sectionContent += content;
+                    fullResponse += content;
+                    controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ content })}\n\n`));
+                  }
+                  if (choice?.finish_reason === 'stop') providerCompleted = true;
+                };
+                try {
+                  while (true) {
+                    generationAbort.signal.throwIfAborted();
+                    const { done, value } = await reader.read();
+                    generationAbort.signal.throwIfAborted();
+                    buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+                    for (const line of lines) processLine(line);
+                    if (done) { if (buffer.trim()) processLine(buffer); break; }
+                  }
+                } finally {
+                  await reader.cancel().catch(() => {});
+                  reader.releaseLock();
                 }
-                if (choice?.finish_reason === 'stop') providerCompleted = true;
-              };
-              try {
-                while (true) {
-                  generationAbort.signal.throwIfAborted();
-                  const { done, value } = await reader.read();
-                  generationAbort.signal.throwIfAborted();
-                  buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
-                  const lines = buffer.split('\n');
-                  buffer = lines.pop() || '';
-                  for (const line of lines) processLine(line);
-                  if (done) { if (buffer.trim()) processLine(buffer); break; }
+                generationAbort.signal.throwIfAborted();
+                if (lengthReached) {
+                  if (level || isWorksheetGeneration) throw new Error('The material exceeded the response limit. Reduce the question count and try again.');
+                  if (continuation === 1) throw new Error('The explanation is too long to complete. Ask about one step at a time.');
+                  if (!sectionContent.trim()) throw new Error('The AI response ended before the explanation was complete.');
+                  controller.enqueue(encoder.encode(`event: reasoning\ndata: ${JSON.stringify({ reasoning: 'Completing your explanation...' })}\n\n`));
+                  response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${openRouterKey}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: chatModel, stream: true, max_tokens: maxTokens, temperature: phaseParams.temperature,
+                      messages: [...(body.inputMode === 'voice' ? compactVoiceContext(levelMessages) : levelMessages),
+                        { role: 'assistant', content: sectionContent },
+                        { role: 'user', content: 'Continue exactly where your previous response stopped, including any unfinished formula. Do not repeat earlier content. Finish the explanation concisely.' }] }),
+                    signal: providerSignal(),
+                  });
+                  if (!response.ok) throw new Error('Could not finish the explanation. Please try again.');
+                  continue;
                 }
                 if (!providerCompleted || !sectionContent.trim()) throw new Error('The AI response ended before the material was complete.');
-                if (level) worksheetVariants.push({ difficulty: ({ low: 'beginner', medium: 'intermediate', high: 'advanced' })[level], content: sectionContent });
-              } finally {
-                await reader.cancel().catch(() => {});
-                reader.releaseLock();
+                break;
               }
+              if (level) worksheetVariants.push({ difficulty: ({ low: 'beginner', medium: 'intermediate', high: 'advanced' })[level], content: sectionContent });
             }
           }
 

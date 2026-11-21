@@ -157,6 +157,7 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
   const decoder = new TextDecoder();
   let buffer = '';
   let currentEventType = '';
+  let completed = false;
 
   const cancelReader = () => { void reader.cancel().catch(() => {}); };
   signal?.addEventListener('abort', cancelReader, { once: true });
@@ -165,9 +166,8 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
     signal?.throwIfAborted();
     const { done, value } = await reader.read();
     signal?.throwIfAborted();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
+    // Flush the final frame even when the connection ends without a trailing newline.
+    buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
 
@@ -207,7 +207,8 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
             yield { type: 'content', content: parsed.content };
           }
           // Handle done event with conversation info
-          else if (parsed.conversationId) {
+          else if (currentEventType === 'done' && typeof parsed.conversationId === 'string' && parsed.conversationId.trim() && typeof parsed.messageId === 'string' && parsed.messageId.trim()) {
+            completed = true;
             lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
@@ -227,7 +228,9 @@ export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): 
         }
       }
     }
+    if (done) break;
   }
+  if (!completed) throw new Error('The connection ended before your answer was confirmed. Please try again.');
   } finally {
     signal?.removeEventListener('abort', cancelReader);
     await reader.cancel().catch(() => {});

@@ -18,6 +18,13 @@ beforeEach(() => { vi.clearAllMocks(); sessionStorage.clear(); });
 afterEach(cleanup);
 
 describe('material completion state', () => {
+  it('passes generation failures to voice while retaining the actual chat error',async()=>{
+    mocks.send.mockImplementation(async function*(){throw new Error('The explanation is too long to complete.');});
+    const {result}=renderHook(()=>useTutorChat({courseId:'course'}));
+    await act(async()=>{await expect(result.current.sendMessage('Explain power',{voice:true})).rejects.toThrow('The explanation is too long');});
+    expect(result.current.error).toBe('The explanation is too long to complete.');
+    expect(result.current.isStreaming).toBe(false);
+  });
   it('does not restore another user or course conversation', () => {
     sessionStorage.setItem('ai-tutor-active:alice:other-course', 'private-conversation');
     const { result } = renderHook(() => useTutorChat({ courseId: 'course', userId: 'bob' }));

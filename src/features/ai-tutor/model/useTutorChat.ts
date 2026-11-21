@@ -243,6 +243,8 @@ export function useTutorChat({
       if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to send message'));
       // Keep generated material available for export when persistence fails.
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
+      // Voice needs the generation error, not a misleading persistence fallback.
+      if (options?.voice && !requestController.signal.aborted) throw err;
     } finally {
       if (activeRequestRef.current === requestController) activeRequestRef.current = null;
       setIsLoading(false);

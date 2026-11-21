@@ -65,10 +65,11 @@ describe('tutor conversation persistence', () => {
     )));
   });
 
-  async function generate(conversationId?: string, difficultyLevels = ['medium'], questionCount = 10, chat = false) {
+  async function generate(conversationId?: string, difficultyLevels = ['medium'], questionCount = 10, chat = false, voice = false) {
     const response = await handleAiTutorChat({
       request: new Request('https://example.test/api/ai-tutor/chat', {
         method: 'POST', body: JSON.stringify({
+          ...(voice ? {inputMode:'voice'} : {}),
           courseId: 'course-id', conversationId, message: chat ? 'Is that assigned to all the learners?' : 'Generate a worksheet',
           ...(chat ? {} : { worksheetConfig: { templateType: 'multiple_choice', difficulty: 'medium', difficultyLevels, questionCount } }),
         }),
@@ -77,6 +78,27 @@ describe('tutor conversation persistence', () => {
     } as Parameters<typeof handleAiTutorChat>[0]);
     return response.text();
   }
+
+  it.each([false,true])('continues a learner explanation and saves one complete answer (voice=%s)', async(voice)=>{
+    mocks.roles=['learner'];
+    vi.mocked(fetch).mockResolvedValueOnce(new Response('data: {"choices":[{"delta":{"content":"Power = "},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n'))
+      .mockResolvedValueOnce(new Response('data: {"choices":[{"delta":{"content":"1962 W."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'));
+    const stream=await generate(undefined,[],5,true,voice);
+    expect(stream).toContain('Completing your explanation');expect(stream).not.toContain('event: error');
+    const requests=vi.mocked(fetch).mock.calls.map(([,init])=>JSON.parse(String(init?.body)));
+    expect(requests[0].max_tokens).toBe(voice ? 1600 : 2400);
+    expect(requests[1].messages.at(-2)).toEqual({role:'assistant',content:'Power = '});
+    const query=mocks.client.from.mock.results.find(result=>result.value.insert.mock.calls.length)?.value;
+    expect(query.insert).toHaveBeenCalledTimes(1);
+    expect(query.insert.mock.calls[0][0].messages.at(-1).content).toBe('Power = 1962 W.');
+  });
+  it('stops after one continuation and does not save an incomplete answer',async()=>{
+    mocks.roles=['learner'];
+    vi.mocked(fetch).mockImplementation(async()=>new Response('data: {"choices":[{"delta":{"content":"More "},"finish_reason":"length"}]}\n\ndata: [DONE]\n\n'));
+    const stream=await generate(undefined,[],5,true);
+    expect(stream).toContain('Ask about one step at a time');expect(fetch).toHaveBeenCalledTimes(2);
+    expect(mocks.client.from.mock.results.some(result=>result.value.insert.mock.calls.length)).toBe(false);
+  });
 
   it('adds server-loaded submission evidence to the model prompt and persists only its reference',async()=>{
     mocks.guide.mockResolvedValue('\nVERIFIED RESPONSE: Learner wrote Plan tasks. Rubric: prioritize.');

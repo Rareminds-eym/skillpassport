@@ -5,7 +5,7 @@ import type { ChatMessage } from '../api/tutorService';
 import TutorOrb from './TutorOrb';
 import './voice-panel.css';
 
-const labels:Record<VoiceState,string>={idle:'Ready when you are',listening:'Listening to you',transcribing:'Understanding your question',thinking:'Thinking it through',compacting:'Compacting conversation',preparing:'Preparing your explanation',speaking:'AI is speaking',paused:'Microphone muted',error:'Letâ€™s try again'};
+const labels:Record<VoiceState,string>={idle:'Ready when you are',listening:'Listening to you',transcribing:'Understanding your question',thinking:'Thinking it through',compacting:'Compacting conversation',preparing:'Preparing your explanation',speaking:'AI is speaking',paused:'Microphone muted',error:"Let's try again"};
 export default function VoiceConversationPanel({courseId,courseName,activeFacilitator,sendMessage,stopGeneration,onClose,minimized=false,onMinimize,onRestore}:VoiceConversationOptions&{
   courseName:string;messages:ChatMessage[];activeFacilitator?:string;onClose:()=>void;
   minimized?:boolean;onMinimize?:()=>void;onRestore?:()=>void;
