@@ -1,5 +1,5 @@
 import { compactVoiceContext, isContextOverflow } from '../utils/voice-context';
-import { loadGuideEvidence, GuideEvidenceError } from '../utils/guide-evidence';
+import { guideHistory, loadGuideEvidence, GuideEvidenceError } from '../utils/guide-evidence';
 /**
  * AI Tutor Chat Handler
  *
@@ -208,11 +208,13 @@ export const handleAiTutorChat = async (context: TypedContext) => {
 
     const educator = educatorRoles.includes(userRole);
     const inheritedGuide = [...existingMessages].reverse().find(m => m.guideSubmissionId)?.guideSubmissionId;
-    const guideSubmissionId = body.guideSubmissionId ?? (educator && body.facilitatorMode === 'mentor-and-guide' ? inheritedGuide : undefined);
-    if (guideSubmissionId !== undefined && (!educator || typeof guideSubmissionId !== 'string')) return apiError(403, 'FORBIDDEN', 'Educator access and a valid submission are required.', request);
+    // Determine the new task before inheriting submission context from an older Guide turn.
     const teaching = educator
-      ? routeTeachingMessage(message, existingMessages, guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode)
+      ? routeTeachingMessage(message, existingMessages, body.guideSubmissionId ? 'mentor-and-guide' : body.facilitatorMode)
       : routeLearnerMessage(message, existingMessages, body.facilitatorMode);
+    const startsMaterialGeneration = Boolean(worksheetConfig || lessonPlanConfig || teaching.worksheetConfig || teaching.lessonPlanConfig);
+    const guideSubmissionId = body.guideSubmissionId ?? (educator && teaching.mode === 'mentor-and-guide' && !startsMaterialGeneration ? inheritedGuide : undefined);
+    if (guideSubmissionId !== undefined && (!educator || typeof guideSubmissionId !== 'string')) return apiError(403, 'FORBIDDEN', 'Educator access and a valid submission are required.', request);
     if (body.inputMode === 'voice') { teaching.worksheetConfig=undefined; teaching.lessonPlanConfig=undefined; teaching.assignmentReviewRequested=false; teaching.assignmentSourceId=undefined; }
     // Submission guidance is a distinct feedback operation. Assignment titles and
     // learner names must never be interpreted as generation/publication commands.
@@ -273,7 +275,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
       : undefined;
     const evidenceSignal = AbortSignal.any([request.signal, AbortSignal.timeout(180000)]);
     const result = await buildCourseEvidence(supabase, env, learnerId, courseId, {
-      question: message, history: existingMessages, scope: body.contextScope,
+      question: message, history: guideSubmissionId ? guideHistory(existingMessages, guideSubmissionId) : existingMessages, scope: body.contextScope,
       lessonId: lessonId || undefined, generation: Boolean(isWorksheetGeneration || isLessonPlanGeneration),
     }, async (passages, question) => {
       evidenceSignal.throwIfAborted();
@@ -387,10 +389,10 @@ export const handleAiTutorChat = async (context: TypedContext) => {
     };
 
     // Retain recent discussion plus the latest generated source for revisions.
-    const recentMessages = existingMessages.slice(-12);
+    const recentMessages = (guideSubmissionId ? guideHistory(existingMessages, guideSubmissionId) : existingMessages).slice(-12);
     // Keep the actual source material available even after several discussion turns.
     const sourceMaterial = [...existingMessages].reverse().find(m => m.worksheetConfig || m.lessonPlanConfig);
-    if (sourceMaterial && !recentMessages.includes(sourceMaterial)) recentMessages.unshift(sourceMaterial);
+    if (!guideSubmissionId && sourceMaterial && !recentMessages.includes(sourceMaterial)) recentMessages.unshift(sourceMaterial);
 
     // Build messages for AI
     const aiMessages = [
@@ -667,6 +669,7 @@ export const handleAiTutorChat = async (context: TypedContext) => {
           // Create assistant message
           const assistantMessageId = crypto.randomUUID();
           const assistantMessage: StoredMessage = {
+            ...(guideSubmissionId ? { guideSubmissionId } : {}),
             ...(requestFingerprint ? { materialRequestFingerprint: requestFingerprint, materialContextFingerprint: contextFingerprint } : {}),
             ...(cachedMaterial ? { materialChoice: { state: 'saved', kind: materialKind!, id: cachedMaterial.id } } : {}),
             facilitator: teaching.facilitator, facilitatorMode: teaching.mode, ...(educator ? { assignmentSourceId: teaching.assignmentSourceId } : {}),

@@ -4,7 +4,7 @@ import type { PagesEnv } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { requireCourseAccess } from '../utils/course-index';
 import { splitWorksheetContent } from '../utils/worksheet-content';
-import { materialRequestFingerprint, materialContextFingerprint } from '../utils/saved-materials';
+import { assignmentDisplayTitle, materialRequestFingerprint, materialContextFingerprint } from '../utils/saved-materials';
 import { AssessmentModelError, structureSavedWorksheet } from '../utils/saved-assessment';
 import { evaluateSavedSubmission } from '../utils/assignment-evaluation';
 import { broadcastAssignmentNotifications } from '../utils/assignment-notifications';
@@ -37,6 +37,7 @@ export async function handleSavedMaterials(context: Context) {
       if (result.error) throw result.error;
       const rows = result.data || [];
       for (const row of rows) {
+        if (row.assignment?.content?.questions) row.assignment.title = assignmentDisplayTitle(row.assignment.title, row.assignment.content.questions);
         row.submissions = !row.submissions ? [] : Array.isArray(row.submissions) ? row.submissions : [row.submissions];
         for (const submission of row.submissions) {
           // Unique foreign keys make PostgREST return these relations as objects.
@@ -77,7 +78,11 @@ export async function handleSavedMaterials(context: Context) {
       const table = body.kind === 'lesson_plan' ? 'ai_lesson_plans' : 'ai_assignments';
       const result = await db.from(table).select('id,title,content,generation_config,created_at').eq('course_id', courseId).order('created_at', { ascending: false }).limit(100);
       if (result.error) throw result.error;
-      return apiSuccess(result.data || [], request);
+      const rows = result.data || [];
+      if (body.kind !== 'lesson_plan') for (const row of rows) {
+        row.title = assignmentDisplayTitle(row.title, row.content?.questions || []);
+      }
+      return apiSuccess(rows, request);
     }
     if (body.action === 'allocate') {
       const id = uuid.parse(body.assignmentId), learners = z.array(uuid).min(1).max(500).parse(body.learnerIds), due = z.string().datetime().parse(body.dueAt);
@@ -142,6 +147,7 @@ export async function handleSavedMaterials(context: Context) {
         const variants = message.worksheetVariants.map((v: any) => ({ difficulty: v.difficulty, ...splitWorksheetContent(v.content, config) }));
         stage = 'worksheet_conversion';
         const structured = await structureSavedWorksheet(variants, config, env.OPENROUTER_API_KEY);
+        data.title = assignmentDisplayTitle(String(data.title), structured.questions);
         data.content = { questions: structured.questions }; data.grading_rules = structured.rules;
       } else data.content = { markdown: message.content };
       stage = 'material_insert';

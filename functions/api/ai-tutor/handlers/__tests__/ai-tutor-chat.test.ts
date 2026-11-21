@@ -141,6 +141,28 @@ describe('tutor conversation persistence', () => {
     expect(query.insert.mock.calls[0][0].messages.at(-1).worksheetConfig).toBeUndefined();
   });
 
+  it.each(['mentor-and-guide','resource-provider'])('does not reuse old Guide evidence for a new worksheet (selected=%s)',async facilitatorMode=>{
+    const original=mocks.client.from.getMockImplementation()!;
+    mocks.client.from.mockImplementation((table:string)=>{const query=original(table);if(table==='tutor_conversations')query.maybeSingle.mockResolvedValue({data:{messages:[{id:'prior',role:'user',content:'Review this submission',guideSubmissionId:'00000000-0000-4000-8000-000000000001'}]},error:null});return query;});
+    mocks.client.rpc.mockImplementation(async name=>name==='ai_worksheet_context'?{data:{gradeLevel:'College/University'},error:null}:{error:null});
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({conversationId:'existing',courseId:'course-id',message:'Generate a multiple-choice worksheet with 5 questions',facilitatorMode})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    const stream=await response.text();
+    expect(stream).toContain('"facilitator":"resource-provider"');expect(stream).toContain('"worksheetAvailable":true');expect(mocks.guide).not.toHaveBeenCalled();
+    const saved=mocks.client.rpc.mock.calls.find(([name])=>name==='append_tutor_messages');
+    expect(saved).toBeDefined();
+  });
+
+  it('reviews the selected zero-mark submission without including the other same-title 75-mark review',async()=>{
+    const zero='00000000-0000-4000-8000-000000000001';const high='00000000-0000-4000-8000-000000000002';
+    mocks.guide.mockResolvedValue('VERIFIED SELECTED SUBMISSION: total_marks=0');
+    const original=mocks.client.from.getMockImplementation()!;
+    mocks.client.from.mockImplementation((table:string)=>{const query=original(table);if(table==='tutor_conversations')query.maybeSingle.mockResolvedValue({data:{messages:[{id:'old',role:'user',content:'Anusha Intermediate',guideSubmissionId:high},{id:'feedback',role:'assistant',content:'Other submission scored 75 marks',guideSubmissionId:high}]},error:null});return query;});
+    const response=await handleAiTutorChat({request:new Request('https://example.test/chat',{method:'POST',body:JSON.stringify({conversationId:'existing',courseId:'course-id',message:'Review Anusha Intermediate',guideSubmissionId:zero,facilitatorMode:'mentor-and-guide'})}),env:{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test'}} as Parameters<typeof handleAiTutorChat>[0]);
+    await response.text();expect(mocks.guide).toHaveBeenCalledWith(mocks.client,expect.anything(),'educator-id','course-id',zero);
+    const payload=vi.mocked(fetch).mock.calls.map(([,init])=>String(init?.body)).find(body=>body.includes('VERIFIED SELECTED'))!;
+    expect(payload).toContain('total_marks=0');expect(payload).not.toContain('75 marks');
+  });
+
   it('routes a typed worksheet request to CREATE and preserves the selected mode', async () => {
     mocks.client.rpc.mockImplementation(async name => name === 'ai_worksheet_context' ? { data: { gradeLevel: 'College/University' }, error: null } : { error: null });
     const response = await handleAiTutorChat({ request: new Request('https://example.test/chat', { method: 'POST', body: JSON.stringify({ courseId: 'course-id', message: 'Create a worksheet with 15 questions', facilitatorMode: 'organizer' }) }), env: { SUPABASE_URL: 'https://example.test', SUPABASE_SERVICE_ROLE_KEY:'test' } } as Parameters<typeof handleAiTutorChat>[0]);

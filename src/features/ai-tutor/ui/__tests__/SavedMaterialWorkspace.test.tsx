@@ -174,3 +174,12 @@ it('never renders the educator answer-key action in the learner workspace',async
  expect(screen.queryByRole('button',{name:'View answers'})).not.toBeInTheDocument();
  expect(screen.queryByText('Q = A \u00d7 v')).not.toBeInTheDocument();
 });
+
+it('keeps question type visible in the card header before hover or expansion',async()=>{
+ render(<QueryClientProvider client={new QueryClient()}><SavedMaterialWorkspace courseId="course" educator/></QueryClientProvider>);
+ await screen.findByRole('heading',{name:'Worksheet one'});
+ const types=screen.getAllByLabelText('Question type');
+ expect(types).toHaveLength(2);
+ expect(types[0].closest('header')).not.toBeNull();
+ expect(types[0]).toHaveTextContent('Question type unavailable');
+});

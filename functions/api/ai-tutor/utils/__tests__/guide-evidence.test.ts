@@ -3,7 +3,7 @@ import {beforeEach,it,expect,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({access:vi.fn(),extract:vi.fn(),get:vi.fn(),row:{} as any}));
 vi.mock('../course-index',()=>({requireCourseAccess:mocks.access}));
 vi.mock('../assignment-document',()=>({SUBMISSION_MAX_BYTES:5242880,extractSubmittedDocument:mocks.extract}));
-import {loadGuideEvidence} from '../guide-evidence';
+import {guideHistory,loadGuideEvidence} from '../guide-evidence';
 const id='00000000-0000-4000-8000-000000000001';
 const query:any={select:()=>query,eq:()=>query,single:async()=>({data:mocks.row,error:null})};
 const db={from:()=>query} as any;
@@ -34,4 +34,14 @@ it('reports the 5 MiB limit only for an object above that limit',async()=>{
  mocks.get.mockResolvedValue({size:5242881});
  await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:413,message:expect.stringContaining('5 MiB')});
  expect(mocks.extract).not.toHaveBeenCalled();
+});
+
+it('isolates previous feedback by submission ID, never learner name or assignment title',()=>{
+ const history=[{role:'user',guideSubmissionId:'high',content:'Anusha Intermediate'}, {role:'assistant',content:'75 marks'}, {role:'user',guideSubmissionId:'zero',content:'Anusha Intermediate'}, {role:'assistant',content:'0 marks'}, {role:'user',content:'Generate something else'}, {role:'assistant',content:'Unrelated'}];
+ expect(guideHistory(history,'zero').map(item=>item.content)).toEqual(['Anusha Intermediate','0 marks']);
+});
+it('keeps a saved zero score and verifies the exact selected submission',async()=>{
+ mocks.row.results={status:'released',total_marks:0,maximum_marks:100};
+ expect(await loadGuideEvidence(db,env,'teacher','course',id)).toContain('"total_marks":0');
+ mocks.row.id='different';await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:404});
 });

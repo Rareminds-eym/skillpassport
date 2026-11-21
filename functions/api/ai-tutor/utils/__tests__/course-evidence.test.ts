@@ -3,6 +3,23 @@ import { describe, it, expect, vi } from 'vitest';
 import { buildCourseEvidence, condenseEvidence, planCourseEvidence } from '../course-evidence';
 
 describe('request based course evidence', () => {
+  it('loads the exact numbered slide in the current lesson without semantic search',async()=>{
+    const calls:Array<{table:string;methods:Array<[string,unknown[]]>}>=[];
+    const rpc=vi.fn().mockResolvedValue({data:true});
+    const db={rpc,from:(table:string)=>{
+      const call={table,methods:[] as Array<[string,unknown[]]>};calls.push(call);
+      const q:any={};for(const method of ['select','eq','in','order','limit','range'])q[method]=(...args:unknown[])=>{call.methods.push([method,args]);return q;};
+      q.then=(resolve:any)=>resolve({data:table==='course_resource_analysis'?[{id:'a',lesson_id:'l',resource_id:null,source_metadata:{name:'Slides'}}]:table==='course_modules'?[{module_id:'m'}]:table==='lessons'?[{lesson_id:'l'}]:table==='lesson_resources'?[]:[{id:'chunk',analysis_id:'a',chunk_index:0,content:'[Source section: ppt/slides/slide9.xml]\nPrevious topic\n[Source section: ppt/slides/slide10.xml]\nDischarge Q = A v\n[Source section: ppt/slides/slide11.xml]\nNext topic',source_location:{extracted_start:0}}],error:null});return q;
+    }};
+    const embedText=vi.fn();
+    const result=await buildCourseEvidence(db as never,{EMBEDDING_SERVICE:{embedText}},'u','c',{question:'Just explain slide 10.',history:[],lessonId:'l'},vi.fn());
+    expect(result.evidence).toHaveLength(1);
+    expect(result.prompt).toContain('Discharge Q = A v');
+    expect(result.prompt).not.toContain('Previous topic');expect(result.prompt).not.toContain('Next topic');
+    expect(embedText).not.toHaveBeenCalled();
+    expect(calls[0].methods).toContainEqual(['in',['lesson_id',['l']]]);
+    expect(calls.filter(c=>c.table==='course_resource_analysis')).toHaveLength(2);
+  });
   it('distinguishes questions, scoped summaries, topic summaries, generation and followups', () => {
     expect(planCourseEvidence({question:'Summarize the entire course',history:[]}).mode).toBe('coverage');
     expect(planCourseEvidence({question:'Give me a summary',history:[],scope:'lesson',lessonId:'l'})).toMatchObject({mode:'coverage',lessonIds:['l']});

@@ -2,6 +2,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { textHash } from './course-index';
 import { EDUCATOR_PROMPT_VERSION } from './facilitator-prompts';
 
+/** Section headings describe one level; a saved assignment can contain several. */
+export function assignmentDisplayTitle(title: string, questions: Array<{ difficulty?: string }>): string {
+  if (!questions.length || !/^(beginner|intermediate|advanced|mixed difficulty)\s*[-–—]\s*\d+\s+questions?$/i.test(title.trim())) return title;
+  const difficulties = new Set(questions.map(question => question.difficulty).filter(Boolean));
+  const difficulty = difficulties.size > 1 ? 'Mixed difficulty' : [...difficulties][0];
+  const label = difficulty ? difficulty.charAt(0).toUpperCase() + difficulty.slice(1) : title.trim().split(/\s*[-–—]\s*/)[0];
+  return `${label} - ${questions.length} ${questions.length === 1 ? 'question' : 'questions'}`;
+}
+
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)]));
