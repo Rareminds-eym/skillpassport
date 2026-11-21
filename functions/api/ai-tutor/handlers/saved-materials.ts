@@ -5,7 +5,7 @@ import { apiSuccess, apiError } from '../../../lib/response';
 import { requireCourseAccess } from '../utils/course-index';
 import { splitWorksheetContent } from '../utils/worksheet-content';
 import { materialRequestFingerprint, materialContextFingerprint } from '../utils/saved-materials';
-import { structureSavedWorksheet } from '../utils/saved-assessment';
+import { AssessmentModelError, structureSavedWorksheet } from '../utils/saved-assessment';
 import { evaluateSavedSubmission } from '../utils/assignment-evaluation';
 import { broadcastAssignmentNotifications } from '../utils/assignment-notifications';
 
@@ -15,6 +15,7 @@ export async function handleSavedMaterials(context: Context) {
   const { request, env } = context;
   const user = getContextUser(context), db = getServiceClient(env);
   const fail = (status: number, message: string) => apiError(status, 'MATERIAL_ERROR', message, request);
+  let stage = 'request';
   try {
     const body = z.object({ action: z.string() }).passthrough().parse(await request.json());
     if (body.action === 'capabilities') return apiSuccess({ enabled: true }, request);
@@ -126,6 +127,7 @@ export async function handleSavedMaterials(context: Context) {
     }
     if (body.action !== 'save') return fail(400, 'Unknown material action');
     if (message.materialChoice?.id) return apiSuccess(message.materialChoice, request);
+    stage = 'material_lookup';
     const config = message.worksheetConfig || message.lessonPlanConfig || {};
     const prior = [...messages.slice(0, index)].reverse().find((m: any) => m.role === 'user')?.content || '';
     const fingerprint = message.materialRequestFingerprint || await materialRequestFingerprint(prior, config, null);
@@ -136,22 +138,38 @@ export async function handleSavedMaterials(context: Context) {
     if (!existing.data) {
       const data: Record<string, unknown> = { course_id: courseId, title: String(message.content).replace(/<!--[^]*?-->|[#*]/g, '').trim().split('\n')[0].slice(0,200) || 'Saved material', generation_config: config, request_fingerprint: fingerprint, context_fingerprint: contextHash };
       if (kind === 'assignment') {
+        stage = 'worksheet_separation';
         const variants = message.worksheetVariants.map((v: any) => ({ difficulty: v.difficulty, ...splitWorksheetContent(v.content, config) }));
+        stage = 'worksheet_conversion';
         const structured = await structureSavedWorksheet(variants, config, env.OPENROUTER_API_KEY);
         data.content = { questions: structured.questions }; data.grading_rules = structured.rules;
       } else data.content = { markdown: message.content };
+      stage = 'material_insert';
       const inserted = await db.from(table).insert(data).select('id').single();
       if (inserted.error?.code === '23505') existing = await db.from(table).select('id').eq('course_id', courseId).eq('request_fingerprint', fingerprint).eq('context_fingerprint', contextHash).single();
       else existing = inserted;
-      if (existing.error || !existing.data) throw new Error('Material save failed');
+      if (existing.error) throw existing.error;
+      if (!existing.data) throw new Error('Material save failed');
     }
     const choice = { state: 'saved', kind, id: existing.data.id };
+    stage = 'message_link';
     const saved = await db.rpc('set_ai_material_choice', { p_user: user.id, p_conversation: conversationId, p_message: messageId, p_choice: choice });
     if (saved.error || !saved.data) throw new Error('Material saved; refresh and retry to link the message');
     return apiSuccess(choice, request);
   } catch (error) {
+    // Metadata only: never log private questions, answer keys, provider bodies or credentials.
+    console.warn('Saved material operation failed', { stage, errorType: error instanceof Error ? error.name : 'DatabaseError',
+      ...(error instanceof AssessmentModelError ? { reason: error.reason, providerStatus: error.status } : {}),
+      ...(error && typeof error === 'object' && 'code' in error ? { databaseCode: String(error.code) } : {}) });
+    if (error instanceof AssessmentModelError) {
+      if (error.status === 429) return fail(429, 'The question conversion service is busy. Your worksheet is retained. Wait briefly, then retry saving.');
+      if (error.reason === 'configuration' || [401,402,403].includes(error.status ?? 0)) return fail(503, 'The question conversion service is unavailable. Ask your administrator to check the AI provider access and credits. Your worksheet is retained.');
+      return fail(503, 'The question conversion service did not complete. Your worksheet is retained. Retry saving.');
+    }
     if (error instanceof Error && error.message === 'Worksheet conversion failed validation') return fail(503, 'The worksheet could not be converted into saved questions. Your conversation is retained. Retry saving; no assignment was created.');
+    if (stage === 'worksheet_separation') return fail(422, 'The questions and private answer key could not be separated safely. Regenerate the worksheet before saving.');
     if (error instanceof z.ZodError || error instanceof SyntaxError) return fail(400, 'Invalid material request');
-    return fail(503, 'Unable to complete this operation. Verify migration, model and storage configuration, then retry.');
+    if (stage === 'message_link') return fail(503, 'The material was saved, but its conversation link could not be updated. Retry saving to reconnect it; the existing material will be reused.');
+    return fail(503, 'Saved materials are temporarily unavailable. Your conversation is retained. Retry this operation.');
   }
 }

@@ -124,7 +124,9 @@ export default function SavedMaterialWorkspace({courseId,educator,onFollowup}:{c
   const capability=useQuery({queryKey:['saved-material-capability',user?.id],queryFn:()=>materialAction<{enabled:boolean}>('capabilities'),enabled:!!user?.id,retry:false});
   const enabled=!!user?.id&&capability.data?.enabled===true;
   const deliveries=useQuery({queryKey:['saved-deliveries',user?.id,courseId],queryFn:()=>materialAction<any[]>('deliveries',{courseId}),enabled:enabled&&(!educator||kind==='assignment'),retry:false,refetchInterval:(!educator||kind==='assignment')?10000:false});
-  const library=useQuery({queryKey:['material-library',user?.id,courseId,kind],queryFn:()=>materialAction<any[]>('library',{courseId,kind}),enabled:enabled&&educator&&kind!=='overview',retry:false});
+  // Saves invalidate this cache while the workspace is closed. Override the app's
+  // refetchOnMount:false so reopening reads those saved changes immediately.
+  const library=useQuery({queryKey:['material-library',user?.id,courseId,kind],queryFn:()=>materialAction<any[]>('library',{courseId,kind}),enabled:enabled&&educator&&kind!=='overview',retry:false,refetchOnMount:true});
 
   const notificationParams = new URLSearchParams(window.location.search);
   const targetAllocation = notificationParams.get('allocation_id');

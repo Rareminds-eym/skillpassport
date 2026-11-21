@@ -4,6 +4,7 @@ import {afterEach,it,expect,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({action:vi.fn()}));
 vi.mock('@/shared/model',()=>({useUser:()=>({id:'teacher'})}));
 vi.mock('../../api/materialService',()=>({materialAction:mocks.action}));
+import SavedMaterialWorkspace from '../SavedMaterialWorkspace';
 import SaveGeneratedMaterial, { AllocateSavedMaterial } from '../SaveGeneratedMaterial';
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 it('automatically saves before opening learner selection from the direct assign action',async()=>{
@@ -127,4 +128,31 @@ it('retains the assignment handoff across a panel remount and completes allocati
  expect(await screen.findByText('Assignment confirmed for 1 learners.')).toBeInTheDocument();
  expect(mocks.action.mock.calls.filter(([action])=>action==='save')).toHaveLength(1);
  expect(mocks.action).toHaveBeenCalledWith('allocate',expect.objectContaining({learnerIds:['learner'],assignmentId:'assignment',reviewed:true}));
+});
+
+
+it('shows a newly saved assignment when reopening the library without refreshing the page',async()=>{
+ let saved=false;
+ mocks.action.mockImplementation(async(action:string)=>{
+  if(action==='capabilities')return {enabled:true};
+  if(action==='choice')return {state:'unanswered'};
+  if(action==='save'){saved=true;return {state:'saved',id:'new-assignment',kind:'assignment'};}
+  if(action==='library')return saved?[{id:'new-assignment',title:'Newly saved worksheet',content:{questions:[]}}]:[];
+  if(action==='deliveries')return [];
+  if(action==='allocation-learners')return {learners:[],blockedCount:0,assignedCount:0};
+  return {content:{questions:[]},grading_rules:[]};
+ });
+ // Match production defaults: reopening alone does not normally refetch cached queries.
+ const client=new QueryClient({defaultOptions:{queries:{retry:false,staleTime:120000,refetchOnMount:false},mutations:{retry:false}}});
+ const wrap=(children:React.ReactNode)=><QueryClientProvider client={client}>{children}</QueryClientProvider>;
+ const view=render(wrap(<SavedMaterialWorkspace courseId="course" educator/>));
+ await waitFor(()=>expect(mocks.action.mock.calls.some(([action])=>action==='library')).toBe(true));
+ await waitFor(()=>expect(client.getQueryData(['material-library','teacher','course','assignment'])).toEqual([]));
+ view.rerender(wrap(<SaveGeneratedMaterial canAssign courseId="course" conversationId="conversation" messageId="message"/>));
+ fireEvent.click(await screen.findByRole('button',{name:'Save'}));
+ expect(await screen.findByText('Saved to materials')).toBeInTheDocument();
+ view.rerender(wrap(<SavedMaterialWorkspace courseId="course" educator/>));
+ expect(await screen.findByRole('heading',{name:'Newly saved worksheet'})).toBeInTheDocument();
+ expect(mocks.action.mock.calls.filter(([action])=>action==='save')).toHaveLength(1);
+ client.clear();
 });
