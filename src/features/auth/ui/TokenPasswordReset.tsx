@@ -1,7 +1,7 @@
 import {useAuthStore,useUser} from '@/shared/model/authStore';
 import {updatePassword} from '@/entities/user';
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Mail,
   AlertCircle, 
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ssoClient, SsoWorkflowError } from '@/shared/api/ssoClient';
 import { PASSWORD_MIN, PASSWORD_MAX } from '@/shared/constants';
+import { isValidEmail } from '@/shared/lib/validation';
 import { AuthClientError } from '@rareminds-eym/auth-client';
 
 interface TokenPasswordResetState {
@@ -92,15 +93,21 @@ const TokenPasswordReset = () => {
   const handleSendResetLink = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!state.email) {
+    const email = state.email.trim();
+    if (!email) {
       setState(prev => ({ ...prev, error: 'Please enter your email address' }));
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setState(prev => ({ ...prev, error: 'Please enter a valid email address.' }));
       return;
     }
 
     setState(prev => ({ ...prev, loading: true, error: '' }));
 
     try {
-      await ssoClient.forgotPassword({ email: state.email, redirect_url: window.location.origin });
+      await ssoClient.forgotPassword({ email, redirect_url: window.location.origin });
 
       // Always show success (prevents email enumeration)
       setState(prev => ({
@@ -117,12 +124,17 @@ const TokenPasswordReset = () => {
           loading: false,
           error: 'Too many requests. Please try again in a few minutes.'
         }));
-      } else {
-        // The server handles account enumeration; request failures need a retry.
+      } else if (error instanceof SsoWorkflowError && error.code === 'not_found') {
         setState(prev => ({
           ...prev,
           loading: false,
-          error: 'Unable to request a reset link. Please try again.'
+          error: "We couldn't find an account matching this email address. sign up."
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: 'We couldn’t process your request. Please try again later.'
         }));
       }
     }
@@ -244,6 +256,7 @@ const TokenPasswordReset = () => {
                   Please request a new password reset.
                 </p>
                 <button
+                  type="button"
                   onClick={handleBackToLogin}
                   className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                 >
@@ -261,7 +274,11 @@ const TokenPasswordReset = () => {
               {state.error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-800">{state.error}</p>
+                  <p className="text-sm text-red-800">
+                    {state.error.includes('sign up') ? (
+                      <>{state.error.slice(0, state.error.lastIndexOf('sign up'))}<Link to="/signup" className="text-blue-600 underline">sign up</Link>{state.error.slice(state.error.lastIndexOf('sign up') + 'sign up'.length)}</>
+                    ) : state.error}
+                  </p>
                 </div>
               )}
 
@@ -439,9 +456,9 @@ const TokenPasswordReset = () => {
                   ) : (
                     // Email sent success
                     <>
-                      <p className="text-sm text-green-800 font-medium">Reset link sent!</p>
+                      <p className="text-sm text-green-800 font-medium">Check your email</p>
                       <p className="text-sm text-green-700 mt-1">
-                        Please check your email (including spam folder) for a password reset link.
+                        If an account exists for this email, you will receive a password reset link. Please check your inbox and spam folder.
                       </p>
                     </>
                   )}
@@ -449,6 +466,7 @@ const TokenPasswordReset = () => {
               </div>
 
               <button
+                type="button"
                 onClick={handleBackToLogin}
                 className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-transparent rounded-lg shadow-sm text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-all duration-200"
               >
@@ -463,6 +481,7 @@ const TokenPasswordReset = () => {
           <p>
             {state.step === 'email-input' ? 'Remember your password? ' : 'Need help? '}
             <button
+              type="button"
               onClick={state.step === 'email-input' ? handleBackToLogin : () => {}}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
