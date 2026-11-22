@@ -2544,7 +2544,7 @@ const LearnerDashboard = () => {
 
                       <div className="flex items-center gap-2 mb-2">
                         <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="text-xs text-gray-500">{course.provider || course.organization || 'Independent learning'}</span>
+                        <span className="text-xs text-gray-500">{course.provider || course.organization || 'Provider not specified'}</span>
                       </div>
 
                       {/* Progress Bar */}

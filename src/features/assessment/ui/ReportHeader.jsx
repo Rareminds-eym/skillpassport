@@ -137,10 +137,6 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
     const institutionName = institutionLabel === 'School'
         ? (schoolName || collegeName || '—')
         : (collegeName || schoolName || '—');
-    // Keep the school name compact; retain the full location-qualified name in the title.
-    const schoolDisplayName = institutionName
-        .replace(/\s*\([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\)\s*$/i, '')
-        .split(',')[0].trim();
 
     // Human-readable grade-level category for the "Level" field.
     const getGradeLevelDisplay = () => {
@@ -182,7 +178,7 @@ const ReportHeader = ({ learnerInfo, gradeLevel }) => {
         { label: rollNumberLabel, value: learnerInfo.regNo },
         { label: getStreamLabel(), value: getStreamValue() },
         { label: gradeCourseField.label, value: gradeCourseField.value },
-        { label: institutionLabel, value: institutionLabel === 'School' ? schoolDisplayName : institutionName, fullValue: institutionName, truncate: true },
+        { label: institutionLabel, value: institutionName, fullValue: institutionName, truncate: true },
         { label: 'Assessment Date', value: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
     ];
 

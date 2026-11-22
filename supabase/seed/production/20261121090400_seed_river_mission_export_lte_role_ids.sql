@@ -1,4 +1,4 @@
--- Run in SkillPassport after 01_school_roles.sql and 02_college_roles.sql.
+-- Run in SkillPassport after 20261121090000_seed_river_mission_school_roles.sql and 20261121090100_seed_river_mission_college_roles.sql.
 -- Read-only export. All 17 counts must be 1 before using role_context_ids.
 WITH expected(code,name,industry_name,domain_name,family_name) AS (VALUES
 ('RMR-ROLE-01','Water Quality Tester','Water & Environmental Services','Water Quality & Laboratory Science','Water Quality Analyst'),

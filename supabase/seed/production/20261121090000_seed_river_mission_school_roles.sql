@@ -2,14 +2,25 @@
 BEGIN;
 CREATE OR REPLACE FUNCTION pg_temp.river_entity(t text, c text, n text, proposed uuid)
 RETURNS uuid LANGUAGE plpgsql AS $$
-DECLARE ids uuid[]; resolved uuid;
+DECLARE ids uuid[]; resolved uuid; chosen_code text; occupied boolean;
 BEGIN
  IF t NOT IN ('industries','domains','role_families','role') THEN RAISE EXCEPTION 'Unsupported catalog table'; END IF;
- EXECUTE format('SELECT array_agg(id) FROM public.%I WHERE code=$1 OR name=$2',t) INTO ids USING c,n;
- IF cardinality(ids)>1 THEN RAISE EXCEPTION 'Ambiguous code/name identity for %: % / %',t,c,n; END IF;
+ -- Codes are reused by the source workbooks. A matching code alone is not an identity.
+ EXECUTE format('SELECT array_agg(id) FROM public.%I WHERE name=$1',t) INTO ids USING n;
+ IF cardinality(ids)>1 THEN RAISE EXCEPTION 'Ambiguous exact catalog name for %: %',t,n; END IF;
  IF cardinality(ids)=1 THEN RETURN ids[1]; END IF;
+ EXECUTE format('SELECT EXISTS(SELECT 1 FROM public.%I WHERE code=$1)',t) INTO occupied USING c;
+ chosen_code:=c;
+ IF occupied THEN
+  IF t='role' THEN RAISE EXCEPTION 'Role code % already belongs to another name; expected %',c,n; END IF;
+  chosen_code:='RMC_'||c;
+  EXECUTE format('SELECT EXISTS(SELECT 1 FROM public.%I WHERE code=$1)',t) INTO occupied USING chosen_code;
+  IF occupied THEN RAISE EXCEPTION 'Conflicting namespaced catalog code: % / %',chosen_code,n; END IF;
+ END IF;
+ EXECUTE format('SELECT EXISTS(SELECT 1 FROM public.%I WHERE id=$1)',t) INTO occupied USING proposed;
+ resolved:=CASE WHEN occupied THEN md5('river-mission-catalog:'||t||':'||n)::uuid ELSE proposed END;
  EXECUTE format('INSERT INTO public.%I (id,code,name) VALUES ($1,$2,$3) RETURNING id',t)
- INTO resolved USING proposed,c,n;
+ INTO resolved USING resolved,chosen_code,n;
  RETURN resolved;
 END $$;
 

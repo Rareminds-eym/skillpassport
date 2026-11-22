@@ -1,7 +1,15 @@
+-- LOCAL DEMO ONLY. Aaditya Raman, Grade 10. Run before 20261121090100_seed_aaditya_grade10_roles_assessment.sql.
+-- Custom school name only: no organization or membership is created.
+-- SSO login/password setup remains in the separate sso-worker account seeds.
+BEGIN;
+INSERT INTO public.users ("id", "email", "organizationId", "firstName", "lastName", "role", "isActive", "metadata") VALUES ('6d1c48f6-b3a9-57fb-998c-6a7255713e0c', 'aaditya.raman10@example.com', NULL, 'Aaditya', 'Raman', 'learner', true, '{"seed_package": "aaditya_grade10_river_mission", "syntheticIdentity": true, "career_exploration": true, "not_professional_qualification": true}'::jsonb) ON CONFLICT (id) DO UPDATE SET "email"=EXCLUDED."email", "organizationId"=EXCLUDED."organizationId", "firstName"=EXCLUDED."firstName", "lastName"=EXCLUDED."lastName", "role"=EXCLUDED."role", "isActive"=EXCLUDED."isActive", "metadata"=EXCLUDED."metadata";
+INSERT INTO public.users_shadow ("id", "email") VALUES ('6d1c48f6-b3a9-57fb-998c-6a7255713e0c', 'aaditya.raman10@example.com') ON CONFLICT (id) DO UPDATE SET "email"=EXCLUDED."email";
+INSERT INTO public.learners ("id", "user_id", "email", "name", "learner_type", "school_id", "college_school_name", "grade", "section", "roll_number", "course_name", "branch_field", "approval_status", "bio", "interests", "hobbies", "languages", "metadata") VALUES (coalesce((SELECT id FROM public.learners WHERE user_id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com'), '6d1c48f6-b3a9-57fb-998c-6a7255713e0c'::uuid), '6d1c48f6-b3a9-57fb-998c-6a7255713e0c', 'aaditya.raman10@example.com', 'Aaditya Raman', 'school_student', NULL, 'Cambridge School', '10', 'A', '11423027', 'High School', 'General Secondary Education', 'approved', 'Grade 10 learner exploring water science, practical investigation and community water projects.', '["Science", "Mathematics", "Water conservation"]'::jsonb, '["Science models", "Reading", "Sketching"]'::jsonb, '["English", "Tamil"]'::jsonb, '{"seed_package": "aaditya_grade10_river_mission", "syntheticIdentity": true, "career_exploration": true, "not_professional_qualification": true, "recommendedStream": "Science — PCMB"}'::jsonb) ON CONFLICT (id) DO UPDATE SET "user_id"=EXCLUDED."user_id", "email"=EXCLUDED."email", "name"=EXCLUDED."name", "learner_type"=EXCLUDED."learner_type", "school_id"=EXCLUDED."school_id", "college_school_name"=EXCLUDED."college_school_name", "grade"=EXCLUDED."grade", "section"=EXCLUDED."section", "roll_number"=EXCLUDED."roll_number", "course_name"=EXCLUDED."course_name", "branch_field"=EXCLUDED."branch_field", "approval_status"=EXCLUDED."approval_status", "bio"=EXCLUDED."bio", "interests"=EXCLUDED."interests", "hobbies"=EXCLUDED."hobbies", "languages"=EXCLUDED."languages", "metadata"=EXCLUDED."metadata";
+
 -- Resolves the actual learners.id from the account user_id; the two IDs can differ.
 -- Sample eight-digit board-style roll number; not a CBSE-issued identity.
 -- Local school profile fixture. Approved for local display only; evidence remains unverified.
-BEGIN;
+
 DO $owner$ BEGIN
  IF (SELECT count(*) FROM public.learners WHERE user_id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com') <> 1 THEN
   RAISE EXCEPTION 'Expected exactly one Aaditya learner profile; apply the account seed first';
@@ -79,7 +87,7 @@ INSERT INTO public.achievements ("id", "learner_id", "title", "description", "da
 INSERT INTO public.achievements ("id", "learner_id", "title", "description", "date", "issuer", "category", "approval_status", "enabled", "has_pending_edit") VALUES ('1c1b5ca3-31e2-54e3-821b-09fa530f6d43', (SELECT id FROM public.learners WHERE user_id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com'), 'School Water Awareness Participation', 'Helped prepare a supervised school conservation-awareness activity. Fictional school profile record for local demonstration; not independently verified.', '2026-10-16', 'Cambridge School', 'Community Service', 'approved', true, false) ON CONFLICT (id) DO UPDATE SET "title"=EXCLUDED."title", "description"=EXCLUDED."description", "date"=EXCLUDED."date", "issuer"=EXCLUDED."issuer", "category"=EXCLUDED."category", "approval_status"=EXCLUDED."approval_status", "enabled"=EXCLUDED."enabled", "has_pending_edit"=EXCLUDED."has_pending_edit", updated_at=now() WHERE public.achievements.learner_id=EXCLUDED.learner_id;
 
 UPDATE public.learners SET "learner_type"='school_student',
-"school_id"='0b2582eb-ff09-495f-ace4-0c2b73d36701',
+"school_id"=NULL,
 "college_id"=NULL,
 "age"=15,
 "date_of_birth"='2011-02-17',
@@ -125,4 +133,7 @@ UPDATE public.learners SET "learner_type"='school_student',
 "notification_settings"='{"weeklyDigest": false, "monthlyReport": false, "newOpportunities": true, "applicationUpdates": true, "emailNotifications": false, "recruitingMessages": false}'::jsonb, metadata=coalesce(metadata,'{}'::jsonb)||'{"seed_package": "aaditya_grade10_river_mission", "syntheticIdentity": true, "profileDataProvenance": "Fictional school profile record for local demonstration; not independently verified.", "contactData": "Synthetic sample details; do not contact", "certificationStatus": "Sample school participation records, not verified professional credentials", "localDisplayApproval": "Approved only for local dashboard display; not independent credential verification"}'::jsonb, updated_at=now() WHERE user_id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com';
 
 UPDATE public.users SET phone='9000000010', metadata=coalesce(metadata,'{}'::jsonb)||'{"seed_package": "aaditya_grade10_river_mission", "syntheticIdentity": true, "profileDataProvenance": "Fictional school profile record for local demonstration; not independently verified.", "contactData": "Synthetic sample details; do not contact", "certificationStatus": "Sample school participation records, not verified professional credentials", "localDisplayApproval": "Approved only for local dashboard display; not independent credential verification"}'::jsonb, "updatedAt"=now() WHERE id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com';
+-- Keep the standalone school name available to both report field conventions.
+UPDATE public.learners SET school_name='Cambridge School'
+WHERE user_id='6d1c48f6-b3a9-57fb-998c-6a7255713e0c' AND email='aaditya.raman10@example.com';
 COMMIT;

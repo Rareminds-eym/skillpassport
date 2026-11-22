@@ -76,13 +76,11 @@ const LTE_CAPABILITIES_TIMEOUT_MS = 20000;
  * An empty capability list is a success (`ok: true`).
  */
 export async function fetchLteRoleCapabilities(
-  env: { LTE_APP_URL?: unknown; LTE_API_URL?: unknown },
+  env: { LTE_APP_URL?: unknown },
   roleId: string,
   timeoutMs: number = LTE_CAPABILITIES_TIMEOUT_MS,
 ): Promise<LteRoleCapabilitiesResult> {
-  const configuredUrl = typeof env.LTE_API_URL === 'string' && env.LTE_API_URL.trim()
-    ? env.LTE_API_URL : env.LTE_APP_URL;
-  const baseUrl = typeof configuredUrl === 'string' ? configuredUrl.trim().replace(/\/$/, '') : '';
+  const baseUrl = typeof env.LTE_APP_URL === 'string' ? env.LTE_APP_URL.trim().replace(/\/$/, '') : '';
   if (!baseUrl) {
     return { ok: false, reason: 'LTE_APP_URL not configured' };
   }

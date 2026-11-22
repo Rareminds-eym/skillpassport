@@ -1,8 +1,39 @@
+-- LOCAL DEMO ONLY. Arjun Srinivasan, B.Tech in Chemical Engineering.
+-- Run before 20261121090300_seed_arjun_chemical_engineering_roles_assessment.sql. College name is text only; no organization created.
+-- Login/password remains managed by the separate sso-worker account seed.
+BEGIN;
+-- ACCOUNT, PROGRAM AND LEARNER
+-- Target database: SkillPassport. Offline demo fixture; not executed.
+
+
+INSERT INTO public.programs (id,name,code,degree_level,status,metadata)
+VALUES ('9ed508fd-3c2d-5e69-b43b-1032d7f859e1','B.Tech in Chemical Engineering','BTECH-ENV-CHEM-DEMO','Undergraduate','active','{"demo": true, "seedPackage": "arjun_environmental_engineering", "syntheticIdentity": true}'::jsonb) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users (id,email,"organizationId","firstName","lastName",role,"isActive",metadata)
+VALUES ('77feba55-cc92-5f00-9ff6-49df5ec581b3','arjun.srinivasan27@example.com',NULL,'Arjun','Srinivasan','learner',true,'{"demo": true, "seedPackage": "arjun_environmental_engineering", "syntheticIdentity": true}'::jsonb) ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users_shadow (id,email,created_at,updated_at)
+VALUES ('77feba55-cc92-5f00-9ff6-49df5ec581b3','arjun.srinivasan27@example.com',now(),now()) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.learners (id,user_id,email,name,learner_type,college_id,college_school_name,program_id,course_name,branch_field,grade,semester,section,roll_number,approval_status,bio,metadata)
+VALUES (coalesce((SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid),'77feba55-cc92-5f00-9ff6-49df5ec581b3','arjun.srinivasan27@example.com','Arjun Srinivasan','college_student',NULL,'Kaveri Institute of Engineering','9ed508fd-3c2d-5e69-b43b-1032d7f859e1','B.Tech in Chemical Engineering','B.Tech in Chemical Engineering','UG',5,'A','KEI24EC027','approved',
+'Third-year engineering learner interested in water-quality laboratory evidence, treatment processes and environmental monitoring.','{"demo": true, "seedPackage": "arjun_environmental_engineering", "syntheticIdentity": true}'::jsonb) ON CONFLICT (id) DO UPDATE SET email=EXCLUDED.email,name=EXCLUDED.name,learner_type=EXCLUDED.learner_type,college_id=EXCLUDED.college_id,college_school_name=EXCLUDED.college_school_name,program_id=EXCLUDED.program_id,course_name=EXCLUDED.course_name,branch_field=EXCLUDED.branch_field,grade=EXCLUDED.grade,semester=EXCLUDED.semester,section=EXCLUDED.section,roll_number=EXCLUDED.roll_number,approval_status=EXCLUDED.approval_status,bio=EXCLUDED.bio,metadata=EXCLUDED.metadata;
+INSERT INTO public.education (id,learner_id,degree,department,university,year_of_passing,approval_status)
+VALUES ('564e0f63-2e32-540c-9c7b-d56ad50f7cf9',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'B.Tech in Chemical Engineering','Chemical Engineering','Kaveri Institute of Engineering','2028','approved') ON CONFLICT (id) DO NOTHING;
+
+
+INSERT INTO public.skills (id,learner_id,name,type,level,description,verified,enabled,approval_status,proficiency_level) VALUES ('4a945ec8-b7fd-5b74-8826-e560e9b13f5b',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'Water-quality data interpretation','technical',2,'Illustrative academic skill in a synthetic demo profile',false,true,'pending','Beginner') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.skills (id,learner_id,name,type,level,description,verified,enabled,approval_status,proficiency_level) VALUES ('31f52d5d-aa9d-55c8-b92a-7ce0328675db',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'Spreadsheet data validation','technical',2,'Illustrative academic skill in a synthetic demo profile',false,true,'pending','Beginner') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.skills (id,learner_id,name,type,level,description,verified,enabled,approval_status,proficiency_level) VALUES ('0c54f157-29c6-5312-85ff-f0f24b2d40e5',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'Treatment process fundamentals','technical',2,'Illustrative academic skill in a synthetic demo profile',false,true,'pending','Beginner') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.skills (id,learner_id,name,type,level,description,verified,enabled,approval_status,proficiency_level) VALUES ('52fafe50-0194-5389-b11f-e4be425d8f64',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'Technical report writing','technical',2,'Illustrative academic skill in a synthetic demo profile',false,true,'pending','Beginner') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.projects (id,learner_id,title,description,start_date,end_date,tech_stack,approval_status,enabled,role)
+VALUES ('85823697-a7a2-5928-befa-4687cfcdda5c',(SELECT id FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com'),'Campus Water Quality Evidence Review (Demo)',
+'Academic demonstration: validate a sample dataset, compare pH and dissolved oxygen, document evidence limitations and propose supervised follow-up monitoring.',
+'2026-08-01','2026-10-15',ARRAY['Spreadsheets','Data validation','Water-quality interpretation'],'pending',true,'Student investigator') ON CONFLICT (id) DO NOTHING;
+
+-- COMPLETE PROFILE
 -- Target: local SkillPassport development database only. Apply after 01_skillpassport_learner.sql.
 -- Approved for local demo display only; credentials remain unverified.
 -- Synthetic academic profile; no verified credentials, real social accounts or government IDs are claimed.
 -- Updates only this fixture learner and its deterministic sample records; does not change passwords, assessments or LTE progress.
-BEGIN;
 
 DO $profile_owner$ BEGIN
  IF NOT EXISTS (SELECT 1 FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com') THEN
@@ -137,4 +168,45 @@ UPDATE public.learners SET "learner_type"='college_student', "age"=21,
 
 UPDATE public.users SET phone='9000000027', metadata=COALESCE(metadata,'{}'::jsonb)||'{"demo": true, "syntheticIdentity": true, "seedPackage": "arjun_environmental_engineering", "profileDataProvenance": "Fictional academic profile for local demonstration", "contactData": "Synthetic sample contact details; do not contact", "certificationStatus": "Sample records, not verified credentials"}'::jsonb, "updatedAt"=now() WHERE id='77feba55-cc92-5f00-9ff6-49df5ec581b3' AND email='arjun.srinivasan27@example.com';
 
+-- ADDITIONAL CHEMICAL ENGINEERING SKILLS
+-- LOCAL SYNTHETIC DEMO. Beginner skills are unverified, approved only for local display.
+
+
+DO $$ BEGIN IF NOT EXISTS(SELECT 1 FROM public.learners WHERE user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND email='arjun.srinivasan27@example.com') THEN RAISE EXCEPTION 'Apply Arjun learner profile first'; END IF; END $$;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT 'a11d45b4-ec80-59f9-9993-d59254a17f68'::uuid,l.id,'Material and Energy Balances','technical',2,'Beginner','Set up simple steady-state material and energy balances for classroom chemical-process problems. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Material and Energy Balances'))
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT '4ca89e65-07f9-56b9-b898-6ac127c45701'::uuid,l.id,'Fluid Mechanics','technical',2,'Beginner','Interpret flow rate, pressure drop and basic pumping concepts in supervised water-system exercises. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Fluid Mechanics'))
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT '0838c11e-20f7-5f80-8bb0-c70afcb7f04b'::uuid,l.id,'Heat Transfer','technical',2,'Beginner','Apply introductory conduction, convection and heat-exchanger concepts to classroom calculations. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Heat Transfer'))
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT 'ddfff7da-071e-501a-b1e8-edcd2eef3dc3'::uuid,l.id,'Mass Transfer and Separation Processes','technical',2,'Beginner','Explain introductory diffusion, absorption, filtration and membrane separation concepts. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Mass Transfer and Separation Processes'))
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT '8ac9a445-d797-5b5c-bdf3-0bdc732b62da'::uuid,l.id,'Process Flow Diagram Interpretation','technical',2,'Beginner','Read basic process-flow diagrams, identify unit operations and trace stream connections. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Process Flow Diagram Interpretation'))
+ON CONFLICT(id) DO NOTHING;
+
+INSERT INTO public.skills(id,learner_id,name,type,level,proficiency_level,description,verified,enabled,approval_status,has_pending_edit)
+SELECT '28a0c27b-41f1-56d0-a5e5-5b7270760fca'::uuid,l.id,'Chemical Process Safety','technical',2,'Beginner','Identify basic chemical handling hazards, interpret safety data sheets and follow supervised laboratory procedures. Authored unverified local demo profile; competence has not been independently assessed.',false,true,'approved',false
+FROM public.learners l WHERE l.user_id='77feba55-cc92-5f00-9ff6-49df5ec581b3'::uuid AND l.email='arjun.srinivasan27@example.com'
+AND NOT EXISTS(SELECT 1 FROM public.skills s WHERE s.learner_id=l.id AND lower(s.name)=lower('Chemical Process Safety'))
+ON CONFLICT(id) DO NOTHING;
 COMMIT;
