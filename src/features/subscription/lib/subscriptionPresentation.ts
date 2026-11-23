@@ -54,7 +54,8 @@ export function formatPrice(amount: number, precision: number, currency: string)
   const digits = String(amount).padStart(precision + 1, '0');
   const whole = precision === 0 ? digits : digits.slice(0, -precision);
   const grouped = BigInt(whole).toLocaleString(currency === 'INR' ? 'en-IN' : 'en-US');
-  const fractional = precision === 0 ? '' : `.${digits.slice(-precision)}`;
+  const fraction = precision === 0 ? '' : digits.slice(-precision).replace(/0+$/, '');
+  const fractional = fraction ? `.${fraction}` : '';
   return `${currency === 'INR' ? '₹' : `${currency} `}${grouped}${fractional}`;
 }
 

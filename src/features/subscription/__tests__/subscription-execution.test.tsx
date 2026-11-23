@@ -90,6 +90,68 @@ beforeEach(() => { sessionStorage.clear(); auth.authenticated = true; auth.user 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); fetchMock.mockReset(); });
 
 describe('subscription execution consumer', () => {
+  function freeCancellationRouter(access: string, live = false) {
+    const subject = { kind: 'user', id: actor };
+    const freeCatalog = { ...catalog, audience: 'educator', plans: [
+      { ...catalog.plans[0], purchaseMode: 'free', prices: [] },
+      { ...catalog.plans[0], plan: { ...catalog.plans[0].plan, id: id(50) }, revisionId: id(51), name: 'Paid option',
+        prices: catalog.plans[0].prices.map(price => ({ ...price, quantityBasis: 'subscription' })) },
+    ] };
+    const selectedRow = { ...row, subject, status: live ? 'active' : 'cancelled' };
+    return (url: string, init?: RequestInit) => {
+      if (url === '/api/subscriptions') return response({ ...discovery, items: [selectedRow] });
+      if (url === '/api/subscriptions/catalog') return response(freeCatalog);
+      if (url.includes('/current?')) return response({ ...current, access, state: { ...state, subject, status: selectedRow.status,
+        periodEndsAt: null, validity: 'perpetual', trialEndsAt: null, renewalEnabled: false, cancelledAt: live ? null : 1500 }, subscriptionEndsAt: null });
+      return router(url, init);
+    };
+  }
+  it.each(['read_only', 'suspended'])('keeps a cancelled free contract visible with %s access and no new checkout', async access => {
+    fetchMock.mockImplementation(freeCancellationRouter(access));
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('region', { name: 'Cancelled plan access' })).toHaveTextContent('Cancelled plan');
+    expect(screen.getByRole('link', { name: 'Review cancelled subscription' })).toHaveAttribute('href', '/subscription/manage');
+    if (access === 'read_only') expect(screen.getByRole('link', { name: 'View read-only dashboard' })).toHaveAttribute('href', '/learner/dashboard');
+    else expect(screen.queryByRole('link', { name: /dashboard/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Buy Now|Renew Plan|Change Plan/ })).toBeNull();
+    expect(screen.queryByText('Current plan')).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => /commerce|lifecycle/.test(url))).toBe(false);
+  });
+  it('preserves the active free dashboard link', async () => {
+    fetchMock.mockImplementation(freeCancellationRouter('full', true));
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', '/learner/dashboard');
+    expect(screen.queryByRole('region', { name: 'Cancelled plan access' })).toBeNull();
+  });
+  it('does not send a user with no activated subscription back into a guarded dashboard', async () => {
+    const base = freeCancellationRouter('full');
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => url === '/api/subscriptions' ? response({ ...discovery, items: [] }) : base(url, init));
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('link', { name: 'Review subscription access' })).toHaveAttribute('href', '/subscription/manage');
+    expect(screen.queryByRole('link', { name: /dashboard/i })).toBeNull();
+  });
+  it('does not offer unsupported lifecycle changes for a cancelled subscription in management', async () => {
+    fetchMock.mockImplementation(freeCancellationRouter('read_only'));
+    render(<SubscriptionWorkspace />); await selectSubscription();
+    expect(await screen.findByRole('heading', { name: 'Cancelled subscription' })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Operation' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Renew or upgrade with payment' })).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => /commerce|lifecycle/.test(url))).toBe(false);
+  });
+  it.each(['read_only', 'suspended'])('the main management page explains cancellation and %s access without renewal actions', async access => {
+    auth.user = { id: actor, roles: ['learner'] };
+    fetchMock.mockImplementation(freeCancellationRouter(access));
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <MemoryRouter initialEntries={['/subscription/manage']}><MySubscriptionPage /></MemoryRouter>
+    </QueryClientProvider>);
+    expect(await screen.findByRole('heading', { name: 'Subscription cancelled' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Renew Now' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
+    if (access === 'read_only') expect(screen.getByRole('button', { name: 'View read-only dashboard' })).toBeInTheDocument();
+    else expect(screen.queryByRole('button', { name: /dashboard/i })).toBeNull();
+    expect(screen.queryByText('Manual renewal required')).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => /commerce|lifecycle/.test(url))).toBe(false);
+  });
   it('discovers removed pools from actual activity revisions and reads history without using active balances', async () => {
     const historicalRevision = id(90);
     fetchMock.mockImplementation((url: string, init?: RequestInit) => {

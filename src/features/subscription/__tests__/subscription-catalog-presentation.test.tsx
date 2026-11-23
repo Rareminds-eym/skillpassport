@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ascendingPlans, featureValue, formatPrice } from '../lib/subscriptionPresentation';
-import { catalogSchema } from '../api/subscriptionExecutionService';
+import { catalogSchema, type FeatureGrant } from '../api/subscriptionExecutionService';
 import SubscriptionWorkspace from '../ui/SubscriptionWorkspace';
 import SubscriptionCatalogSummary from '../ui/SubscriptionCatalogSummary';
 
@@ -15,7 +15,7 @@ vi.mock('@/shared/model/authStore', () => ({ useUser: () => null, useUserRole: (
 vi.mock('../api/razorpayService', () => ({ payIssuedSubscriptionOrder: vi.fn(), prepareSubscriptionCheckout: vi.fn() }));
 vi.mock('../ui/AddOnMarketplace', () => ({ default: ({ role }: { role: string }) => <p>Existing add-ons for {role}</p> }));
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const features = Array.from({ length: 7 }, (_, index) => ({ key: `configured_feature_${index}`, type: 'numeric_limit', enabled: true, limit: { kind: 'finite', value: index + 1 } }));
+const features: FeatureGrant[] = Array.from({ length: 7 }, (_, index) => ({ key: `configured_feature_${index}`, type: 'numeric_limit', enabled: true, limit: { kind: 'finite', value: index + 1 } }));
 const offer = { plan: { id: id(3), code: 'configured-offer', productId: id(2) }, revisionId: id(4), revisionNumber: 1,
   name: 'Configured membership', audiences: ['learner'], purchaseMode: 'self_service', features,
   prices: [{ id: id(5), currency: 'INR', minorUnit: 2, amountMinor: 456789, intervalUnit: 'year', intervalCount: 1, quantityBasis: 'subscription', audiences: ['learner'] }],
@@ -33,6 +33,22 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('restored QA catalog presentation', () => {
+  function activatedFree() {
+    const subject = { kind: 'user', id: catalog.actorId };
+    const row = { id: id(20), planId: offer.plan.id, productId: catalog.productId, subject, status: 'active', kind: 'initialized',
+      revisionId: offer.revisionId, version: 1, lifecycleOperations: ['upgrade'] };
+    const current = { schemaVersion: 1, actorId: catalog.actorId, audience: 'learner', activatedAt: 1000, subscriptionEndsAt: null,
+      access: 'full', pools: [], features: [], plan: { ...offer.plan, name: offer.name, revisionNumber: 1 },
+      state: { id: row.id, planId: row.planId, revisionId: row.revisionId, productId: catalog.productId, subject, version: 1,
+        status: 'active', periodStartsAt: 1000, periodEndsAt: null, validity: 'perpetual', trialEndsAt: null,
+        renewalEnabled: false, cancelledAt: null, paymentFailedAt: null, scheduledChange: null } };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/subscriptions/catalog') return response(visibleCatalog);
+      if (url === '/api/subscriptions') return response({ ...emptyDiscovery, items: [row] });
+      if (url.includes('/current?')) return response(current);
+      throw new Error('Unexpected synthetic request');
+    });
+  }
   it('formats published enum terms and acronyms consistently in cards and comparison cells', async () => {
     const terms = [
       {key: 'career_roadmap', type: 'enum', enabled: true, value: 'advanced_roadmap_with_milestone_tracking'},
@@ -151,6 +167,7 @@ describe('restored QA catalog presentation', () => {
     const free = { ...offer, purchaseMode: 'free', prices: [] };
     const sales = { ...offer, plan: { ...offer.plan, id: id(8) }, revisionId: id(9), name: 'Configured enterprise', purchaseMode: 'contact_sales', prices: [] };
     visibleCatalog = { ...catalog, plans: [free, sales] };
+    activatedFree();
     render(<SubscriptionWorkspace view="catalog" />);
     const freeCard = await screen.findByRole('article', { name: offer.name });
     expect(within(freeCard).getByText('Free')).toBeInTheDocument();
@@ -165,6 +182,7 @@ describe('restored QA catalog presentation', () => {
   it.each([['learner', '/learner/dashboard'], ['educator', '/educator/dashboard'], ['school_admin', '/school-admin/dashboard']])('takes free-access %s users to their dashboard without a purchase', async (role, route) => {
     identity.role = role;
     visibleCatalog = { ...catalog, plans: [{ ...offer, purchaseMode: 'free', prices: [] }] };
+    activatedFree();
     render(<SubscriptionWorkspace view="catalog" />);
     expect(await screen.findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', route);
     expect(screen.queryByText('View my access')).not.toBeInTheDocument();
@@ -188,6 +206,23 @@ describe('restored QA catalog presentation', () => {
     expect(screen.getByText('Currently Active')).toBeInTheDocument();
     expect(screen.getByText('Enabled')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Manage Your Plan' })).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('shows cancelled read-only access in the account summary without promising unlimited access or active benefits', () => {
+    accountQuery.mockReturnValue({ subscriptionData: { planName: 'Cancelled membership', status: 'cancelled', lifecycleAccess: 'read_only',
+      startDate: '2026-11-01', endDate: null, features: ['sample roadmap'], billingCycle: 'free', reportedAutoRenew: false },
+      loading: false, error: null, hasActiveOrPausedSubscription: false });
+    render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose a plan" />);
+    const summary = screen.getByRole('region', { name: 'Current subscription' });
+    expect(summary).toHaveTextContent('Cancelled membership');
+    expect(summary).toHaveTextContent('Your subscription is cancelled. Read-only subscription access is available.');
+    expect(summary).toHaveTextContent('No scheduled plan expiry');
+    expect(within(summary).getByRole('heading', { name: 'Plan features' })).toBeInTheDocument();
+    expect(summary).not.toHaveTextContent('Currently Active');
+    expect(summary).not.toHaveTextContent('Paused');
+    expect(summary).not.toHaveTextContent('Days Left');
+    expect(summary).not.toHaveTextContent('No expiry');
+    expect(screen.queryByText('Upgrade to unlock more features')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it('renders enabled typed account features without treating objects as strings', () => {
@@ -251,7 +286,12 @@ describe('subscription presentation accessibility and precision', () => {
     expect(formatPrice(123456789, 2, 'INR')).toBe('₹12,34,567.89');
     expect(formatPrice(9007199254740991, 3, 'INR')).toBe('₹90,07,19,92,54,740.991');
     expect(formatPrice(12345, 3, 'USD')).toBe('USD 12.345');
-    expect(formatPrice(0, 2, 'INR')).toBe('₹0.00');
+    expect(formatPrice(0, 2, 'INR')).toBe('₹0');
+    expect(formatPrice(250000, 2, 'INR')).toBe('₹2,500');
+    expect(formatPrice(250050, 2, 'INR')).toBe('₹2,500.5');
+    expect(formatPrice(250005, 2, 'INR')).toBe('₹2,500.05');
+    expect(formatPrice(12000, 3, 'USD')).toBe('USD 12');
+    expect(formatPrice(12010, 3, 'USD')).toBe('USD 12.01');
   });
   it('supports arrow, Home and End keys with a single tab stop', async () => {
     render(<SubscriptionWorkspace view="catalog" />);

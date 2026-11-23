@@ -50,7 +50,8 @@ export function isSubscriptionCurrent(sub: Pick<Subscription, 'status' | 'subscr
 }
 
 /** One policy for the existing individual, bulk-seat and organization-wide coverage paths. */
-export async function resolveUserEntitlement(supabase: SupabaseClient, userId: string, identity: SubscriptionIdentity): Promise<EntitlementResult | null> {
+export async function resolveUserEntitlement(supabase: SupabaseClient, userId: string, identity: SubscriptionIdentity,
+  options?: { authorizeRead: (subscription: EntitlementResult) => Promise<EntitlementResult | null> }): Promise<EntitlementResult | null> {
   if (!userId) return null;
   const scope = subscriptionScope(identity, identity.scope);
   const organizationDashboard = scope.endsWith('_admin') || scope === 'recruiter';
@@ -97,6 +98,10 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     license_assignment_id: seat?.id, organization_name: org?.name, organization_email: org?.email, organization_phone: org?.phone,
     subscription_plans: { id: plan.id, name: plan.name, plan_code: plan.plan_code },
   });
+  // Personal initialized contracts can retain owner-authorized read-only access
+  // after cancellation/expiry. Organization/seat coverage keeps its existing policy.
+  const canEvaluate = (sub: Subscription) => isSubscriptionCurrent(sub) || Boolean(options && sub.plan_revision_id);
+  const authorize = (sub: EntitlementResult) => options ? options.authorizeRead(sub) : Promise.resolve(sub);
   for (const sub of candidates) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
     if (!plan || !isSubscriptionCurrent(sub) || (sub.product_id && plan.product_id && sub.product_id !== plan.product_id)) continue;
@@ -116,7 +121,9 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   if (organizationDashboard) return null;
   // A newer automatic free entry must not hide an existing paid purchase.
   const purchased = (sub: Subscription) => Number(sub.plan_amount) > 0 || Boolean(sub.razorpay_payment_id);
-  const personalCandidates = [...own].sort((left, right) => Number(purchased(right)) - Number(purchased(left)));
+  const retainedOnly = (sub: Subscription) => !isSubscriptionCurrent(sub);
+  const personalCandidates = [...own].sort((left, right) => Number(retainedOnly(left)) - Number(retainedOnly(right))
+    || Number(purchased(right)) - Number(purchased(left)));
   for (const sub of personalCandidates) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
     // Email verification activates the free individual subscription; old onboarding metadata cannot require a second selection.
@@ -125,7 +132,10 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     // Individual-family plans are personal by definition (audience subject is the user), not tied to an organization type.
     const applicable = plan?.plan_family === 'individual'
       || plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));
-    if (plan?.business_type === 'b2c' && applicable && !sub.is_organization_subscription && isSubscriptionCurrent(sub) && (!sub.product_id || !plan.product_id || sub.product_id === plan.product_id)) return format(sub, plan);
+    if (plan?.business_type === 'b2c' && applicable && !sub.is_organization_subscription && canEvaluate(sub) && (!sub.product_id || !plan.product_id || sub.product_id === plan.product_id)) {
+      const granted = await authorize(format(sub, plan));
+      if (granted) return granted;
+    }
   }
   return null;
 }

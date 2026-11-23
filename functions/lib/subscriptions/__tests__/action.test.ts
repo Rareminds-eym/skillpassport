@@ -141,12 +141,15 @@ describe('signed owner adapter used by assessment routes', () => {
     expect(await access()).toMatchObject({ status: 403 });
     io.discover.mockReset().mockResolvedValueOnce({ ...discovery(), items: [...discovery().items, { ...discovery().items[0], id: other }], nextCursor: other })
       .mockResolvedValue({ ...discovery(), items: [], nextCursor: null });
-    expect(await access()).toMatchObject({ status: 403 }); expect(io.current).not.toHaveBeenCalled();
+    const review = await access() as Response;
+    expect(review.status).toBe(409); expect(await review.json()).toMatchObject({ error: { code: 'SUBSCRIPTION_REVIEW_REQUIRED' } });
+    expect(io.current).not.toHaveBeenCalled();
   });
   it('denies an uninitialized legacy cohort without substituting a legacy plan', async () => {
     io.discover.mockReset().mockResolvedValueOnce({ ...discovery(), items: [{ ...discovery().items[0], kind: 'uninitialized' }] })
       .mockResolvedValue({ ...discovery(), items: [], nextCursor: null });
-    expect(await access()).toMatchObject({ status: 403 });
+    const setup = await access() as Response;
+    expect(setup.status).toBe(409); expect(await setup.json()).toMatchObject({ error: { code: 'SUBSCRIPTION_SETUP_REQUIRED' } });
     expect(io.current).not.toHaveBeenCalled(); expect(io.action).not.toHaveBeenCalled(); expect(io.projection).not.toHaveBeenCalled();
   });
   it('rejects crossed actor and broken pagination without a legacy substitution', async () => {

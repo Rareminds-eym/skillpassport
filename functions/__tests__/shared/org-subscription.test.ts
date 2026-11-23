@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { completePlanSelection, isSubscriptionCurrent, resolveUserEntitlement, subscriptionScope } from '../../shared/lib/org-subscription';
 
 type Row = Record<string, any>;
@@ -52,6 +52,34 @@ beforeEach(() => {
 });
 
 describe('Catalogue-backed subscription gateway', () => {
+  it('passes a cancelled initialized free contract to the live dashboard authorizer without changing it', async () => {
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
+    tables.subscription_cache = [{ ...personal, status: 'cancelled', billing_cycle: 'free', subscription_end_date: null, plan_revision_id: 'revision' }];
+    const snapshot = JSON.stringify(tables);
+    const authorizeRead = vi.fn(async sub => ({ ...sub, lifecycle_access: 'read_only' }));
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead }))
+      .toMatchObject({ status: 'cancelled', lifecycle_access: 'read_only' });
+    expect(authorizeRead).toHaveBeenCalledOnce(); expect(JSON.stringify(tables)).toBe(snapshot);
+    authorizeRead.mockResolvedValueOnce(null);
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toBeNull();
+  });
+  it('does not pass another organization or a revoked seat to the live dashboard authorizer', async () => {
+    const authorizeRead = vi.fn(async sub => sub);
+    tables.subscription_cache = [{ ...coverage, plan_revision_id: 'revision', status: 'cancelled', subscription_end_date: null, billing_cycle: 'free' }];
+    tables.license_assignments = [{ id: 'seat', user_id: 'user', organization_subscription_id: coverage.id, status: 'revoked' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toBeNull();
+    tables.subscription_cache[0].organization_id = 'another-org';
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['college_admin'] }, { authorizeRead })).toBeNull();
+    expect(authorizeRead).not.toHaveBeenCalled();
+  });
+  it('preserves organization dashboard and assigned-seat coverage without calling the personal owner reader', async () => {
+    const authorizeRead = vi.fn(async sub => sub);
+    tables.subscription_cache = [{ ...coverage, plan_revision_id: 'revision' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['college_admin'], org_id: 'org' }, { authorizeRead })).toMatchObject({ id: coverage.id });
+    tables.license_assignments = [{ id: 'seat', user_id: 'user', organization_subscription_id: coverage.id, status: 'active' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toMatchObject({ license_assignment_id: 'seat' });
+    expect(authorizeRead).not.toHaveBeenCalled();
+  });
   it('retains a paid old purchase when automatic free access is newer', async () => {
     tables.users[0].metadata.subscription_selection_required = true;
     tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
@@ -68,6 +96,24 @@ describe('Catalogue-backed subscription gateway', () => {
       { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
     ];
     expect((await resolve())?.id).toBe('free');
+  });
+  it('does not let retained cancelled paid access hide an active free contract', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, status: 'cancelled', subscription_end_date: null, plan_amount: 499, plan_revision_id: 'paid-revision' },
+      { ...personal, id: 'free', plan_id: 'free-plan', plan_revision_id: 'free-revision', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    const authorizeRead = vi.fn(async sub => ({ ...sub, lifecycle_access: sub.status === 'cancelled' ? 'read_only' : 'full' }));
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toMatchObject({ id: 'free', lifecycle_access: 'full' });
+    expect(authorizeRead).toHaveBeenCalledOnce();
+  });
+  it('keeps an unexpired paid cancellation ahead of free access under its existing date policy', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, status: 'cancelled', plan_amount: 499 },
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    expect((await resolve())?.id).toBe(personal.id);
   });
   it('preserves a retired paid plan despite old onboarding selection metadata', async () => {
     tables.users[0].metadata.subscription_selection_required = true;

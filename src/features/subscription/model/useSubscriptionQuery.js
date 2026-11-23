@@ -41,6 +41,7 @@ export const formatSubscriptionData = (data) => {
     productId: data.product_id,
     revisionId: data.plan_revision_id ?? null,
     lifecycleState: data.lifecycle_state ?? null,
+    lifecycleAccess: data.lifecycle_access ?? null,
     isOrganizationSubscription: data.is_organization_subscription === true,
     id: data.id, // Subscription ID for cancellation
     plan: planId,
@@ -85,7 +86,7 @@ export const formatSubscriptionData = (data) => {
  * Compute access state from subscription data
  * Determines whether the user has platform access, why, and any warnings.
  */
-const computeAccessState = (sub) => {
+export const computeAccessState = (sub) => {
   if (!sub) {
     return {
       hasAccess: false,
@@ -100,6 +101,18 @@ const computeAccessState = (sub) => {
   const status = sub.status;
   const now = Date.now();
   const end = sub.endDate ? Date.parse(sub.endDate) : null;
+  if (sub.lifecycleAccess !== null && sub.lifecycleAccess !== undefined) {
+    const hasAccess = ['full', 'restricted', 'read_only'].includes(sub.lifecycleAccess)
+      && (!sub.startDate || Date.parse(sub.startDate) <= now)
+      && (!sub.licenseAssignmentId || end === null || end > now);
+    const limited = hasAccess && sub.lifecycleAccess !== 'full';
+    return { hasAccess, accessReason: hasAccess ? sub.lifecycleAccess : 'no_subscription',
+      showWarning: limited, warningType: limited ? sub.lifecycleAccess : null,
+      warningMessage: !limited ? null : sub.lifecycleAccess === 'read_only'
+        ? `${sub.status === 'cancelled' ? 'Your subscription is cancelled. ' : ''}You have read-only subscription access. New subscription activities are unavailable.`
+        : 'Your subscription access is restricted. Some subscription activities are unavailable.',
+      daysUntilExpiry: null };
+  }
   if ((sub.startDate && !(Date.parse(sub.startDate) <= now)) ||
       (end !== null && !(end + (status === 'grace_period' ? 7 * 86400000 : 0) > now))) {
     return { hasAccess: false, accessReason: 'expired', showWarning: false, daysUntilExpiry: 0 };
@@ -188,7 +201,6 @@ const fetchSubscription = async (userId, scope) => {
 
 /**
  * Main hook for subscription data with React Query
- * @returns {Object} Subscription query result
  */
 export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
@@ -278,15 +290,7 @@ export const useSubscriptionQuery = (options = {}) => {
   );
 
   // Check if subscription has valid access (active, paused, or cancelled but not expired)
-  const hasValidSubscriptionAccess = useMemo(() => {
-    if (!query.data) return false;
-    const status = query.data.status;
-    if (status === 'active' || status === 'paused') return true;
-    if (status === 'cancelled' && query.data.endDate) {
-      return new Date(query.data.endDate) >= new Date();
-    }
-    return false;
-  }, [query.data]);
+  const hasValidSubscriptionAccess = accessState.hasAccess;
 
   const hasActiveOrPausedSubscription = useMemo(
     () => query.data && isActiveOrPaused(query.data.status),

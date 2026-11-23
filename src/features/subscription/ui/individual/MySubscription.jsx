@@ -144,6 +144,10 @@ function MySubscription() {
   const [showRetentionOffer, setShowRetentionOffer] = useState(false);
   const autoRenewEnabled = subscriptionData?.autoRenew === true;
   const renewalKnown = typeof subscriptionData?.autoRenew === 'boolean';
+  const isCancelled = subscriptionData?.status === 'cancelled';
+  const ownerAccess = modern && owner.status === 'ready' ? owner.current?.access : null;
+  const dashboardAvailable = modern ? ['full', 'restricted', 'read_only'].includes(ownerAccess) : management.hasAccess;
+  const renewalNotApplicable = subscriptionData?.billingCycle === 'free' || (modern && owner.status === 'ready' && owner.current?.state.validity === 'perpetual');
   const legacyActionsReady = !modern && owner.status === 'ready';
   const [billingHistory, setBillingHistory] = useState([]);
   const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
@@ -829,8 +833,14 @@ function MySubscription() {
           <SubscriptionDashboard subscriptionData={subscriptionData} />
         ) : (
           <>
+            {isCancelled && <div role="status" className="mb-8 p-6 rounded-3xl border-2 border-amber-200 bg-amber-50 text-amber-900">
+              <h3 className="text-xl font-semibold mb-2">Subscription cancelled</h3>
+              <p>{ownerAccess === 'read_only' ? 'You can view your existing information with read-only subscription access.'
+                : ownerAccess === 'suspended' ? 'Dashboard access is unavailable for this cancelled subscription.'
+                  : 'Review your subscription access before continuing.'} Contact support to review restoration options.</p>
+            </div>}
             {/* Alert Banner - Editorial Luxury Style */}
-            {(isExpiringSoon || isExpired || isPaused) && (
+            {!isCancelled && (isExpiringSoon || isExpired || isPaused) && (
               <div className={`mb-8 p-6 rounded-3xl border-2 flex items-start gap-4 shadow-lg ${isExpired
                 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
                 : isPaused
@@ -1100,10 +1110,10 @@ function MySubscription() {
                               }`}>
                               <Circle className={`w-1.5 h-1.5 ${autoRenewEnabled ? 'fill-white animate-pulse' : 'fill-slate-600'
                                 }`} />
-                              {!renewalKnown ? 'Not available' : autoRenewEnabled ? 'Enabled' : 'Disabled'}
+                              {renewalNotApplicable ? 'Not applicable' : !renewalKnown ? 'Not available' : autoRenewEnabled ? 'Enabled' : 'Disabled'}
                             </span>
                             <span className="text-xs text-slate-600 font-medium">
-                              {!renewalKnown ? 'Contact support for renewal details' : autoRenewEnabled ? 'Subscription renews automatically' : 'Manual renewal required'}
+                              {renewalNotApplicable ? 'No recurring billing for this plan' : isCancelled ? 'Cancelled subscriptions do not renew' : !renewalKnown ? 'Contact support for renewal details' : autoRenewEnabled ? 'Subscription renews automatically' : 'Manual renewal required'}
                             </span>
                           </div>
                           <span className="text-xs text-slate-500">{renewalKnown ? 'Saved setting' : 'Unavailable'}</span>
@@ -1199,19 +1209,19 @@ function MySubscription() {
                   <div className="p-4 space-y-3">
                     {!modern && <p className="px-1 text-sm text-slate-600">Your existing purchase keeps its original terms. For renewal or a plan change, contact support using the actions below.</p>}
                     {/* Go to Dashboard - Primary CTA */}
-                    <button
+                    {dashboardAvailable && <button
                       type="button"
                       onClick={() => navigate(getDashboardUrl())}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
                       <span className="flex items-center gap-2">
                         <LayoutDashboard className="w-4 h-4" />
-                        Go to Dashboard
+                        {ownerAccess === 'read_only' ? 'View read-only dashboard' : 'Go to Dashboard'}
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
-                    <button
+                    {!isCancelled && <button
                       type="button"
                       onClick={handleUpgradePlan}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl text-sm font-semibold hover:from-amber-600 hover:to-amber-700 transition-all group shadow-lg hover:shadow-xl hover:scale-105"
@@ -1221,9 +1231,9 @@ function MySubscription() {
                         Upgrade Plan
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
-                    <button
+                    {!isCancelled && !renewalNotApplicable && <button
                       type="button"
                       onClick={handleRenewSubscription}
                       className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all group border border-slate-200"
@@ -1233,7 +1243,7 @@ function MySubscription() {
                         Renew Now
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
                     {legacyActionsReady && isPaused && (
                       <button

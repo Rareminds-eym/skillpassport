@@ -63,6 +63,7 @@ export function useCatalogPurchaseContext(catalog: Catalog, subject: Current['st
   return useRead(useCallback(async signal => {
     if (!kind || !subjectId) throw new Error('Your purchasing account is unavailable. Refresh your identity before purchasing.');
     const matches: Discovery['items'] = [];
+    const cancelled: Discovery['items'] = [];
     const seen = new Set<string>();
     let cursor: string | undefined;
     do {
@@ -71,19 +72,27 @@ export function useCatalogPurchaseContext(catalog: Catalog, subject: Current['st
       for (const row of page.items) {
         if (seen.has(row.id)) throw new Error('Subscription discovery repeated a record.');
         seen.add(row.id);
-        if (row.subject.kind === kind && row.subject.id === subjectId && row.status !== 'cancelled' && row.status !== 'expired') matches.push(row);
+        if (row.subject.kind === kind && row.subject.id === subjectId) {
+          if (row.status === 'cancelled') cancelled.push(row);
+          else if (row.status !== 'expired') matches.push(row);
+        }
       }
       if (page.nextCursor && page.nextCursor === cursor) throw new Error('Subscription discovery did not advance.');
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
     if (!selectedSubscriptionId && matches.length > 1) throw new Error('Multiple current subscriptions need review before another payment.');
+    // A cancelled contract is still an owned record with an access policy. It
+    // must not disappear and turn an unsupported renewal into a new purchase.
+    const candidates = matches.length ? matches : cancelled;
+    if (!selectedSubscriptionId && candidates.length > 1) throw new Error('Multiple cancelled subscriptions need review before another payment.');
     // A URL may select a record, but only the owner's subject-scoped discovery
     // can authorize it. Never turn a missing selection into another purchase.
-    const row = selectedSubscriptionId ? matches.find(item => item.id === selectedSubscriptionId) : matches[0];
+    const row = selectedSubscriptionId ? [...matches, ...cancelled].find(item => item.id === selectedSubscriptionId) : candidates[0];
     if (selectedSubscriptionId && !row) throw new Error('The selected subscription is no longer available for this account. Return to Manage Subscription and refresh.');
     if (!row) return { current: null, operations: [] as Discovery['items'][number]['lifecycleOperations'] };
     if (row.kind !== 'initialized') throw new Error('Your current subscription needs setup before it can be upgraded. Contact support before paying.');
-    return { current: await api.current(row, { actorId, productId }, signal), operations: row.lifecycleOperations };
+    const current = await api.current(row, { actorId, productId }, signal);
+    return { current, operations: current.state.status === 'cancelled' ? [] : row.lifecycleOperations };
   }, [actorId, productId, kind, subjectId, selectedSubscriptionId]));
 }
 export function useCreditUsage(current: Current, pool: Current['pools'][number], recipientId: string) {

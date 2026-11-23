@@ -66,7 +66,7 @@ export function useSubscriptionManagement() {
   const current = modern ? owner.data?.current : null;
   const subscriptionData = useMemo(() => current ? {
     ...selected, plan: current.plan.code, planId: current.plan.id, planName: current.plan.name,
-    status: current.state.status, autoRenew: current.state.renewalEnabled,
+    status: current.state.status, autoRenew: current.state.renewalEnabled, lifecycleAccess: current.access,
     startDate: new Date(current.state.periodStartsAt).toISOString(),
     endDate: current.subscriptionEndsAt === null ? null : new Date(current.subscriptionEndsAt).toISOString(),
     nextBillingDate: current.state.periodEndsAt === null ? null : new Date(current.state.periodEndsAt).toISOString(),

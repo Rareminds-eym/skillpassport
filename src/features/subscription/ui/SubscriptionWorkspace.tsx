@@ -68,6 +68,9 @@ function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType
     <p>Payment confirmed. Your plan is active.</p>
     {onPaymentConfirmed ? <p>Taking you to your dashboard…</p> : <a href="/subscription/manage">View my subscription</a>}
   </div>;
+  if (state.status !== 'pending') return <div className={styles.notice} role="alert">
+    <p>Your checkout details are incomplete. Check your subscription before starting another payment.</p>
+    <a href="/subscription/manage">Review subscription</a></div>;
   const progress = {
     sdk: 'Connecting to Razorpay…', quote: 'Confirming your plan price…', order: 'Creating your payment order…',
     checkout: 'Complete payment in the Razorpay window. Your plan activates after payment is verified.',
@@ -85,26 +88,38 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
   const { role } = useUserRole();
   const dashboardRoute = role ? ROLE_DASHBOARD_MAP[role] : undefined;
   const isCurrentPlan = current?.state.planId === plan.plan.id;
+  const isCancelled = current?.state.status === 'cancelled';
+  const canEnterDashboard = current && current.access !== 'suspended';
   const purpose = current ? isCurrentPlan ? 'renew' : 'upgrade' : 'purchase';
-  const permitted = !current || operations?.includes(purpose as 'renew' | 'upgrade');
+  const permitted = !isCancelled && (!current || operations?.includes(purpose as 'renew' | 'upgrade'));
   // The owner fixes the buyer subject per audience: individuals buy for themselves, institutions for their organization.
   const subject = current ? current.state.subject : catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
   return <div className={styles.purchase}>
-    {isCurrentPlan && !allowRenewal ? <section aria-label="Current plan access"><p className="font-semibold">Current plan</p>
+    {isCancelled && isCurrentPlan ? <section aria-label="Cancelled plan access">
+      <p className="font-semibold">Cancelled plan</p>
+      <p>{current.access === 'read_only' ? 'Your existing subscription information remains available in read-only mode.'
+        : current.access === 'suspended' ? 'Dashboard access is unavailable for this cancelled subscription.'
+          : 'Dashboard access follows the remaining terms of your cancelled subscription.'}</p>
+      {canEnterDashboard && dashboardRoute && <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">
+        {current.access === 'read_only' ? 'View read-only dashboard' : 'Go to dashboard'}</a>}
+      <a href="/subscription/manage" className="block mt-3 underline">Review cancelled subscription</a>
+    </section> : isCurrentPlan && !allowRenewal ? <section aria-label="Current plan access"><p className="font-semibold">Current plan</p>
       {plan.purchaseMode === 'free' && <p>Free access is activated automatically after email verification.</p>}
-      {plan.purchaseMode === 'free'
+      {plan.purchaseMode === 'free' && canEnterDashboard
         ? dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">Go to dashboard</a>
           : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>
         : <a href="/subscription/manage" className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-slate-100 text-slate-900">Manage subscription</a>}
     </section> : !subject ? <p>Your selected organization context is unavailable. Refresh your identity before purchasing.</p>
       : plan.purchaseMode === 'free' ? <section aria-label="Free plan access">
-        <p>Free access is activated automatically after email verification.</p>
-        {dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">Go to dashboard</a>
-          : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>}
+        <p>{current ? 'Your dashboard access follows your existing subscription.' : 'Free access is activated automatically after email verification. Review your subscription if access is unavailable.'}</p>
+        {!dashboardRoute ? <p>Your dashboard is unavailable. Refresh your identity to continue.</p>
+          : canEnterDashboard ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">
+          {current.access === 'read_only' ? 'View read-only dashboard' : 'Go to dashboard'}</a>
+          : <a href="/subscription/manage" className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">Review subscription access</a>}
       </section>
         : plan.purchaseMode === 'contact_sales' ? <p>Contact our team to arrange your plan.</p>
-          : !permitted ? <p>This change is unavailable for your configured role.</p>
+          : !permitted ? <p>{isCancelled ? 'Contact support to restore or change your cancelled subscription.' : 'This change is unavailable for your configured role.'}</p>
             : plan.prices.length === 0 ? <p>Purchasing is unavailable until the purchase owner provides executable terms.</p>
               : plan.prices.map(price => <div key={price.id}>
                 {price.quantityBasis === 'seat' ? <p>Seat quantity requires an owner agreement. Purchasing is unavailable until the purchase owner provides executable terms.</p>
@@ -139,7 +154,7 @@ function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, 
     <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} allowRenewal={catalogMode === 'renew'} />
   }</ReadPanel>;
   if (qaPresentation) return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><SubscriptionCatalog catalog={catalog} selectedRevisionId={selectedRevisionId}
-    currentPlanId={context.status === 'ready' ? context.data.current?.state.planId : undefined}
+    currentPlanId={context.status === 'ready' && context.data.current?.state.status !== 'cancelled' ? context.data.current?.state.planId : undefined}
     renderPrices={plan => <CatalogPrices plan={plan} catalog={catalog} />}
     renderPurchase={plan => <>{plan.purchaseMode === 'contact_sales' && <a className="flex items-center justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-black text-white hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl" href={ROUTES.CONTACT}>Talk to Sales</a>}{purchase(plan)}</>} /></>;
   return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><div className={styles.catalog}>{catalog.plans.map(plan => <article className={plan.revisionId === selectedRevisionId ? `${styles.plan} ${styles.selected}` : styles.plan} key={plan.revisionId}
@@ -274,6 +289,10 @@ function LifecycleForm({ current, operations, execution }: { current: Current; o
       ...(operation === 'downgrade' && timing ? { timing } : {})
     }, current);
   };
+  if (current.state.status === 'cancelled') return <section className={styles.actions}>
+    <h3>Cancelled subscription</h3><p>This subscription cannot be renewed or reactivated through these actions. Contact support to review your available options.</p>
+    <a href={ROUTES.CONTACT}>Contact Support</a>
+  </section>;
   return <section className={styles.actions}><h3>Request a subscription change</h3>
     <p>Available operations reflect your configured role permissions. State, payment and approval prerequisites are checked by the subscription owner when submitted.</p>
     {operations.length === 0 ? <p>No lifecycle operations are authorized for your role.</p> : <form onSubmit={submit}>
@@ -311,7 +330,7 @@ function CurrentSubscription({ row, context, execution }: { row: Discovery['item
     </section>
     </div><aside className={styles.managementSidebar} aria-label="Subscription management">
     <LifecycleForm key={current.state.id} current={current} operations={row.lifecycleOperations} execution={execution} />
-    {(row.lifecycleOperations.includes('renew') || row.lifecycleOperations.includes('upgrade')) && <PaidSubscriptionChange current={current} operations={row.lifecycleOperations} />}
+    {current.state.status !== 'cancelled' && (row.lifecycleOperations.includes('renew') || row.lifecycleOperations.includes('upgrade')) && <PaidSubscriptionChange current={current} operations={row.lifecycleOperations} />}
     <section className={styles.managementCard}><h3><HelpCircle size={18} aria-hidden="true" /> Need Help?</h3><p>Have questions about your subscription or billing?</p><a className={styles.managementLink} href={ROUTES.CONTACT}>Contact Support</a></section>
     </aside></div>
     <div className={styles.managementCard}><button aria-expanded={showActivity} onClick={() => setShowActivity(value => !value)}>{showActivity ? 'Hide subscription activity' : 'View subscription activity'}</button>
