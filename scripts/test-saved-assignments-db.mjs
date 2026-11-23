@@ -41,7 +41,7 @@ CREATE FUNCTION ai_worksheet_eligible_learners(p_user uuid) RETURNS TABLE(id uui
 `);
 
   sql(`CREATE FUNCTION ai_worksheet_educator_scope(p_user uuid) RETURNS TABLE(organization_id uuid) LANGUAGE sql AS $$ SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active' LIMIT 1 $$;`);
-  for(const file of ['20270219021100_course_content_index.sql','20270219021200_ai_saved_assignments.sql','20270219021500_ai_assignment_notifications.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  for(const file of ['20270318000002_course_content_index.sql','20270318000003_ai_saved_assignments.sql','20270318000006_ai_assignment_notifications.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
   sql(`DO $$
 DECLARE teacher uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); school uuid:=gen_random_uuid(); class_id uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); course uuid:=gen_random_uuid(); material uuid; recipient uuid; submission uuid:=gen_random_uuid(); result uuid; question uuid:=gen_random_uuid(); conv uuid:=gen_random_uuid(); msg uuid:=gen_random_uuid(); amount integer; deadline timestamptz:=now()+interval '1 day'; storage text;
 BEGIN
@@ -121,7 +121,7 @@ BEGIN
  END;
  IF (SELECT count(*) FROM notifications)<>baseline THEN RAISE EXCEPTION 'Rolled back notification persisted'; END IF;
 END $$;`);
-  sql(readFileSync(new URL('../supabase/migrations/20270219021400_auto_release_ai_assignment_results.sql',import.meta.url),'utf8'));
+  sql(readFileSync(new URL('../supabase/migrations/20270318000005_auto_release_ai_assignment_results.sql',import.meta.url),'utf8'));
   sql(`DO $$
 DECLARE allocation ai_assignment_learners; submission uuid:=gen_random_uuid(); result uuid; question uuid; claim timestamptz:=clock_timestamp(); baseline int; recipient_user uuid; path text; course uuid;
 BEGIN
