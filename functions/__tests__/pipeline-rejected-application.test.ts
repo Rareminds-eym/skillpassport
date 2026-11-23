@@ -5,6 +5,8 @@ type Application = { application_status: string; learner_id: string; opportunity
 const f = vi.hoisted(() => ({ candidate: { id: 'candidate', status: 'rejected', stage: 'screened', learner_id: 'learner', opportunity_id: 'job' } as Candidate, application: { application_status: 'rejected', learner_id: 'learner', opportunity_id: 'job' } as Application | null, rpc: vi.fn(), writes: vi.fn() }));
 vi.mock('../lib/auth', () => ({ withAuth: (fn: unknown) => fn, getContextUser: () => ({ id: 'recruiter' }) }));
 vi.mock('../lib/pipelineNotifications', () => ({ notifyLearnerOfPipelineChange: vi.fn() }));
+// This suite isolates rejection/reset and atomic RPC decisions. Lifecycle authority is exercised by the real adapter fixture.
+vi.mock('../shared/lib/subscription-access', () => ({ requireSubscriptionAccess: vi.fn(async () => ({ current: { access: 'full' } })) }));
 vi.mock('../lib/permissions', () => ({ verifyOrgAccess: async () => ({ allowed: true }), PERMISSIONS: { MANAGE_CANDIDATES: 'manage' } }));
 vi.mock('../lib/org-ownership', () => ({ getActiveOrgId: async () => 'org', getOrgOwnedOpportunityIds: async () => ['job'], getOrgMemberUserIds: async () => ['recruiter'] }));
 vi.mock('../lib/supabase', () => ({ getServiceClient: () => ({ rpc: f.rpc, from(table: string) {

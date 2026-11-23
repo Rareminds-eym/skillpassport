@@ -10,6 +10,7 @@ import {
   Search,
 } from 'lucide-react';
 import { apiGet } from '@/shared/api';
+import { opportunityFailure } from '../lib/accessFailure';
 import { useUser } from '@/shared/model';
 import { LearningEligibilityPanel } from './LearningEligibilityPanel';
 
@@ -57,7 +58,7 @@ export function LearningMatches({
   const [jobs, setJobs] = useState<LearningJob[]>([]),
     [total, setTotal] = useState(0),
     [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
+    [error, setError] = useState<ReturnType<typeof opportunityFailure> | null>(null),
     [revision, setRevision] = useState(0);
   const update = (patch: Record<string, string | null>, replace = false) =>
     setParamsRef.current(
@@ -95,7 +96,7 @@ export function LearningMatches({
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setError('');
+    setError(null);
     setJobs([]);
     setTotal(0);
     if (!user?.id) {
@@ -137,11 +138,7 @@ export function LearningMatches({
       })
       .catch((cause: unknown) => {
         if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : 'Learning matches could not be loaded. Please retry.',
-          );
+          setError(opportunityFailure(cause, 'Learning matches could not be loaded. Please retry.'));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -192,6 +189,7 @@ export function LearningMatches({
             <button
               key={value}
               type="button"
+              disabled={error?.retryable === false}
               aria-pressed={filter === value}
               onClick={() => update({ matchState: value, matchPage: null })}
               className={`min-h-8 rounded px-2.5 text-sm font-medium ${filter === value ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-600 hover:bg-white'}`}
@@ -207,6 +205,7 @@ export function LearningMatches({
             className="pointer-events-none absolute left-3 top-2.5 text-slate-400"
           />
           <input
+            disabled={error?.retryable === false}
             type="search"
             maxLength={100}
             value={search}
@@ -218,7 +217,7 @@ export function LearningMatches({
         <button
           type="button"
           onClick={() => setRevision((value) => value + 1)}
-          disabled={loading}
+          disabled={loading || error?.retryable === false}
           aria-label="Refresh learning matches"
           title="Refresh learning matches"
           className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
@@ -235,14 +234,14 @@ export function LearningMatches({
           role="alert"
           className="rounded-md border border-amber-200 bg-amber-50 p-3"
         >
-          <p className="text-sm leading-5 text-amber-900">{error}</p>
-          <button
+          <p className="text-sm leading-5 text-amber-900">{error.message}</p>
+          {error.action ? <Link to={error.action.to} className="mt-2 inline-block rounded px-2 py-2 text-sm font-medium text-blue-700">{error.action.label}</Link> : <button
             type="button"
             onClick={() => setRevision((value) => value + 1)}
             className="mt-2 min-h-8 rounded px-2 text-sm font-medium text-blue-700"
           >
             Retry learning matches
-          </button>
+          </button>}
         </div>
       ) : !jobs.length ? (
         <div className="rounded-md bg-slate-50 p-4">

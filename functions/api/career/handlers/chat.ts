@@ -92,11 +92,12 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     let existingConversation: { messages: unknown; updated_at: string } | null = null;
 
     if (conversationId) {
-      // SECURITY: Use SELECT FOR UPDATE to prevent race conditions
+      // The admin client bypasses RLS. Scope this read to the authenticated owner.
       const { data: conv, error: fetchError } = await supabase
         .from('career_ai_conversations')
         .select('messages, updated_at')
         .eq('id', conversationId)
+        .eq('learner_id', learnerId)
         .single();
 
       // Security: Explicit validation - if conversationId provided but not found, deny access
@@ -113,7 +114,8 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     const { data: userMsgCount, error: countError } = await supabase
       .rpc('count_career_ai_user_messages', { p_learner_id: learnerId });
 
-    if (!countError && userMsgCount >= 2) {
+    if (countError) return apiError(503, 'QUOTA_UNAVAILABLE', 'Unable to check your message allowance. Please try again.', request);
+    if (userMsgCount >= 2) {
       console.log(`[QUOTA] User ${learnerId} has reached message limit (${userMsgCount} user messages)`);
       return apiError(403, 'QUOTA_EXCEEDED', 'You have used your 2 free messages.', request);
     }
@@ -219,6 +221,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
 
       const attemptResponse = await fetch(API_CONFIG.OPENROUTER.endpoint, {
         method: 'POST',
+        signal: request.signal,
         headers: {
           ...API_CONFIG.OPENROUTER.headers,
           'Authorization': `Bearer ${openRouterKey}`,
@@ -256,51 +259,52 @@ export async function handleCareerChat(request: Request, env: Record<string, str
     let assistantMessage = '';
     let finalConversationId = conversationId;
 
+    let outputCancelled = false;
+    let providerReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     const stream = new ReadableStream({
       async start(controller) {
         try {
           const reader = response.body?.getReader();
           if (!reader) throw new Error('No response body');
+          providerReader = reader;
 
           let buffer = '';
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            buffer += chunk;
-
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmedLine = line.trim();
-              if (!trimmedLine.startsWith('data: ')) continue;
-
-              const data = trimmedLine.replace('data: ', '').trim();
-              if (data === '[DONE]') continue;
-
-              try {
-                const parsed = JSON.parse(data);
-                let content = parsed.choices?.[0]?.delta?.content;
-
-                if (!content && parsed.choices?.[0]?.message?.content) {
-                  content = parsed.choices[0].message.content;
-                }
-                if (!content && parsed.choices?.[0]?.text) {
-                  content = parsed.choices[0].text;
-                }
-
-                if (content) {
-                  assistantMessage += content;
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
-                }
-              } catch {
-                /* Skip invalid JSON */
-              }
+          let providerCompleted = false;
+          let terminalMarkerReceived = false;
+          const consumeProviderLine = (line: string) => {
+            const trimmed = line.trim();
+            if (terminalMarkerReceived || outputCancelled || !trimmed.startsWith('data: ')) return;
+            const data = trimmed.slice(6).trim();
+            if (data === '[DONE]') { providerCompleted = true; terminalMarkerReceived = true; return; }
+            const parsed = JSON.parse(data);
+            if (parsed.error) throw new Error('AI provider stream failed');
+            const choice = parsed.choices?.[0];
+            const content = choice?.delta?.content ?? choice?.message?.content ?? choice?.text;
+            if (typeof content === 'string') {
+              assistantMessage += content;
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
             }
+            if (choice?.finish_reason != null) providerCompleted = true;
+          };
+          try {
+            while (!terminalMarkerReceived && !outputCancelled) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+              for (const line of lines) consumeProviderLine(line);
+            }
+            buffer += decoder.decode();
+            if (!terminalMarkerReceived && buffer.trim()) consumeProviderLine(buffer);
+          } finally {
+            await reader.cancel().catch(() => undefined);
+            reader.releaseLock();
+            providerReader = undefined;
           }
+          if (outputCancelled) return;
+          if (request.signal.aborted) throw new Error('Request cancelled');
+          if (!providerCompleted || !assistantMessage.trim()) throw new Error('AI provider response was interrupted');
 
           // ==================== VALIDATE RESPONSE ====================
           const responseValidation = validateResponse(assistantMessage);
@@ -329,6 +333,7 @@ export async function handleCareerChat(request: Request, env: Record<string, str
               p_messages: newMessages
             });
 
+          if (outputCancelled) return;
           if (saveError) {
             console.error('[DB ERROR] RPC call failed:', saveError);
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({
@@ -371,10 +376,15 @@ export async function handleCareerChat(request: Request, env: Record<string, str
           controller.close();
 
         } catch (error) {
+          if (outputCancelled) return;
           console.error('[STREAM ERROR]', error);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream processing error' })}\n\n`));
           controller.close();
         }
+      },
+      async cancel(reason) {
+        outputCancelled = true;
+        await providerReader?.cancel(reason);
       }
     });
 

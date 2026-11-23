@@ -14,6 +14,8 @@ import { handleSalesEnquiryEmail } from '../api/email/handlers/sales-enquiry';
 describe('handleSalesEnquiryEmail', () => {
   const fakeEnv = {
     EMAIL_SERVICE: { sendEmail: vi.fn() },
+    SALES_ENQUIRY_EMAIL: 'sales-desk@example.invalid',
+    SALES_ENQUIRY_PHONE: '+91 00000 00000',
   } as any;
 
   beforeEach(() => {
@@ -89,8 +91,8 @@ describe('handleSalesEnquiryEmail', () => {
       educators: 75,
       requirements: 'Custom branding, SSO integration, dedicated account manager',
       planName: 'Hybrid',
-      salesEmail: 'marketing@rareminds.in',
-    }, fakeEnv);
+      salesEmail: 'attacker@example.invalid',
+    } as any, fakeEnv);
 
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -101,7 +103,8 @@ describe('handleSalesEnquiryEmail', () => {
     expect(mockSendEmail).toHaveBeenCalledTimes(1);
     const [envArg, emailPayload] = mockSendEmail.mock.calls[0];
     expect(envArg).toBe(fakeEnv);
-    expect(emailPayload.to).toBe('marketing@rareminds.in');
+    // The client-supplied recipient is ignored; only the server configuration routes the enquiry.
+    expect(emailPayload.to).toBe('sales-desk@example.invalid');
     expect(emailPayload.subject).toContain('Apex Institute of Technology');
     expect(emailPayload.html).toContain('Apex Institute of Technology');
     expect(emailPayload.html).toContain('director@apex.edu');
@@ -113,6 +116,14 @@ describe('handleSalesEnquiryEmail', () => {
     const [, confirmPayload] = mockSendEmailSafe.mock.calls[0];
     expect(confirmPayload.to).toBe('director@apex.edu');
     expect(confirmPayload.subject).toContain('Hybrid plan enquiry');
+    expect(confirmPayload.html).toContain('sales-desk@example.invalid');
+    expect(confirmPayload.text).toContain('+91 00000 00000');
+  });
+  it('fails closed without configured sales contact and never sends', async () => {
+    const res = await handleSalesEnquiryEmail({ institution: 'Apex', email: 'director@apex.edu', phone: '+91 98765 43210' },
+      { EMAIL_SERVICE: { sendEmail: vi.fn() } } as any);
+    expect(res.status).toBe(503);
+    expect(mockSendEmail).not.toHaveBeenCalled();
   });
 
   it('handles email-worker failure gracefully with 500 status', async () => {

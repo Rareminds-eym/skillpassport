@@ -343,8 +343,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
               logger.info('faculty_sessions_revoked', {
                 lecturerId: id,
                 userId: lecturer.user_id,
-                outcome: revokeResult.outcome,
-                sessionsRevoked: revokeResult.data?.sessionsRevoked || 0
+                outcome: revokeResult.kind,
+                sessionsRevoked: revokeResult.kind === 'succeeded' ? revokeResult.data.sessionsRevoked : 0
               });
             } catch (err) {
               logger.error('faculty_session_revoke_failed', err instanceof Error ? err : new Error(String(err)), {

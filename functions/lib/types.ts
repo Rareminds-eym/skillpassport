@@ -19,6 +19,13 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
+  /** Sales enquiry recipient and published phone (owner configuration; required for sales enquiries). */
+  SALES_ENQUIRY_EMAIL?: string;
+  SALES_ENQUIRY_PHONE?: string;
+  /** The adopted Hybrid catalog plan id (environment-specific canonical identity, like SKILLPASSPORT_PRODUCT_ID). */
+  HYBRID_PLAN_ID?: string;
+  /** Canonical SSO product scope for subscription administration. */
+  SKILLPASSPORT_PRODUCT_ID?: string;
   /** Existing platform context used to select code-owned integration profiles. */
   ENVIRONMENT?: string;
   ZOHO_CANDIDATE_SOURCE?: {
@@ -54,6 +61,8 @@ export interface PagesEnv {
   /** Existing database URL fallback; SUPABASE_URL takes precedence. */
   VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
+  /** Existing shared client's configuration alias, declared for its established use. */
+  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
   // Payment Worker configuration

@@ -186,6 +186,7 @@ export const publicRoutes = [
     <Route path="/signin/university" element={<GuestOnlyRoute><SignInUniversity /></GuestOnlyRoute>} />
     <Route path="/signup/university-admin" element={<GuestOnlyRoute><UniversityAdmin /></GuestOnlyRoute>} />
 
+    <Route path="/subscription/manage" element={<ProtectedRoute><SubscriptionManage /></ProtectedRoute>} />
     <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />

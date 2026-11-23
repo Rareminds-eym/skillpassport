@@ -13,6 +13,7 @@ import {
   apiMethodNotAllowed,
 } from "../../lib/response";
 import { sendEmail } from "../../lib/emailService";
+import { requireSubscriptionAccess, readRecruiterContactPermissions } from "../../shared/lib/subscription-access";
 
 const operation = z.object({
   action: z.enum(["assign", "reject", "email"]),
@@ -52,6 +53,12 @@ const handle = withAuth(async (context) => {
     } catch {
       return apiError(400, "VALIDATION_ERROR", "Invalid JSON", context.request);
     }
+    const access = await requireSubscriptionAccess({
+      env: context.env, request: context.request, actorId: user.id,
+      subject: { kind: "organization", id: scope.orgId },
+      mode: body?.action === "members" ? "read" : "write",
+    });
+    if (access instanceof Response) return access;
     if (body.action === "members") {
       const { data, error } = await db
         .from("users")
@@ -71,7 +78,7 @@ const handle = withAuth(async (context) => {
     const input = parsed.data;
     const { data: rows, error } = await db
       .from("pipeline_candidates")
-      .select("id,candidate_name,candidate_email")
+      .select("id,learner_id,candidate_name")
       .eq("organization_id", scope.orgId)
       .in("id", input.ids);
     if (error) return apiDbError(error, context.request);
@@ -115,19 +122,33 @@ const handle = withAuth(async (context) => {
         "Email sending is not configured. No messages were sent.",
         context.request,
       );
-    if (
-      rows.some(
-        (row) => !z.string().email().safeParse(row.candidate_email).success,
-      )
-    )
-      return apiError(
-        400,
-        "VALIDATION_ERROR",
-        "Every selected candidate needs a valid email address",
-        context.request,
-      );
+    // Pipeline learner references may use either learners.id or users.id.
+    // Resolve the canonical projection before checking purchased contact and
+    // use its current email rather than the pipeline's historical copy.
+    const references = z.array(z.string().uuid()).safeParse(rows.map(row => row.learner_id));
+    if (!references.success) return apiError(403, "FORBIDDEN", "Candidate contact identity is unavailable", context.request);
+    const ids = [...new Set(references.data)].join(",");
+    const { data: candidates, error: candidateError } = await db.from("zoho_recruiter_learners")
+      .select("id,user_id,email").or(`id.in.(${ids}),user_id.in.(${ids})`);
+    if (candidateError) return apiDbError(candidateError, context.request);
+    const parsedCandidates = z.array(z.object({ id: z.string().uuid(), user_id: z.string().uuid(), email: z.string().email().nullable() }).strict())
+      .safeParse(candidates);
+    if (!parsedCandidates.success) return apiError(503, "SERVICE_UNAVAILABLE", "Candidate contact authority is unavailable", context.request);
+    const contacts = new Map<string, string>();
+    const permissions = await readRecruiterContactPermissions({ env: context.env, request: context.request, actorId: user.id,
+      organizationId: scope.orgId, database: db }, parsedCandidates.data, "profile");
+    if (permissions instanceof Response) return permissions;
+    for (const row of rows) {
+      const matches = parsedCandidates.data.filter(candidate => candidate.id === row.learner_id || candidate.user_id === row.learner_id);
+      if (matches.length !== 1 || !matches[0].email || !permissions.get(matches[0].id)?.email) {
+        return apiError(403, "FORBIDDEN", "Every selected candidate must permit recruiter email contact with a purchased unlock", context.request);
+      }
+      contacts.set(row.id, matches[0].email);
+    }
     const results = [];
     for (const row of rows) {
+      const email = contacts.get(row.id);
+      if (!email) return apiError(503, "SERVICE_UNAVAILABLE", "Candidate contact confirmation is unavailable", context.request);
       const { data: claim, error: claimError } = await db
         .from("recruitment_email_submissions")
         .insert({
@@ -162,7 +183,7 @@ const handle = withAuth(async (context) => {
       try {
         const sent = await sendEmail(
           {
-            to: row.candidate_email,
+            to: email,
             subject: input.subject,
             text: input.message,
             html: `<div style="white-space:pre-wrap">${escapeHtml(input.message)}</div>`,

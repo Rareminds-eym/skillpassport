@@ -87,7 +87,7 @@ import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';

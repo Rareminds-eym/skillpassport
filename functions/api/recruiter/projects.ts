@@ -12,6 +12,7 @@ import {
   RecruitmentAccessError,
 } from "../../lib/recruitment-scope";
 import { getUserRecruitmentRoles, PERMISSIONS } from "../../lib/permissions";
+import { requireSubscriptionAccess, readRecruiterContactPermissions } from "../../shared/lib/subscription-access";
 const id = z.string().uuid();
 const optionalAmount = z
   .number()
@@ -91,6 +92,9 @@ const handle = withAuth(async (context) => {
             ? PERMISSIONS.MANAGE_CANDIDATES
             : PERMISSIONS.VIEW_CANDIDATES;
     const scope = await recruitmentScope(db, user, permission);
+    const access = await requireSubscriptionAccess({env:context.env,request:context.request,actorId:user.id,
+      subject:{kind:"organization",id:scope.orgId},mode:body.action==="list"||body.action==="detail"?"read":"write"});
+    if(access instanceof Response)return access;
     if (body.action === "list") {
       const { data, error } = await db
         .from("recruitment_projects")
@@ -193,7 +197,7 @@ const handle = withAuth(async (context) => {
       const [proposals, milestones] = await Promise.all([
         db
           .from("recruitment_project_proposals")
-          .select("*,learner:learners(id,name)")
+          .select("*")
           .eq("project_id", project.id)
           .order("created_at", { ascending: false }),
         db
@@ -204,10 +208,21 @@ const handle = withAuth(async (context) => {
       ]);
       if (proposals.error) throw proposals.error;
       if (milestones.error) throw milestones.error;
+      const references = z.array(z.object({learner_id:z.string().uuid()}).passthrough()).parse(proposals.data||[]).map(row=>row.learner_id);
+      const candidateResult = references.length ? await db.from('zoho_recruiter_learners').select('id,user_id,name').in('id',[...new Set(references)]) : {data:[],error:null};
+      if(candidateResult.error)throw candidateResult.error;
+      const candidates=z.array(z.object({id:z.string().uuid(),user_id:z.string().uuid(),name:z.string().nullable()}).strict()).parse(candidateResult.data);
+      if(candidates.some(candidate=>!references.includes(candidate.id)))throw new Error('Project candidate scope differs');
+      const visibility = await readRecruiterContactPermissions({env:context.env,request:context.request,actorId:user.id,
+        organizationId:scope.orgId,database:db},candidates,'profile');
+      if(visibility instanceof Response)return visibility;
       return apiSuccess(
         {
           project,
-          proposals: proposals.data || [],
+          proposals: (proposals.data || []).map(row=>{
+            const learner=candidates.find(candidate=>candidate.id===row.learner_id);
+            return {...row,learner:learner&&visibility.get(learner.id)?.visible?{id:learner.id,name:learner.name}:null};
+          }),
           milestones: milestones.data || [],
         },
         context.request,

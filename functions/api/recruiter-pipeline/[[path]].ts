@@ -2,8 +2,10 @@ import {verifyOrgAccess,PERMISSIONS} from '../../lib/permissions';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { PagesEnv } from '../../lib/types';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnerOfPipelineChange } from '../../lib/pipelineNotifications';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
 import {
   getActiveOrgId,
   getOrgMemberUserIds,
@@ -50,7 +52,16 @@ export const onRequest = async (context: any) => {
 async function handleAction(context: AuthenticatedContext, supabase: any, params: Record<string, any>): Promise<Response> {
   const { action } = params;
 
-  if(MUTATING_ACTIONS.has(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
+  const user = getContextUser(context);
+  const orgId = await getActiveOrgId(supabase, user);
+  if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
+  const mutating = MUTATING_ACTIONS.has(action);
+  const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request,
+    actorId: user.id, subject: { kind: 'organization', id: orgId }, mode: mutating ? 'write' : 'read' });
+  if (access instanceof Response) return access;
+  if (mutating && !(await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.MANAGE_CANDIDATES)).allowed) {
+    return apiError(403, 'FORBIDDEN', 'Candidate management permission is required', context.request);
+  }
   switch (action) {
 
     case 'get-requisitions': {

@@ -1,15 +1,14 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { ArrowUpRight, Check, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { useId, useState, type FormEvent } from 'react';
-import {
-  buildHybridSalesLink,
-  DEFAULT_SALES_EMAIL,
-  DEFAULT_SALES_PHONE,
-  type HybridCatalogPlan,
-} from '../../lib/hybridPlan';
+import { ROUTES } from '@/shared/config/constants';
+import type { Catalog } from '../../api/subscriptionExecutionService';
+
+/** A published sales-led plan carrying owner card copy (e.g. Hybrid). */
+export type HybridCatalogTerms = Catalog['plans'][number] & { presentation: { copy: NonNullable<Catalog['plans'][number]['presentation']['copy']> } };
 
 interface HybridPlanCardProps {
-  plan: HybridCatalogPlan;
+  plan: HybridCatalogTerms;
   organizationName?: string;
   contactEmail?: string;
   contactPhone?: string;
@@ -33,15 +32,8 @@ export default function HybridPlanCard({
   const id = useId();
   const [open, setOpen] = useState(false);
 
-  const effectiveSalesEmail =
-    plan.salesEmail && plan.salesEmail.trim() && plan.salesEmail.trim() !== 'sales@skillpassport.in'
-      ? plan.salesEmail.trim()
-      : DEFAULT_SALES_EMAIL;
-
-  const effectiveSalesPhone =
-    plan.salesPhone && plan.salesPhone.trim()
-      ? plan.salesPhone.trim()
-      : DEFAULT_SALES_PHONE;
+  // Card copy is the owner's published configuration; sales routing is server-side only.
+  const copy = plan.presentation.copy;
   const [enquiry, setEnquiry] = useState({
     institution: '',
     email: '',
@@ -86,9 +78,8 @@ export default function HybridPlanCard({
           learners: enquiry.learners ? Number(enquiry.learners) : undefined,
           educators: enquiry.educators ? Number(enquiry.educators) : undefined,
           requirements: enquiry.requirements.trim(),
-          planName: plan.display_name || plan.name,
-          planCode: plan.plan_code || 'hybrid',
-          salesEmail: effectiveSalesEmail,
+          planName: plan.name,
+          revisionId: plan.revisionId,
         }),
       });
 
@@ -99,7 +90,7 @@ export default function HybridPlanCard({
 
       setSubmitted(true);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to send enquiry. Please try again or email us directly.');
+      setErrorMessage(err.message || 'Failed to send enquiry. Please try again or use our contact page.');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,19 +109,19 @@ export default function HybridPlanCard({
           className="p-4 rounded-xl border-2 border-gray-200 text-left transition-all hover:border-gray-300 hover:bg-gray-50 h-full flex flex-col"
         >
           <div className="flex items-start justify-between mb-3">
-            <h4 className="font-semibold text-gray-900">{plan.display_name || plan.name}</h4>
+            <h4 className="font-semibold text-gray-900">{plan.name}</h4>
           </div>
           <div className="mb-3">
             <span className="text-2xl font-bold text-gray-900">
-              {plan.priceLabel || 'Custom'}
+              {copy.priceText}
             </span>
             <span className="text-sm text-gray-500">/custom</span>
           </div>
-          {plan.description && (
-            <p className="text-sm text-gray-500 mb-3">{plan.description}</p>
+          {copy.description && (
+            <p className="text-sm text-gray-500 mb-3">{copy.description}</p>
           )}
           <ul className="space-y-1">
-            {(plan.salesHighlights || []).slice(0, 3).map((h) => (
+            {copy.highlights.slice(0, 3).map((h) => (
               <li key={h} className="flex items-center gap-2 text-sm text-gray-600">
                 <Check className="w-3.5 h-3.5 text-green-500" />
                 {h}
@@ -150,13 +141,13 @@ export default function HybridPlanCard({
       <div
         className="relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 border-slate-200 hover:border-slate-300"
         role="region"
-        aria-label={`${plan.display_name || plan.name} plan`}
+        aria-label={`${plan.name} plan`}
       >
         {/* Badge — matches PlanCard badge at line 523-528 */}
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl flex items-center gap-1.5 whitespace-nowrap capitalize">
             <SlidersHorizontal className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
-            {(plan.positioning && plan.positioning.length <= 25 ? plan.positioning : null) || 'Built Around You'}
+            {copy.positioning}
           </span>
         </div>
 
@@ -169,12 +160,12 @@ export default function HybridPlanCard({
               className="text-3xl font-semibold text-slate-900 mb-2"
               style={{ fontFamily: SF }}
             >
-              {plan.display_name || plan.name}
+              {plan.name}
             </h3>
 
             {/* Subtitle — matches lines 544-552 pattern */}
             <p className="text-sm text-slate-500 font-normal mb-2">
-              {plan.tagline || 'Custom plan for your institution'}
+              {copy.tagline}
             </p>
 
             {/* Price — matches line 564-567 (isContactSales branch: text-3xl font-semibold) */}
@@ -183,14 +174,14 @@ export default function HybridPlanCard({
                 className="text-3xl font-semibold text-slate-900"
                 style={{ fontFamily: SF }}
               >
-                {plan.priceLabel || 'Contact Sales'}
+                {copy.priceText}
               </span>
             </div>
 
-            {/* Description — matches line 595-597 (plan.positioning) */}
-            {plan.description && (
+            {/* Description */}
+            {copy.description && (
               <p className="mt-4 text-sm text-slate-500 font-normal leading-relaxed">
-                {plan.description}
+                {copy.description}
               </p>
             )}
           </div>
@@ -201,7 +192,7 @@ export default function HybridPlanCard({
               What's Included
             </h4>
             <div className="space-y-1">
-              {(plan.salesHighlights || []).map((highlight, idx) => (
+              {copy.highlights.map((highlight, idx) => (
                 <div key={idx} className="flex items-start gap-3 py-2 group">
                   <div className="flex-shrink-0 w-5 h-5 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center mt-0.5 shadow-lg group-hover:scale-110 transition-transform">
                     <Check className="h-3 w-3 text-white" strokeWidth={3} />
@@ -238,7 +229,7 @@ export default function HybridPlanCard({
         <Dialog.Overlay className="fixed inset-0 z-50 bg-slate-950/60" />
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
           <Dialog.Title className="pr-8 text-xl font-semibold text-slate-900">
-            Let's build your {plan.display_name || plan.name} plan
+            Let's build your {plan.name} plan
           </Dialog.Title>
           <Dialog.Description className="mt-2 text-sm leading-relaxed text-slate-600">
             {submitted
@@ -264,7 +255,7 @@ export default function HybridPlanCard({
                 <h4 className="text-lg font-bold text-slate-900">Enquiry Sent Successfully!</h4>
                 <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
                   Thank you! We've received your requirements for the{' '}
-                  <span className="font-semibold text-slate-900">{plan.display_name || plan.name}</span> plan.
+                  <span className="font-semibold text-slate-900">{plan.name}</span> plan.
                   Our enterprise team will review your proposal and reach out to{' '}
                   <span className="font-semibold text-slate-900">{enquiry.email}</span> within 1 business day.
                 </p>
@@ -295,14 +286,8 @@ export default function HybridPlanCard({
               </div>
 
               <p className="text-xs text-slate-500">
-                A confirmation has been sent to your email. You can also reach our team directly at{' '}
-                <a className="font-semibold text-teal-700 underline" href={`mailto:${effectiveSalesEmail}`}>
-                  {effectiveSalesEmail}
-                </a>{' '}
-                or{' '}
-                <a className="font-semibold text-teal-700 underline" href={`tel:${effectiveSalesPhone.replace(/\s+/g, '')}`}>
-                  {effectiveSalesPhone}
-                </a>.
+                A confirmation has been sent to your email. You can also reach our team through the{' '}
+                <a className="font-semibold text-teal-700 underline" href={ROUTES.CONTACT}>contact page</a>.
               </p>
 
               <button
@@ -417,30 +402,8 @@ export default function HybridPlanCard({
 
               <div className="pt-2 border-t border-slate-100 leading-relaxed text-slate-500 space-y-1">
                 <p className="text-[14px]">
-                  Prefer direct contact? Email{' '}
-                  <a
-                    className="font-semibold text-teal-700 underline"
-                    href={`mailto:${effectiveSalesEmail}`}
-                  >
-                    {effectiveSalesEmail}
-                  </a>{' '}
-                  or call{' '}
-                  <a
-                    className="font-semibold text-teal-700 underline"
-                    href={`tel:${effectiveSalesPhone.replace(/\s+/g, '')}`}
-                  >
-                    {effectiveSalesPhone}
-                  </a>.
-                </p>
-                <p className="text-[14px]">
-                  Prefer using your email app?{' '}
-                  <a
-                    className="font-medium text-teal-700 underline"
-                    href={buildHybridSalesLink(enquiry, { ...plan, salesEmail: effectiveSalesEmail, salesPhone: effectiveSalesPhone })}
-                  >
-                    Open email draft
-                  </a>
-                  . Opening a draft does not submit a request.
+                  Prefer direct contact? Visit our{' '}
+                  <a className="font-semibold text-teal-700 underline" href={ROUTES.CONTACT}>contact page</a>.
                 </p>
               </div>
             </form>

@@ -8,6 +8,7 @@
 import { getServiceClient } from '../../../lib/supabase';
 import type {AuthenticatedPagesContext} from '../../../lib/types';
 import {readAttemptStart,createOwnedAttempt,startJson} from '../../../lib/assessment-start';
+import {requireSubscriptionAccess} from '../../../shared/lib/subscription-access';
 import type { StartAssessmentResult } from '../types';
 import { validateLearnerData, validateAttemptData } from '../utils/validation';
 import { dbAttemptToAssessmentAttempt } from '../utils/converters';
@@ -68,6 +69,9 @@ export async function startHandler(context: AuthenticatedPagesContext) {
   try {
     const body=await readAttemptStart(context.request);
     if(body instanceof Response)return body;
+    const access=await requireSubscriptionAccess({env:context.env,request:context.request,actorId:user.sub,
+      subject:{kind:'user',id:user.sub},mode:'write'});
+    if(access instanceof Response)return access;
     const {streamId}=body;
     const { data: learnerData, error: learnerError } = await supabase
       .from('learners')

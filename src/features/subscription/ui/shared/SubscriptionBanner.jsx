@@ -63,6 +63,14 @@ const bannerStyles = {
     icon: PauseCircleIcon,
     iconColor: 'text-blue-500',
   },
+  read_only: {
+    bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800',
+    icon: ExclamationCircleIcon, iconColor: 'text-amber-600',
+  },
+  restricted: {
+    bg: 'bg-amber-50 border-amber-200', text: 'text-amber-800',
+    icon: ExclamationTriangleIcon, iconColor: 'text-amber-600',
+  },
   error: {
     bg: 'bg-gray-50 border-gray-200',
     text: 'text-gray-800',
@@ -90,7 +98,7 @@ const SubscriptionBanner = ({
   const showRenew = showRenewLink && (type === WARNING_TYPES.EXPIRING_SOON || type === WARNING_TYPES.GRACE_PERIOD);
 
   return (
-    <div className={`${style.bg} border-b px-4 py-3`}>
+    <div role="status" className={`${style.bg} border-b px-4 py-3`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Icon className={`h-5 w-5 ${style.iconColor} flex-shrink-0`} />
@@ -117,6 +125,10 @@ const SubscriptionBanner = ({
               Resume Subscription →
             </Link>
           )}
+          {(type === 'read_only' || type === 'restricted') && <Link to="/subscription/manage"
+            className="text-sm font-semibold text-indigo-700 hover:text-indigo-600 whitespace-nowrap underline focus-visible:outline focus-visible:outline-2">
+            Manage subscription
+          </Link>}
           
           {dismissible && (
             <button

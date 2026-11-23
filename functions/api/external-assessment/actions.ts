@@ -4,6 +4,8 @@ import { createLogger } from '../../lib/logger';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { ADMIN_ROLES } from '../../lib/roleCategories';
 import { getServiceClient } from '../../lib/supabase';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
+import type { PagesEnv } from '../../lib/types';
 
 const logger = createLogger('external-assessment-actions');
 
@@ -43,6 +45,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
   const { action, ...params } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action', context.request, { startTime });
+
+  const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request, actorId: user.id,
+    subject: { kind: 'user', id: user.id }, mode: action === 'check-status' ? 'read' : 'write' });
+  if (access instanceof Response) return access;
 
   try {
     switch (action) {

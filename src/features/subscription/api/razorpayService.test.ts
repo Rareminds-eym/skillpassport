@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({ createOrder: vi.fn(), verifyPayment: vi.fn() }));
 vi.mock('./paymentsApiService', () => ({ default: api }));
-import { initiateRazorpayPayment } from './razorpayService';
+vi.mock('@/shared/api/httpClient', () => ({ DEFAULT_TIMEOUT: 30000 }));
+import { initiateRazorpayPayment, payIssuedSubscriptionOrder as payIssued, loadRazorpayScript, prepareSubscriptionCheckout } from './razorpayService';
+import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
+const payIssuedSubscriptionOrder = (order: Parameters<typeof payIssued>[0], description: string, signal?: AbortSignal) =>
+  payIssued(order, description, signal, Date.now() + DEFAULT_TIMEOUT);
 
 const plan = { id: 'plan_mock', name: 'Mock plan', price: 4999, duration: 'yearly' };
 const proof = { razorpay_order_id: 'order_mock', razorpay_payment_id: 'pay_mock', razorpay_signature: 'synthetic-proof' };
@@ -33,7 +37,7 @@ beforeEach(() => {
   });
   vi.stubGlobal('Razorpay', constructor);
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe('checkout lifecycle', () => {
   it('keeps failed attempts inside the same checkout until dismissal', async () => {
@@ -165,4 +169,85 @@ it('does not redispatch when the recovery consumer throws', async () => {
   const c = callbacks(); c.onVerificationRequired.mockImplementation(() => { throw new Error('consumer failed'); });
   await start(c); await expect(options.handler(proof)).rejects.toThrow('consumer failed');
   expect(c.onVerificationRequired).toHaveBeenCalledOnce(); expect(c.onSuccess).not.toHaveBeenCalled(); expect(c.onFailure).not.toHaveBeenCalled();
+});
+
+describe('bounded primary SDK loading', () => {
+  it('rejects the popup-blocking integrated browser before requesting checkout or a payment order', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 Code/1.0 Chrome/150 Electron/43');
+    await expect(prepareSubscriptionCheckout()).rejects.toThrow('requires a full browser');
+    expect(api.createOrder).not.toHaveBeenCalled(); expect(open).not.toHaveBeenCalled();
+  });
+  it('shares one script request and times out without accepting a late load as checkout success', async () => {
+    vi.useFakeTimers(); vi.stubGlobal('Razorpay', undefined);
+    const first = loadRazorpayScript(); const second = loadRazorpayScript();
+    expect(second).toBe(first);
+    const script = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]')!;
+    expect(script).not.toBeNull();
+    const expectation = expect(first).rejects.toThrow('could not load in time');
+    await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT); await expectation;
+    expect(script.isConnected).toBe(false); expect(script.onload).toBeNull();
+    expect(api.createOrder).not.toHaveBeenCalled(); expect(open).not.toHaveBeenCalled();
+    // An explicit later attempt uses the same primary URL and a fresh request.
+    const retry = loadRazorpayScript(); const next = document.querySelector<HTMLScriptElement>('script[src="https://checkout.razorpay.com/v1/checkout.js"]')!;
+    expect(next).not.toBe(script); vi.stubGlobal('Razorpay', constructor);
+    next.dispatchEvent(new Event('load')); await expect(retry).resolves.toBe(true); next.remove();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it.each([undefined, { invalid: true }])('rejects a script without an SDK constructor (%j)', async value => {
+    vi.stubGlobal('Razorpay', value); const pending = prepareSubscriptionCheckout();
+    const check = expect(pending).rejects.toThrow('could not load');
+    document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')!.dispatchEvent(new Event('load'));
+    await check; expect(api.createOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('canonical preissued order checkout', () => {
+  const issued = { id: 'order_mock', key_id: 'rzp_test_mock', amount: 501, currency: 'USD' };
+  it('closes checkout at the owner quote deadline and ignores late proof', async () => {
+    vi.useFakeTimers(); const deadline = Date.now() + DEFAULT_TIMEOUT;
+    const pending = payIssued(issued, 'Synthetic', undefined, deadline);
+    const check = expect(pending).rejects.toThrow('expired');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(open).toHaveBeenCalledOnce(); expect(options).toMatchObject({ timeout: DEFAULT_TIMEOUT / 1000 });
+    await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT); await check;
+    await options.handler(proof); expect(close).toHaveBeenCalledOnce(); expect(vi.getTimerCount()).toBe(0);
+    expect(api.createOrder).not.toHaveBeenCalled(); expect(api.verifyPayment).not.toHaveBeenCalled();
+  });
+  it('does not open an expired quote', async () => {
+    await expect(payIssued(issued, 'Synthetic', undefined, Date.now())).rejects.toThrow('expired');
+    expect(constructor).not.toHaveBeenCalled();
+  });
+  it('opens the exact owner order and allows a failed attempt then success without legacy POSTs', async () => {
+    const pending = payIssuedSubscriptionOrder(issued, 'Synthetic owner order');
+    await vi.waitFor(() => expect(constructor).toHaveBeenCalledOnce()); failed(failure());
+    await options.handler(proof); await expect(pending).resolves.toEqual(proof);
+    expect(options).toMatchObject({ key: issued.key_id, amount: issued.amount, currency: issued.currency, order_id: issued.id });
+    expect(api.createOrder).not.toHaveBeenCalled(); expect(api.verifyPayment).not.toHaveBeenCalled();
+    options.modal.ondismiss(); await options.handler(proof); expect(close).toHaveBeenCalledOnce();
+  });
+  it('rejects dismissal without claiming payment success', async () => {
+    const pending = payIssuedSubscriptionOrder(issued, 'Synthetic');
+    const check = expect(pending).rejects.toThrow('dismissed'); await vi.waitFor(() => expect(constructor).toHaveBeenCalledOnce()); options.modal.ondismiss(); await check;
+  });
+  it('aborts checkout and ignores late SDK success', async () => {
+    const controller = new AbortController(); const pending = payIssuedSubscriptionOrder(issued, 'Synthetic', controller.signal);
+    const check = expect(pending).rejects.toThrow('aborted'); await vi.waitFor(() => expect(constructor).toHaveBeenCalledOnce()); controller.abort(); await options.handler(proof); await check;
+    expect(api.createOrder).not.toHaveBeenCalled(); expect(api.verifyPayment).not.toHaveBeenCalled();
+  });
+  it('aborts immediately while the shared SDK loader is pending and never opens after late load', async () => {
+    vi.stubGlobal('Razorpay', undefined);
+    let script!: HTMLScriptElement;
+    const append = vi.spyOn(document.body, 'appendChild').mockImplementation(node => { script = node as HTMLScriptElement; return node; });
+    const controller = new AbortController(); const pending = payIssuedSubscriptionOrder(issued, 'Synthetic', controller.signal);
+    const check = expect(pending).rejects.toThrow('aborted'); controller.abort(); await check;
+    script.dispatchEvent(new Event('load')); await Promise.resolve();
+    expect(constructor).not.toHaveBeenCalled(); expect(api.createOrder).not.toHaveBeenCalled(); append.mockRestore();
+  });
+  it.each([{ ...issued, id: 'invalid' }, { ...issued, key_id: '' }, { ...issued, key_id: 'invented' }, { ...issued, amount: 0 }, { ...issued, currency: '' }])('rejects invalid owner orders %j', async value => {
+    await expect(payIssuedSubscriptionOrder(value, 'Synthetic')).rejects.toThrow('invalid'); expect(constructor).not.toHaveBeenCalled();
+  });
+  it.each([{ ...proof, razorpay_order_id: 'order_other' }, { ...proof, razorpay_payment_id: 'invalid' }, { ...proof, razorpay_signature: '' }])('rejects mismatched or invalid proof %j', async value => {
+    const pending = payIssuedSubscriptionOrder(issued, 'Synthetic'); const check = expect(pending).rejects.toThrow('differs');
+    await vi.waitFor(() => expect(constructor).toHaveBeenCalledOnce()); await options.handler(value); await check;
+  });
 });

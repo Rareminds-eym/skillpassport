@@ -1,14 +1,18 @@
 import {withAuth,getContextUser} from '../../lib/auth';
 import {getServiceClient} from '../../lib/supabase';
 import {apiSuccess,apiError,apiDbError} from '../../lib/response';
-import {hasFeatureEntitlement} from '../../lib/entitlements';
+import {requireSubscriptionAccess} from '../../shared/lib/subscription-access';
 import {LearningError,readLearningSnapshot,evaluateLearning,requirementsSchema,learningEvaluationPolicy,readLearningEquivalents} from '../../lib/learning-eligibility';
 export const onRequestGet=withAuth(async context=>{
  const db=getServiceClient(context.env as any),user=getContextUser(context),url=new URL(context.request.url);
  const offset=Number(url.searchParams.get('offset')||0),state=url.searchParams.get('state')||'eligible',search=(url.searchParams.get('search')||'').trim();
  if(!Number.isInteger(offset)||offset<0||offset>100000||!['eligible','not_yet_eligible','all'].includes(state)||search.length>100)
   return apiError(400,'VALIDATION_ERROR','Invalid learning jobs filter.',context.request);
- if(!await hasFeatureEntitlement(db,user.id,'ai_job_matching'))return apiError(403,'FEATURE_ACCESS_DENIED','Your subscription does not include learning-based job matching.',context.request);
+ // Published opportunity_access enum values from the BRD runtime contract.
+ const access = await requireSubscriptionAccess({env: context.env, request: context.request, actorId: user.id,
+  subject: {kind: 'user', id: user.id}, mode: 'read', feature: {key: 'opportunity_access',
+   acceptedValues: ['matched_opportunities', 'priority_matching_and_advanced_alerts']}});
+ if(access instanceof Response)return access;
  const {data:learner,error:learnerError}=await db.from('learners').select('id').eq('user_id',user.id).maybeSingle();
  if(learnerError||!learner)return apiError(503,'LEARNING_UNAVAILABLE','Your learner profile could not be verified.',context.request);
  try{
