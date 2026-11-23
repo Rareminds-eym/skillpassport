@@ -196,6 +196,15 @@ Materials: [Accessible materials list]
 // ==================== 5E MODEL (SCIENCE) ====================
 
 function build5ELessonPlan(config: LessonPlanConfig, context: CourseContext): string {
+  // Allocate whole minutes with a one-minute floor, then distribute the remainder.
+  const weights = [0.15, 0.30, 0.25, 0.20, 0.10];
+  const times = weights.map(weight => Math.max(1, Math.floor(config.duration * weight)));
+  for (let left = config.duration - times.reduce((sum, n) => sum + n, 0); left > 0; left--) {
+    const index = weights.map((weight, i) => ({ i, deficit: config.duration * weight - times[i] }))
+      .sort((a, b) => b.deficit - a.deficit)[0].i;
+    times[index]++;
+  }
+
   const courseContextStr = formatCourseContextForPrompt(context);
   const lessonTitle = context.currentLesson?.title ?? context.courseTitle;
   
@@ -212,31 +221,38 @@ ${buildThinkingSection(config.templateType)}
 
 **CREATE THE 5E LESSON PLAN:**
 
+Use all five phase headings below in this order and keep their exact time allocations.
+Replace every placeholder with concrete, classroom-ready content grounded in the supplied evidence.
+Use one connected investigation: Explore must let learners investigate before Explain introduces the formal model.
+Include teacher prompts, expected learner responses and observable evidence of learning.
+Evaluate must include actual assessment questions and brief expected answers or success criteria.
+Keep activities feasible within the selected duration; label invented scenarios as proposed teaching activities.
+
 Title: [Inquiry-focused title]
 Duration: ${config.duration} minutes
 Learning Objectives: [Science concepts and inquiry skills]
 
-## ENGAGE (${Math.max(Math.round(config.duration * 0.15), 5)} min)
+## ENGAGE (${times[0]} min)
 - Phenomenon: [Surprising or intriguing event]
 - Driving Question: [Open-ended question to investigate]
 - Prior Knowledge: [What students already know]
 
-## EXPLORE (${Math.max(Math.round(config.duration * 0.30), 5)} min)
+## EXPLORE (${times[1]} min)
 - Investigation: [Hands-on activity or experiment]
 - Materials: [Equipment and supplies]
 - Student Role: [What students do - observe, measure, record]
 - Teacher Role: [Facilitate, ask probing questions]
 
-## EXPLAIN (${Math.max(Math.round(config.duration * 0.25), 5)} min)
+## EXPLAIN (${times[2]} min)
 - Student Explanations: [Students share findings]
 - Formalize Concepts: [Introduce scientific terminology]
 - Connect to Evidence: [Link to exploration data]
 
-## ELABORATE (${Math.max(Math.round(config.duration * 0.20), 5)} min)
+## ELABORATE (${times[3]} min)
 - New Context: [Apply concept to different situation]
 - Deepen Understanding: [More complex application]
 
-## EVALUATE (${Math.max(Math.round(config.duration * 0.10), 5)} min)
+## EVALUATE (${times[4]} min)
 - Formative: [Checks throughout each phase]
 - Summative: [Final assessment of understanding]
 
@@ -335,6 +351,8 @@ Respond with ONLY a structured outline that includes:
 5. Assessment approach
 6. Differentiation strategies
 
+${config.templateType === '5e' ? `For this 5E outline, use exactly ENGAGE, EXPLORE, EXPLAIN, ELABORATE, EVALUATE in that order. Preserve the phase timings and inquiry sequence from this required plan structure:\n${build5ELessonPlan(config, context)}` : ''}
+
 Keep it concise - this outline will guide the full lesson plan generation.
 `;
 }
@@ -386,6 +404,7 @@ export function buildLessonPlanPrompt(
   twoPass: boolean = false,
   outline?: string
 ): string {
+  const audience = config.gradeLevel ? `Teaching level: ${config.gradeLevel}. Adapt vocabulary, activities and expected prior knowledge to this audience.\n\n` : '';
   // Input validation
   if (config.duration < 15) {
     throw new Error('Lesson duration must be at least 15 minutes');
@@ -398,10 +417,10 @@ export function buildLessonPlanPrompt(
   if (twoPass) {
     if (outline) {
       // Second pass: generate full lesson plan from outline
-      return buildLessonPlanFromOutlinePrompt(config, context, outline);
+      return audience + buildLessonPlanFromOutlinePrompt(config, context, outline);
     } else {
       // First pass: generate outline
-      return buildLessonPlanOutlinePrompt(config, context);
+      return audience + buildLessonPlanOutlinePrompt(config, context);
     }
   }
 
@@ -418,5 +437,5 @@ export function buildLessonPlanPrompt(
     throw new Error(`Unknown lesson plan template type: ${config.templateType}`);
   }
   
-  return builder(config, context);
+  return audience + builder(config, context);
 }

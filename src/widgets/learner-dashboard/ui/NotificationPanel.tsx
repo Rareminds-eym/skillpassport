@@ -15,6 +15,7 @@ import {
 import {
   useNotifications,
   NotificationType,
+  assignmentNotificationTarget,
 } from '@/features/notifications';
 
 import { useNavigate } from "react-router-dom";
@@ -106,6 +107,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       markRead(notification.id);
     }
 
+    const target = assignmentNotificationTarget(notification, window.location.pathname);
+    if (target) {
+      navigate(target);
+      window.dispatchEvent(new Event('open-ai-assignments'));
+      onClose();
+      return;
+    }
     // Navigate based on type
     switch (notification.type) {
       case "new_message":
@@ -117,6 +125,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
       case "course_added":
       case "course_updated":
+      case "assignment_assigned":
+      case "assignment_submission_received":
+      case "assignment_evaluated":
       case "assignment_submitted":
       case "class_activity_pending":
       case "learner_achievement":
@@ -184,6 +195,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         ].includes(n.type);
       case "courses":
         return [
+          "assignment_assigned",
+          "assignment_submission_received",
+          "assignment_evaluated",
           "assignment_submitted",
           "class_activity_pending",
           "learner_achievement",
@@ -237,6 +251,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (filterKey === "courses") {
       return notifications.filter((n) =>
         [
+          "assignment_assigned",
+          "assignment_submission_received",
+          "assignment_evaluated",
           "assignment_submitted",
           "class_activity_pending",
           "learner_achievement",
@@ -282,6 +299,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
         return <BriefcaseIcon className={`${base} text-blue-500`} />;
       case "new_application":
         return <BellIcon className={`${base} text-indigo-500`} />;
+      case "assignment_assigned":
+      case "assignment_submission_received":
+      case "assignment_evaluated":
       case "assignment_submitted":
       case "class_activity_pending":
       case "learner_achievement":

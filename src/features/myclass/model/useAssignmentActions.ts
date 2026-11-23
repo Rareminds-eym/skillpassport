@@ -1,3 +1,4 @@
+import { submitLinkedMaterial } from '@/features/ai-tutor/api/materialService';
 import { useState, useCallback } from 'react';
 import { updateAssignmentStatus, submitAssignmentWithStagedFiles, getAssignmentWithFiles } from '@/features/educator-copilot';
 import { Assignment } from '@/features/myclass';
@@ -89,7 +90,7 @@ export const useAssignmentActions = ({
 
       setUploadProgress(10);
 
-      await submitAssignmentWithStagedFiles(
+      if (!await submitLinkedMaterial(assignment.learner_assignment_id, stagedFiles)) await submitAssignmentWithStagedFiles(
         assignment.learner_assignment_id,
         stagedFiles,
         learnerId,

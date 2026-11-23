@@ -11,7 +11,8 @@ import {
     UserGroupIcon,
     ShieldCheckIcon,
 } from '@heroicons/react/24/outline'
-import { useNotifications } from '@/features/notifications'
+import { useNotifications, assignmentNotificationTarget } from '@/features/notifications'
+import { useNavigate } from 'react-router-dom'
 
 // Mock notification type
 type NotificationType =
@@ -22,6 +23,7 @@ type NotificationType =
     | 'verification_approved'
     | 'verification_rejected'
     | 'assignment_submitted'
+    | 'assignment_allocation_complete'
     | 'class_activity_pending'
     | 'new_learner_enrolled'
     | 'attendance_reminder'
@@ -36,6 +38,7 @@ interface NotificationPanelProps {
 }
 
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, educatorEmail }) => {
+    const navigate = useNavigate()
     const [selectedFilter, setSelectedFilter] = React.useState<FilterKey>('all')
     const [showAll, setShowAll] = React.useState(false)
     const panelRef = useRef<HTMLDivElement>(null)
@@ -80,6 +83,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
             case 'curriculum_change_rejected':
             case 'verification_rejected':
                 return <ExclamationTriangleIcon className={`${base} text-red-500`} />
+            case 'assignment_allocation_complete':
             case 'assignment_submitted':
                 return <DocumentTextIcon className={`${base} text-green-500`} />
             case 'class_activity_pending':
@@ -117,7 +121,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
             case 'learners':
                 return ['learner_verification_required', 'new_learner_enrolled'].includes(n.type)
             case 'assignments':
-                return ['assignment_submitted', 'class_activity_pending'].includes(n.type)
+                return ['assignment_allocation_complete', 'assignment_submitted', 'class_activity_pending'].includes(n.type)
             case 'verifications':
                 return ['learner_verification_required', 'verification_approved', 'verification_rejected', 'verification_pending_review'].includes(n.type)
             default:
@@ -144,7 +148,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                 ).length
             case 'assignments':
                 return notifications.filter((n) =>
-                    ['assignment_submitted', 'class_activity_pending'].includes(n.type)
+                    ['assignment_allocation_complete', 'assignment_submitted', 'class_activity_pending'].includes(n.type)
                 ).length
             case 'verifications':
                 return notifications.filter((n) =>
@@ -287,6 +291,14 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                                             <p className={`text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words ${notification.type.startsWith('curriculum_change_') ? '' : 'line-clamp-2'}`}>
                                                 {notification.message}
                                             </p>
+                                            {assignmentNotificationTarget(notification, window.location.pathname) && <button type="button" className="mt-1 rounded py-1 text-xs font-medium text-blue-600 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => {
+                                                const target = assignmentNotificationTarget(notification, window.location.pathname)
+                                                if (!target) return
+                                                void markRead(notification.id)
+                                                navigate(target)
+                                                window.dispatchEvent(new Event('open-ai-assignments'))
+                                                onClose()
+                                            }}>Open assignment</button>}
 
                                             <CurriculumNotificationLink notification={notification} markRead={markRead} onClose={onClose} />
                                         {/* Footer */}

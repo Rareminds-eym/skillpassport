@@ -1,0 +1,74 @@
+import { formatAssessmentText } from '../model/formatAssessmentText';
+import PanelLoadingSkeleton from './PanelLoadingSkeleton';
+import { Bookmark, Check, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useUser } from '@/shared/model';
+import { materialAction } from '../api/materialService';
+
+export function AllocateSavedMaterial({ courseId, assignmentId, initiallyOpen = false, onClose, onAssigned }: { courseId: string; assignmentId: string; initiallyOpen?: boolean; onClose?: () => void; onAssigned?: () => void }) {
+  const user = useUser(), client = useQueryClient();
+  const [open, setOpen] = useState(initiallyOpen), [due, setDue] = useState(''), [selected, setSelected] = useState<string[]>([]), [reviewed, setReviewed] = useState(false);
+  useEffect(() => { if (initiallyOpen) setOpen(true); }, [initiallyOpen]);
+  const learners = useQuery({ queryKey: ['material-learners', user?.id, courseId, assignmentId], enabled: !!user?.id, queryFn: () => materialAction<{ learners: any[]; blockedCount: number; assignedCount?: number; existingDueAt?: string | null }>('allocation-learners', { courseId, assignmentId }), retry: false });
+  const rules = useQuery({ queryKey: ['material-rules', user?.id, assignmentId], enabled: open && !!user?.id, queryFn: () => materialAction('review-detail', { courseId, assignmentId }), retry: false });
+  const mutation = useMutation({ mutationFn: () => materialAction('allocate', { courseId, assignmentId, learnerIds: selected, dueAt: learners.data?.existingDueAt || new Date(due).toISOString(), reviewed }), retry: false,
+    onSuccess: async () => { setSelected([]); onAssigned?.(); await Promise.all([client.invalidateQueries({ queryKey: ['saved-deliveries', user?.id, courseId] }), client.invalidateQueries({ queryKey: ['material-learners', user?.id, courseId, assignmentId] })]); } });
+  if (learners.isSuccess && !learners.data.learners.length && !!learners.data.assignedCount) return <span role="status" className="ml-auto inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Assigned</span>;
+  if (!open && learners.isPending) return <PanelLoadingSkeleton label="Checking assignment"/>;
+  if (!open) return <button type="button" className="ml-auto inline-flex shrink-0 items-center justify-center rounded-full bg-blue-600 px-4 py-1.5 text-[11px] font-medium leading-4 text-white transition-colors duration-150 hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 motion-reduce:transition-none" onClick={() => setOpen(true)}>Assign to learners</button>;
+  return <section aria-label="Assign saved material" className="mt-1 min-w-0 w-full space-y-4 border-t border-slate-100 pt-4 font-sans text-xs leading-5 text-slate-600 [&_p]:my-0 [&_p]:text-xs [&_p]:leading-5">
+    <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-slate-900">Assign to learners</span><button type="button" onClick={() => { setOpen(false); onClose?.(); }} className="rounded px-2 py-1 text-[11px] text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 motion-reduce:transition-none">Cancel</button></div>
+    {learners.isLoading || rules.isLoading ? <PanelLoadingSkeleton label="Loading learners and grading rules" variant="form"/> : <>
+      <details className="group"><summary className="cursor-pointer rounded text-[11px] font-medium text-slate-500 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">Review questions & grading rules</summary><div className="mt-2 max-h-64 overflow-y-auto overscroll-contain rounded-lg bg-slate-50 px-3 [scrollbar-width:thin]">{rules.data?.content.questions.map((q:any)=>{const rule=rules.data.grading_rules.find((r:any)=>r.questionId===q.id);return <div key={q.id} className="my-3"><p className="font-medium text-slate-800">{q.position}. {formatAssessmentText(q.prompt)} ({q.maxMarks} marks)</p>{q.options.map((option:string,i:number)=><p key={i}>{String.fromCharCode(65+i)}) {formatAssessmentText(option)}</p>)}<p className="mt-1">Accepted answers: {formatAssessmentText(rule?.acceptedAnswers?.join('; '))||'Use the rubric'}</p><p>Rubric: {formatAssessmentText(rule?.rubric)}</p></div>;})}</div></details>
+      {learners.data?.learners.length===0 ? <div role="status" className="space-y-1 rounded-lg bg-slate-50 px-3 py-3"><p className="font-medium text-slate-800">{learners.data.assignedCount ? 'Already assigned' : 'No eligible learners yet'}</p><p>{learners.data.assignedCount && !learners.data.blockedCount ? 'All eligible learners already have this assignment.' : learners.data.blockedCount ? `${learners.data.blockedCount} learners need a class or active college section mapping before you can assign this material.` : 'Add a class or active college section mapping for your learners to assign this material.'}</p></div> : !!learners.data?.blockedCount && <p role="status" className="text-slate-500">{learners.data.blockedCount} learners excluded: class or section mapping needed.</p>}
+      {!!learners.data?.learners.length && <>
+        <div className="flex items-center justify-between gap-3"><span className="text-[11px] font-medium text-slate-500">Learners <span className="tabular-nums">({selected.length}/{learners.data.learners.length})</span></span><button type="button" className="rounded py-1 text-[11px] font-medium text-blue-700 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => setSelected(selected.length===learners.data.learners.length ? [] : learners.data.learners.map(l => l.id))}>{selected.length===learners.data.learners.length ? 'Clear selection' : 'Select all'}</button></div>
+        <div className="max-h-40 space-y-1 overflow-y-auto overscroll-contain [scrollbar-width:thin]">{learners.data.learners.map(l => <label key={l.id} className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-2 transition-colors hover:bg-slate-50 motion-reduce:transition-none"><input type="checkbox" className="h-3.5 w-3.5 shrink-0 accent-blue-600" checked={selected.includes(l.id)} onChange={e => setSelected(old => e.target.checked ? [...old,l.id] : old.filter(id => id!==l.id))} /><span className="min-w-0 break-words">{l.name}</span></label>)}</div>
+      </>}
+      <label className="block text-[11px] font-medium text-slate-500">Deadline<input aria-label="Assignment deadline" disabled={!learners.data?.learners.length || !!learners.data?.existingDueAt} type="datetime-local" value={learners.data?.existingDueAt ? (() => { const date = new Date(learners.data.existingDueAt); return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0,16); })() : due} onChange={e => setDue(e.target.value)} className="mt-1.5 block min-w-0 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-normal text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400" /></label>
+      <label className="flex cursor-pointer items-start gap-2.5 text-[11px] leading-5 text-slate-500"><input type="checkbox" className="mt-1 h-3.5 w-3.5 shrink-0 accent-blue-600" disabled={!learners.data?.learners.length || !rules.isSuccess} checked={reviewed} onChange={e => setReviewed(e.target.checked)} />I reviewed the questions, answers and rubrics.</label>
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-100 pt-3"><button type="button" disabled={(!due && !learners.data?.existingDueAt) || !selected.length || !reviewed || !rules.isSuccess || mutation.isPending || mutation.isSuccess} onClick={() => mutation.mutate()} className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-[11px] font-medium leading-4 text-white transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 motion-reduce:transition-none">{mutation.isPending && <Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none"/>}{mutation.isSuccess && <Check aria-hidden="true" className="h-3.5 w-3.5"/>}{mutation.isPending ? 'Assigning...' : mutation.isSuccess ? 'Assigned' : 'Confirm assignment'}</button></div>
+    </>}
+    {mutation.isSuccess && <p role="status">Assignment confirmed for {mutation.data.learnerCount} learners.</p>}
+    {(learners.error || rules.error || mutation.error) && <p role="alert">{(learners.error || rules.error || mutation.error)?.message}</p>}
+  </section>;
+}
+
+export default function SaveGeneratedMaterial({ courseId, conversationId, messageId, canAssign = false }: { courseId: string; conversationId: string; messageId: string; canAssign?: boolean }) {
+  const user = useUser(), client = useQueryClient();
+  const intentKey = ['material-allocation-intent', user?.id, courseId, conversationId, messageId];
+  // Keep the save-to-assignment handoff across message/panel remounts.
+  const intent = useQuery({ queryKey: intentKey, queryFn: async () => false, initialData: false, enabled: false, staleTime: Infinity });
+  const assignAfterSave = intent.data;
+  const setAssignAfterSave = (value: boolean) => client.setQueryData(intentKey, value);
+  const capability = useQuery({ queryKey: ['saved-material-capability',user?.id], queryFn: () => materialAction<{enabled:boolean}>('capabilities'), enabled: !!user?.id, retry: false });
+  const key = ['saved-material-choice',user?.id,conversationId,messageId];
+  const choice = useQuery({ queryKey: key, queryFn: () => materialAction('choice', { courseId,conversationId,messageId }), enabled: !!user?.id && capability.data?.enabled===true, retry: false });
+  const mutation = useMutation({ mutationFn: (action: string) => materialAction(action,{courseId,conversationId,messageId}), retry: false, onError: () => setAssignAfterSave(false), onSuccess: async data => { await client.cancelQueries({queryKey:key}); client.setQueryData(key,data); void client.invalidateQueries({queryKey:['material-library',user?.id,courseId]}); } });
+  if (capability.isPending) return <PanelLoadingSkeleton label="Checking material controls"/>;
+  if (capability.isError) return <p role="alert" className="mt-2 text-xs text-red-700">Unable to verify material controls. <button type="button" onClick={() => { void capability.refetch(); }} className="underline">Retry</button></p>;
+  if (!capability.data?.enabled) return null;
+  // Direct assignment persists its material first, without exposing that
+  // prerequisite as a separate save step in the conversation.
+  if (assignAfterSave && mutation.isPending) return <PanelLoadingSkeleton label="Preparing learner selection" variant="form"/>;
+  const data = choice.data;
+  return <div className="mt-3 border-t border-slate-100 pt-3 font-sans text-xs leading-5 text-slate-600">
+    {choice.isPending ? <PanelLoadingSkeleton label="Checking saved material"/> : data?.id ? <>
+      <div className="flex flex-wrap items-center justify-between gap-3 py-1">{!assignAfterSave && <div role="status" className="flex items-center gap-2 text-xs font-medium text-slate-600"><Check aria-hidden="true" className="h-3.5 w-3.5 text-blue-600"/>Saved to materials</div>}
+      {data.kind==='assignment' && <AllocateSavedMaterial courseId={courseId} assignmentId={data.id} initiallyOpen={assignAfterSave} onClose={() => setAssignAfterSave(false)} onAssigned={() => setAssignAfterSave(false)} />}
+      </div>
+    </> : <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-1">
+      <div className="flex min-w-0 items-center gap-2.5"><Bookmark aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400"/><div>
+        <span className="block text-xs font-medium leading-5 text-slate-800">{data?.state==='deferred'?'Kept in this conversation':'Save to materials'}</span>
+        <span className="block text-[11px] leading-4 text-slate-500">{data?.state==='deferred'?'Not saved to the library.':'Keep a copy for later.'}</span>
+      </div></div>
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+        {data?.state!=='deferred' && <button type="button" disabled={mutation.isPending || choice.isError} onClick={() => mutation.mutate('defer')} className="rounded-full px-3 py-1.5 text-[11px] font-medium leading-4 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 motion-reduce:transition-none">Not now</button>}
+        {canAssign && <button type="button" disabled={mutation.isPending || choice.isError} onClick={() => { setAssignAfterSave(true); mutation.mutate('save'); }} className="rounded-full border border-blue-200 px-3 py-1.5 text-[11px] font-medium leading-4 text-blue-700 transition-colors hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50 motion-reduce:transition-none">{mutation.isPending && assignAfterSave ? 'Saving...' : 'Assign to learners'}</button>}
+        <button type="button" disabled={mutation.isPending || choice.isError} onClick={() => { setAssignAfterSave(false); mutation.mutate('save'); }} className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-[11px] font-medium leading-4 text-white transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 motion-reduce:transition-none">{mutation.isPending&&<Loader2 aria-hidden="true" className="h-3 w-3 animate-spin motion-reduce:animate-none"/>}{mutation.isPending ? 'Saving...' : 'Save'}</button>
+      </div>
+    </div>}
+    {(choice.error || mutation.error) && <p role="alert" className="mt-2 text-xs text-red-700">{(choice.error || mutation.error)?.message}<button type="button" className="ml-2 underline" onClick={() => { mutation.reset(); void choice.refetch(); }}>Retry</button></p>}
+  </div>;
+}

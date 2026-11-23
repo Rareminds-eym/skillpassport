@@ -1,0 +1,66 @@
+// @vitest-environment node
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const mocks = vi.hoisted(() => ({ fetch: vi.fn() }));
+vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: mocks.fetch } }));
+vi.mock('@/shared/api/apiClient', () => ({ apiPost: vi.fn(), ApiError: class extends Error {} }));
+vi.mock('@/shared/api/apiUtils', () => ({ getApiUrl: () => '/api/ai-tutor' }));
+vi.mock('@/shared/config/logging', () => ({ getLogger: () => ({ warn: vi.fn(), error: vi.fn() }) }));
+import { sendMessage } from '../tutorService';
+
+afterEach(() => vi.clearAllMocks());
+describe('tutor streaming errors', () => {
+  it('rejects a disconnected stream instead of silently treating a partial answer as complete',async()=>{
+    mocks.fetch.mockResolvedValue(new Response('event: token\ndata: {"content":"Partial answer"}\n\n'));
+    const stream=sendMessage({courseId:'course',message:'Explain'});
+    expect((await stream.next()).value).toEqual({type:'content',content:'Partial answer'});
+    await expect(stream.next()).rejects.toThrow('connection ended before your answer was confirmed');
+  });
+  it('requires a saved message ID, not just a conversation ID, to confirm completion',async()=>{
+    mocks.fetch.mockResolvedValue(new Response('event: done\ndata: {"conversationId":"saved"}\n\n'));
+    const stream=sendMessage({courseId:'course',message:'Explain'});
+    await expect(stream.next()).rejects.toThrow('connection ended before your answer was confirmed');
+  });
+  it('reads the saved reply confirmation even without a trailing newline',async()=>{
+    mocks.fetch.mockResolvedValue(new Response('event: done\ndata: {"conversationId":"saved","messageId":"reply"}'));
+    const stream=sendMessage({courseId:'course',message:'Explain'});
+    expect((await stream.next()).value).toMatchObject({type:'done',conversationId:'saved',messageId:'reply'});
+    expect((await stream.next()).done).toBe(true);
+  });
+  it('delivers generation and facilitator metadata to the UI', async () => {
+    mocks.fetch.mockResolvedValue(new Response('event: done\ndata: {"conversationId":"saved","messageId":"questions","facilitator":"resource-provider","facilitatorMode":"auto","worksheetAvailable":true}\n\n'));
+    const stream = sendMessage({ courseId: 'course', message: 'Generate questions' });
+    expect((await stream.next()).value).toMatchObject({ type: 'done', messageId: 'questions', facilitator: 'resource-provider', worksheetAvailable: true });
+    await stream.return();
+  });
+
+  it('delivers the selected facilitator before the first response token', async () => {
+    mocks.fetch.mockResolvedValue(new Response('event: metadata\ndata: {"facilitator":"resource-provider","facilitatorMode":"auto"}\n\nevent: token\ndata: {"content":"Questions"}\n\n'));
+    const stream=sendMessage({courseId:'course',message:'Generate questions'});
+    expect((await stream.next()).value).toMatchObject({type:'metadata',facilitator:'resource-provider'});
+    expect((await stream.next()).value).toEqual({type:'content',content:'Questions'});
+    await stream.return();
+  });
+  it('forwards cancellation and stops consuming the response', async () => {
+    const abort = new AbortController();
+    const cancel = vi.fn();
+    mocks.fetch.mockResolvedValue(new Response(new ReadableStream({
+      start(controller) { controller.enqueue(new TextEncoder().encode('event: token\ndata: {"content":"First questions"}\n\n')); },
+      cancel,
+    })));
+    const stream = sendMessage({ courseId: 'course', message: 'Generate' }, abort.signal);
+    expect((await stream.next()).value).toEqual({ type: 'content', content: 'First questions' });
+    abort.abort();
+    await expect(stream.next()).rejects.toMatchObject({ name: 'AbortError' });
+    expect(mocks.fetch.mock.calls[0][1].signal).toBe(abort.signal);
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+  it('propagates a save failure after generated content has arrived', async () => {
+    mocks.fetch.mockResolvedValue(new Response(
+      'event: token\ndata: {"content":"Worksheet"}\n\nevent: error\ndata: {"error":"Material could not be saved"}\n\n',
+    ));
+    const stream = sendMessage({ courseId: 'course', message: 'Generate' });
+    expect((await stream.next()).value).toEqual({ type: 'content', content: 'Worksheet' });
+    await expect(stream.next()).rejects.toThrow('Material could not be saved');
+  });
+});

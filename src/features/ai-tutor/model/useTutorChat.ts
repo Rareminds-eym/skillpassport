@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   ChatMessage,
   Conversation,
@@ -27,14 +27,22 @@ export interface GenerationUsage {
 }
 
 export interface UseTutorChatOptions {
+  userId?: string;
   courseId: string;
   lessonId?: string;
   worksheetConfig?: WorksheetConfig;  // Optional worksheet configuration for educators
   lessonPlanConfig?: LessonPlanConfig;  // Optional lesson plan configuration for educators
+  isEducator?: boolean;
   onGenerationUsageUpdate?: (usage: GenerationUsage) => void;
 }
 
+export interface SavedVoiceReply { conversationId: string; messageId: string }
+export interface SendOptions { generate?: boolean; guideSubmissionId?: string; voice?: boolean; onCompacting?: () => void; onSaved?: (reply: SavedVoiceReply) => void }
+
 export interface UseTutorChatReturn {
+  facilitatorMode: string;
+  setFacilitatorMode: (mode: string) => void;
+  activeFacilitator: string | undefined;
   messages: ChatMessage[];
   isLoading: boolean;
   isStreaming: boolean;
@@ -44,7 +52,8 @@ export interface UseTutorChatReturn {
   conversationId: string | null;
   conversations: Conversation[];
   suggestedQuestions: string[];
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, options?: SendOptions) => Promise<void>;
+  stopGeneration: () => void;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   loadConversation: (conversationId: string) => Promise<void>;
   startNewConversation: () => void;
@@ -55,12 +64,19 @@ export interface UseTutorChatReturn {
 }
 
 export function useTutorChat({
+  userId,
   courseId,
   lessonId,
   worksheetConfig,
   lessonPlanConfig,
-  onGenerationUsageUpdate
+  onGenerationUsageUpdate,
+  isEducator = false
 }: UseTutorChatOptions): UseTutorChatReturn {
+  const navigationRef = useRef(0);
+  const activeRequestRef = useRef<AbortController | null>(null);
+  const stopGeneration = useCallback(() => activeRequestRef.current?.abort(), []);
+  useEffect(() => () => { activeRequestRef.current?.abort(); }, []);
+  const [facilitatorMode, setFacilitatorMode] = useState('auto');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -70,6 +86,36 @@ export function useTutorChat({
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
+
+  const storageKey = userId ? `ai-tutor-active:${userId}:${courseId}` : null;
+  const rememberConversation = useCallback((id: string | null) => {
+    if (!storageKey) return;
+    try {
+      if (id) sessionStorage.setItem(storageKey, id);
+      else sessionStorage.removeItem(storageKey);
+    } catch { /* The server conversation remains accessible from history. */ }
+  }, [storageKey]);
+  useEffect(() => {
+    const navigation = ++navigationRef.current;
+    activeRequestRef.current?.abort();
+    setConversationId(null); setMessages([]); setFacilitatorMode('auto');
+    setError(null); setIsLoading(false);
+    if (!storageKey) return;
+    let active = true;
+    let saved: string | null = null;
+    try { saved = sessionStorage.getItem(storageKey); } catch { return; }
+    if (!saved) return;
+    setIsLoading(true);
+    getConversation(saved).then(conv => {
+      if (!active || navigation !== navigationRef.current) return;
+      if (!conv || conv.courseId !== courseId) { rememberConversation(null); return; }
+      setConversationId(conv.id);
+      setMessages(conv.messages);
+      setFacilitatorMode([...conv.messages].reverse().find(m => m.facilitatorMode)?.facilitatorMode ?? 'auto');
+    }).catch(err => { if (active && navigation === navigationRef.current) setError(getErrorMessage(err, 'Failed to restore conversation')); })
+      .finally(() => { if (active && navigation === navigationRef.current) setIsLoading(false); });
+    return () => { active = false; };
+  }, [storageKey, courseId, rememberConversation]);
 
   // Fetch conversations on mount and when courseId changes
   const refreshConversations = useCallback(async () => {
@@ -106,9 +152,11 @@ export function useTutorChat({
 
 
   // Send a message to the AI tutor
-  const handleSendMessage = useCallback(async (content: string) => {
+  const handleSendMessage = useCallback(async (content: string, options?: SendOptions) => {
     if (!content.trim() || isStreaming) return;
 
+    const requestController = new AbortController();
+    activeRequestRef.current = requestController;
     setError(null);
     setIsLoading(true);
     setIsStreaming(true);
@@ -127,6 +175,7 @@ export function useTutorChat({
     const assistantMessage: ChatMessage = {
       id: assistantMessageId,
       role: 'assistant',
+      status: 'streaming',
       content: '',
       timestamp: new Date()
     };
@@ -139,14 +188,21 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: content.trim(),
-        worksheetConfig,  // Pass worksheet config to API
-        lessonPlanConfig  // Pass lesson plan config to API
-      });
+        ...(options?.voice ? { inputMode: 'voice' as const } : {}),
+        ...(options?.guideSubmissionId ? { guideSubmissionId: options.guideSubmissionId } : {}),
+        facilitatorMode: isEducator && options?.guideSubmissionId ? 'mentor-and-guide' : facilitatorMode,
+        ...(options?.generate ? { worksheetConfig, lessonPlanConfig } : {}),
+      }, requestController.signal);
 
       setCurrentReasoning('');
 
       for await (const chunk of generator) {
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
+        requestController.signal.throwIfAborted();
+        if (chunk.type === 'compacting') {
+          options?.onCompacting?.();
+        } else if (chunk.type === 'metadata') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId } : msg));
+        } else if (chunk.type === 'reasoning' && chunk.reasoning) {
           // AI is thinking/reasoning
           setIsReasoning(true);
           setCurrentReasoning(prev => prev + chunk.reasoning);
@@ -161,6 +217,8 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, materialAvailable: chunk.materialAvailable, citations: chunk.citations, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
+          if (chunk.conversationId && chunk.messageId) options?.onSaved?.({conversationId:chunk.conversationId,messageId:chunk.messageId});
           // Stream complete
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
@@ -168,6 +226,7 @@ export function useTutorChat({
 
           if (chunk.conversationId && !conversationId) {
             setConversationId(chunk.conversationId);
+            rememberConversation(chunk.conversationId);
             refreshConversations();
           }
         }
@@ -177,23 +236,29 @@ export function useTutorChat({
       const newConvId = getLastConversationId();
       if (newConvId && !conversationId) {
         setConversationId(newConvId);
+        rememberConversation(newConvId);
         refreshConversations();
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to send message'));
-      // Remove the empty assistant message on error
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to send message'));
+      // Keep generated material available for export when persistence fails.
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
+      // Voice needs the generation error, not a misleading persistence fallback.
+      if (options?.voice && !requestController.signal.aborted) throw err;
     } finally {
+      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
     }
   }, [
     conversationId,
+    facilitatorMode, isEducator,
     courseId,
     lessonId,
     isStreaming,
     refreshConversations,
+    rememberConversation,
     worksheetConfig,
     lessonPlanConfig,
     onGenerationUsageUpdate
@@ -201,6 +266,7 @@ export function useTutorChat({
 
   // Load an existing conversation
   const loadConversation = useCallback(async (convId: string) => {
+    ++navigationRef.current;
     setIsLoading(true);
     setError(null);
 
@@ -208,7 +274,9 @@ export function useTutorChat({
       const conv = await getConversation(convId);
       if (conv) {
         setConversationId(conv.id);
+        rememberConversation(conv.id);
         setMessages(conv.messages);
+        setFacilitatorMode([...conv.messages].reverse().find(m => m.facilitatorMode)?.facilitatorMode ?? 'auto');
       } else {
         setError('Conversation not found');
       }
@@ -217,14 +285,18 @@ export function useTutorChat({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [rememberConversation]);
 
   // Start a new conversation
   const startNewConversation = useCallback(() => {
+    ++navigationRef.current;
+    setIsLoading(false);
+    rememberConversation(null);
     setConversationId(null);
+    setFacilitatorMode('auto');
     setMessages([]);
     setError(null);
-  }, []);
+  }, [rememberConversation]);
 
   // Edit a user message and regenerate AI response (ChatGPT-style)
   const handleEditMessage = useCallback(async (messageId: string, newContent: string) => {
@@ -238,6 +310,8 @@ export function useTutorChat({
     const message = messages[messageIndex];
     if (message.role !== 'user') return;
 
+    const requestController = new AbortController();
+    activeRequestRef.current = requestController;
     setError(null);
     setIsLoading(true);
     setIsStreaming(true);
@@ -256,6 +330,7 @@ export function useTutorChat({
     const assistantMessage: ChatMessage = {
       id: assistantMessageId,
       role: 'assistant',
+      status: 'streaming',
       content: '',
       timestamp: new Date()
     };
@@ -268,14 +343,16 @@ export function useTutorChat({
         courseId,
         lessonId,
         message: newContent.trim(),
-        worksheetConfig,  // Pass worksheet config to API
-        lessonPlanConfig  // Pass lesson plan config to API
-      });
+        facilitatorMode,
+      }, requestController.signal);
 
       setCurrentReasoning('');
 
       for await (const chunk of generator) {
-        if (chunk.type === 'reasoning' && chunk.reasoning) {
+        requestController.signal.throwIfAborted();
+        if (chunk.type === 'metadata') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId } : msg));
+        } else if (chunk.type === 'reasoning' && chunk.reasoning) {
           setIsReasoning(true);
           setCurrentReasoning(prev => prev + chunk.reasoning);
         } else if (chunk.type === 'content' && chunk.content) {
@@ -288,12 +365,14 @@ export function useTutorChat({
             )
           );
         } else if (chunk.type === 'done') {
+          setMessages(prev => prev.map(msg => msg.id === assistantMessageId ? { ...msg, id: chunk.messageId || msg.id, worksheetAvailable: chunk.worksheetAvailable, materialAvailable: chunk.materialAvailable, citations: chunk.citations, facilitator: chunk.facilitator, facilitatorMode: chunk.facilitatorMode, assignmentSourceId: chunk.assignmentSourceId, status: 'complete' } : msg));
           if (chunk.generationUsage) {
             onGenerationUsageUpdate?.(chunk.generationUsage);
           }
 
           if (chunk.conversationId && !conversationId) {
             setConversationId(chunk.conversationId);
+            rememberConversation(chunk.conversationId);
             refreshConversations();
           }
         }
@@ -302,12 +381,14 @@ export function useTutorChat({
       const newConvId = getLastConversationId();
       if (newConvId && !conversationId) {
         setConversationId(newConvId);
+        rememberConversation(newConvId);
         refreshConversations();
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to regenerate response'));
-      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to regenerate response'));
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
     } finally {
+      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
       setIsLoading(false);
       setIsStreaming(false);
       setIsReasoning(false);
@@ -315,12 +396,12 @@ export function useTutorChat({
   }, [
     messages,
     conversationId,
+    facilitatorMode, isEducator,
     courseId,
     lessonId,
     isStreaming,
     refreshConversations,
-    worksheetConfig,
-    lessonPlanConfig,
+    rememberConversation,
     onGenerationUsageUpdate
   ]);
 
@@ -331,7 +412,9 @@ export function useTutorChat({
       await deleteConversationService(convId);
       // If we deleted the current conversation, clear it
       if (conversationId === convId) {
-        setConversationId(null);
+        setFacilitatorMode('auto');
+        rememberConversation(null);
+    setConversationId(null);
         setMessages([]);
       }
       // Refresh the conversations list
@@ -340,7 +423,7 @@ export function useTutorChat({
       setError(getErrorMessage(err, 'Failed to delete conversation'));
       throw err;
     }
-  }, [conversationId, refreshConversations]);
+  }, [conversationId, refreshConversations, rememberConversation]);
 
   // Submit feedback for a message
   const handleSubmitFeedback = useCallback(async (
@@ -361,6 +444,8 @@ export function useTutorChat({
   }, [conversationId]);
 
   return {
+    facilitatorMode, setFacilitatorMode,
+    activeFacilitator: [...messages].reverse().find(m => m.facilitator)?.facilitator,
     messages,
     isLoading,
     isStreaming,
@@ -371,6 +456,7 @@ export function useTutorChat({
     conversations,
     suggestedQuestions,
     sendMessage: handleSendMessage,
+    stopGeneration,
     editMessage: handleEditMessage,
     loadConversation,
     startNewConversation,
