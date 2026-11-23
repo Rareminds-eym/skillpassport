@@ -133,6 +133,9 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     const supabase = getServiceClient(env);
     const catalogPlan = await requireSelfServePlan(supabase, { plan_id: body.planId });
     const scope = await assertPlanPurchaseScope(supabase, catalogPlan, user);
+    if (await isDidacRestrictedPlan(supabase, user.id, user.email, catalogPlan.id)) {
+      return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
+    }
     if (body.amount === 0) {
       const config = catalogPlan.entity_config?.[scope.organizationType || 'all'] || catalogPlan.entity_config?.all || {};
       const pricing = catalogPlan.pricing_matrix?.[scope.organizationType || 'all'] || catalogPlan.pricing_matrix?.all;
@@ -208,10 +211,6 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // Validate amount against DB plan price (industrial-grade: never trust client)
     if (body.planId) {
       const supabase = getServiceClient(env);
-      if (await isDidacRestrictedPlan(supabase, user.id, user.email, body.planId)) {
-        return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
-      }
-
       // The catalog stage above already resolved planId by id OR plan_code —
       // reuse that resolution here instead of re-querying by id only, which
       // 404'd for code-addressed paid plans.

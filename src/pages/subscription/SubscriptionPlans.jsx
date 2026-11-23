@@ -17,32 +17,7 @@ import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { useAuthLoading, useIsAuthenticated, useUser, useUserRole } from '@/shared/model/authStore';
 
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE = 'skill_starter';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
-
 const normalizePromoCode = (code) => (code || '').trim().toUpperCase();
-
-const getPlanCode = (plan) => String(
-  plan?.plan_code ||
-  plan?.planCode ||
-  plan?.code ||
-  plan?.display_name ||
-  plan?.name ||
-  ''
-)
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '_')
-  .replace(/^_+|_+$/g, '');
-
-const getPlanName = (plan) => String(plan?.name || plan?.display_name || '').trim().toLowerCase();
-
-const isCollegeLearnerPromoStarterPlan = (plan) => {
-  const planCode = getPlanCode(plan);
-  const planName = getPlanName(plan);
-  return planCode === COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODE || planName === 'skill starter';
-};
 
 const getUserReferralCode = (user) => normalizePromoCode(
   user?.metadata?.referralCode ||
@@ -53,39 +28,6 @@ const getUserReferralCode = (user) => normalizePromoCode(
   user?.raw_user_meta_data?.referral_code
 );
 
-const applyEndpointPlanFallback = (plans, forcePromo = false) => {
-  const hasPromoMask = forcePromo || plans.some((plan) => plan.hidePrice);
-  if (!hasPromoMask) return plans;
-
-  return plans
-    .map((plan) => {
-      const planCode = getPlanCode(plan);
-      const planName = getPlanName(plan);
-      const isRestricted =
-        ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
-        ['discover', 'career builder', 'career accelerator'].includes(planName);
-
-      return isRestricted
-        ? {
-          ...plan,
-          recommended: false,
-          hidePrice: true,
-          isDisabled: true,
-          availabilityLabel: plan.availabilityLabel || 'Not available',
-          actionLabel: plan.actionLabel || 'Get Started',
-        }
-        : {
-          ...plan,
-          price: hasPromoMask && isCollegeLearnerPromoStarterPlan(plan)
-            ? Number(plan.price) + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
-            : plan.price,
-          hidePrice: false,
-          isDisabled: false,
-          availabilityLabel: undefined,
-          actionLabel: undefined,
-        };
-    });
-};
 /**
  * Get the subscription manage path based on user role
  */
@@ -430,10 +372,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
   const isUpgrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) > parseInt(currentPlanInList?.price ?? 0);
   const isDowngrade = subscriptionData && !isCurrentPlan && parseInt(plan.price) < parseInt(currentPlanInList?.price ?? 0);
   const isContactSales = plan.contactSales;
-  const planCode = getPlanCode(plan);
-  const effectiveDisabled = Boolean(isDisabled) || (hidePrice && ['discover', 'career_builder', 'career_accelerator'].includes(planCode));
-  const planName = getPlanName(plan);
-  const hardPromoDisabled = hidePrice && ['discover', 'career builder', 'career accelerator'].includes(planName);
+  const effectiveDisabled = Boolean(isDisabled);
 
   // Group features by category for better display
   const featuresByCategory = useMemo(() => {
@@ -462,7 +401,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
 
   // Handle organization purchase click
   const handleClick = useCallback(() => {
-    if (effectiveDisabled || hardPromoDisabled) {
+    if (effectiveDisabled) {
       return;
     }
     if (isDowngrade) {
@@ -474,7 +413,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     } else {
       onSelect(plan);
     }
-  }, [effectiveDisabled, hardPromoDisabled, isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
+  }, [effectiveDisabled, isDowngrade, isOrganizationMode, onOrganizationPurchase, onSelect, plan]);
 
   // Render feature item
   const renderFeature = (feature, idx) => {
@@ -505,7 +444,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
     <div
       className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl hover:-translate-y-2 ${isCurrentPlan
         ? 'border-emerald-500 shadow-emerald-500/20'
-        : effectiveDisabled || hardPromoDisabled
+        : effectiveDisabled
           ? 'border-slate-200 opacity-70 hover:translate-y-0 hover:shadow-lg'
         : plan.recommended
           ? 'border-slate-900 shadow-slate-900/10 scale-105'
@@ -520,7 +459,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           </span>
         </div>
       )}
-      {!isCurrentPlan && !effectiveDisabled && !hardPromoDisabled && plan.recommended && (
+      {!isCurrentPlan && !effectiveDisabled && plan.recommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
           <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl whitespace-nowrap">
             Most Popular
@@ -690,10 +629,10 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
           ) : (
             <button
               onClick={handleClick}
-              disabled={isDowngrade || effectiveDisabled || hardPromoDisabled}
+              disabled={isDowngrade || effectiveDisabled}
               className={`w-full py-4 px-4 rounded-2xl font-semibold transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center justify-center gap-2 ${isOrganizationMode
                 ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:from-purple-700 hover:to-purple-800'
-                : effectiveDisabled || hardPromoDisabled
+                : effectiveDisabled
                   ? 'bg-slate-100 text-slate-400 border-2 border-slate-200 cursor-not-allowed hover:scale-100 hover:shadow-none'
                 : isUpgrade || plan.recommended
                   ? 'bg-black text-white hover:bg-gray-900'
@@ -702,7 +641,7 @@ const PlanCard = memo(({ plan, isCurrentPlan, onSelect, onManage, subscriptionDa
                     : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300'
                 }`}
             >
-              {effectiveDisabled || hardPromoDisabled ? (
+              {effectiveDisabled ? (
                 'Get Started'
               ) : isOrganizationMode ? (
                 <>
@@ -821,7 +760,6 @@ function SubscriptionPlans() {
     ),
     [searchParams, location.state, user]
   );
-  const isCollegeLearnerPromo = referralCode === COLLEGE_LEARNER_PROMO_CODE;
 
   // Fetch plans EXCLUSIVELY from the Cloudflare Worker API.
   // plans = null while loading, [] or [...] after.
@@ -838,27 +776,13 @@ function SubscriptionPlans() {
   });
 
   // Plans exclusively from DB — zero hardcoded fallback
-  const plans = useMemo(
-    () => applyEndpointPlanFallback(dbPlans ?? [], isCollegeLearnerPromo),
-    [dbPlans, isCollegeLearnerPromo]
-  );
-  const hasMaskedPlanPrices = useMemo(
-    () => plans.some((plan) => Boolean(plan.hidePrice)),
-    [plans]
-  );
+  // The API owns promo eligibility and final prices for every role.
+  const plans = dbPlans ?? [];
   const visiblePlans = plans;
   const showHybrid = visiblePlans.some(plan => isHybridPlan(plan) && plan.contactSales);
   const isPlanDisabled = useCallback(
-    (plan) => {
-      const planCode = getPlanCode(plan);
-      const planName = getPlanName(plan);
-      return Boolean(plan.isDisabled) ||
-        (hasMaskedPlanPrices && (
-          ['discover', 'career_builder', 'career_accelerator'].includes(planCode) ||
-          ['discover', 'career builder', 'career accelerator'].includes(planName)
-        ));
-    },
-    [hasMaskedPlanPrices]
+    (plan) => Boolean(plan.isDisabled),
+    []
   );
 
   // UI-only content (titles, subtitles, CTA text). No pricing here.

@@ -108,6 +108,8 @@ async function getOptionalUserIdentity(
     const auth = getAuthInstance(env);
     let identity = { id: null, email: null } as { id: string | null; email: string | null };
     const response = await auth.authenticate((_req, authedContext) => {
+      // Public catalog reads must not consume promo quota before verification.
+      if (!authedContext.user.is_email_verified) return new Response(null, { status: 403 });
       identity = {
         id: authedContext.user.sub || null,
         email: authedContext.user.email || null,
