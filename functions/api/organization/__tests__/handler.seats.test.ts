@@ -4,6 +4,7 @@ import { FakeSupabase } from '../../../lib/__tests__/helpers/fake-supabase';
 import fs from 'node:fs';
 import * as ts from 'typescript';
 let fake: FakeSupabase;
+vi.mock('../../../shared/lib/subscription-access', () => ({ requireSubscriptionAccess: vi.fn().mockResolvedValue({ current: {} }) }));
 vi.mock('../../../lib/supabase', () => ({ getServiceClient: () => fake }));
 vi.mock('../../../lib/auth', () => ({ getContextUser: (c: { data: { user: { sub: string; email?: string } } }) => ({ ...c.data.user, id: c.data.user.sub }), withAuth: (h: unknown) => h }));
 import { handleOrganizationGet, handleOrganizationPost } from '../handler';
@@ -14,7 +15,7 @@ function context(body: object, sub = 'outsider', email?: string) {
 }
 function get(url: string, sub = 'outsider') { return { request: new Request('http://localhost'+url), env: {}, data: { user: { sub } } } as never; }
 function admin() { fake.seed('organization_members', [{ user_id: 'admin', organization_id: 'org', role: 'owner', status: 'active' }]); }
-function pool() { fake.seed('license_pools', [{ id: 'pool', organization_id: 'org', organization_subscription_id: 'sub', allocated_seats: 10, assigned_seats: 5 }]); }
+function pool() { fake.seed('license_pools', [{ id: 'pool', organization_id: 'org', organization_subscription_id: 'sub', member_type: 'educator', allocated_seats: 10, assigned_seats: 5 }]); }
 beforeEach(() => {
   fake = new FakeSupabase();
   const from = fake.from.bind(fake);
@@ -62,11 +63,15 @@ it('successful count RPC replaces stale five with zero, and count errors do not 
   expect((await handleOrganizationGet(get('/api/organization?action=getLicensePools&orgId=org', 'admin'))).status).toBe(500);
 });
 it.each(['assignLicense', 'unassignLicense', 'transferLicense'])('%s uses one transactional RPC with the session actor', async action => {
+  admin(); pool(); fake.seed('subscription_cache', [{ id: 'sub', organization_id: 'org' }]);
+  fake.seed('license_assignments', [{ id: 'assignment', user_id: 'source', organization_subscription_id: 'sub', member_type: 'educator', status: 'active' }]);
   const rpc = vi.spyOn(fake, 'rpc').mockResolvedValue({ data: { success: true }, error: null } as never);
   const r = await handleOrganizationPost(context({ action, poolId: 'pool', userId: 'target', assignmentId: 'assignment', fromUserId: 'source', toUserId: 'target', organizationSubscriptionId: 'sub', assignedBy: 'spoofed' }, 'admin'));
   expect(r.status).toBe(200); expect(rpc).toHaveBeenCalledTimes(1); expect(rpc.mock.calls[0]).toEqual(['manage_organization_license', expect.objectContaining({ p_actor: 'admin' })]); expect(fake.writes()).toHaveLength(0);
 });
 it.each([['42501',403], ['23514',409], ['23505',409], ['P0002',404]])('transaction rejection %s returns %s without fake success', async (code,status) => {
+  admin(); fake.seed('subscription_cache', [{ id: 'sub', organization_id: 'org' }]);
+  fake.seed('license_assignments', [{ user_id: 'a', organization_subscription_id: 'sub', member_type: 'educator', status: 'active' }]);
   vi.spyOn(fake, 'rpc').mockResolvedValue({ data: null, error: { code, message: 'Rejected' } } as never);
   expect((await handleOrganizationPost(context({ action: 'transferLicense', fromUserId: 'a', toUserId: 'b', organizationSubscriptionId: 'sub' }, 'admin'))).status).toBe(status);
 });

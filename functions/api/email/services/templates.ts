@@ -1530,6 +1530,10 @@ export function generateSalesEnquiryEmailHtml(data: SalesEnquiryTemplateData): s
   `.trim();
 }
 
+/** Server-configured contact values are still HTML-escaped before rendering. */
+function escapeContact(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 export function generateSalesEnquiryConfirmationEmailHtml(data: SalesEnquiryTemplateData): string {
   const { institution, planName } = data;
   return `
@@ -1562,7 +1566,7 @@ export function generateSalesEnquiryConfirmationEmailHtml(data: SalesEnquiryTemp
                 </p>
               </div>
               <p style="color: #64748b; font-size: 14px; line-height: 1.5; margin: 0;">
-                If you have immediate questions, feel free to reply directly to this email or reach us at <a href="mailto:marketing@rareminds.in" style="color: #0f766e; text-decoration: underline;">marketing@rareminds.in</a> or <a href="tel:+919902326951" style="color: #0f766e; text-decoration: underline;">+91 9902326951</a>.
+                If you have immediate questions, feel free to reply directly to this email or reach us at <a href="mailto:${escapeContact(data.salesEmail)}" style="color: #0f766e; text-decoration: underline;">${escapeContact(data.salesEmail)}</a> or <a href="tel:${escapeContact(data.salesPhone.replace(/\s+/g, ''))}" style="color: #0f766e; text-decoration: underline;">${escapeContact(data.salesPhone)}</a>.
               </p>
             </td>
           </tr>

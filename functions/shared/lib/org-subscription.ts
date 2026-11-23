@@ -28,7 +28,7 @@ export interface EntitlementResult {
   subscription_plans?: { id?: string; name?: string; plan_code?: string };
   [key: string]: unknown;
 }
-interface Plan { id: string; name: string; plan_code: string; business_type: string; applicable_entities: string[]; product_id?: string; is_active: boolean }
+interface Plan { id: string; name: string; plan_code: string; business_type: string; applicable_entities: string[]; product_id?: string; is_active: boolean; plan_family?: string | null }
 interface Subscription extends EntitlementResult { plan_id: string; is_organization_subscription?: boolean; product_id?: string }
 interface Organization { id: string; organization_type?: string; name?: string; email?: string; phone?: string }
 interface Profile { metadata?: Record<string, unknown> }
@@ -84,7 +84,7 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   const organizations: Organization[] = scopedOrgIds.length
     ? await checked(supabase.from('organizations').select('id, organization_type, name, email, phone').in('id', scopedOrgIds)) ?? [] : [];
   // Retiring a plan from sale does not cancel an already purchased contract.
-  const plans: Plan[] = await checked(supabase.from('plans_cache').select('id, name, plan_code, business_type, applicable_entities, product_id, is_active')) ?? [];
+  const plans: Plan[] = await checked(supabase.from('plans_cache').select('id, name, plan_code, business_type, applicable_entities, product_id, is_active, plan_family')) ?? [];
   const own: Subscription[] = await checked(supabase.from('subscription_cache').select('*').eq('user_id', userId).order('subscription_start_date', { ascending: false })) ?? [];
   const orgSubscriptions: Subscription[] = scopedOrgIds.length
     ? await checked(supabase.from('subscription_cache').select('*').in('organization_id', scopedOrgIds).eq('is_organization_subscription', true).order('subscription_start_date', { ascending: false })) ?? [] : [];
@@ -116,7 +116,9 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   if (organizationDashboard || profile?.metadata?.subscription_selection_required === true) return null;
   for (const sub of own) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
-    const applicable = plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));
+    // Individual-family plans are personal by definition (audience subject is the user), not tied to an organization type.
+    const applicable = plan?.plan_family === 'individual'
+      || plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));
     if (plan?.business_type === 'b2c' && applicable && !sub.is_organization_subscription && isSubscriptionCurrent(sub) && (!sub.product_id || !plan.product_id || sub.product_id === plan.product_id)) return format(sub, plan);
   }
   return null;

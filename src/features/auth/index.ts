@@ -11,76 +11,44 @@
 // ============================================================================
 // STATE MANAGEMENT
 // ============================================================================
-export { useAuth } from './model';
-export type { AuthState, AuthContextType } from './model';
 export { useIdentity } from './hooks/useIdentity';
+export { useAuth } from './model';
+export type { AuthContextType, AuthState } from './model';
 
 // Convenience hooks from authStore
 export {
-  useUser,
-  useUserRole,
-  useSession,
-  useIsAuthenticated,
   useAuthLoading,
-  useErrorNotification,
+  useErrorNotification, useIsAuthenticated, useSession, useUser,
+  useUserRole
 } from '@/shared/model/authStore';
 
 // ============================================================================
 // API (SSO stubs for backward compatibility)
 // ============================================================================
 export {
-  signIn,
-  signOut,
-  resetPassword,
-  updatePassword,
-  sendPasswordResetOTP,
-  verifyOTPAndResetPassword,
-  loginAdmin,
-  sendOtp,
-  verifyOtp,
-  getUserRole,
-  loginLearner,
-  loginRecruiter,
-  checkAuthentication,
-  signUpWithRole,
-  checkUserRole,
-  updateUserMetadata,
-  getCurrentUser,
-  sendPasswordResetOtp,
-  verifyOtpAndResetPassword,
-  getCurrentAdmin,
-  logoutAdmin,
-  checkEmailExists,
-  type UserRole,
-  type AuthResult,
-  type User,
+  checkAuthentication, checkEmailExists, checkUserRole, getCurrentAdmin, getCurrentUser, getUserRole, loginAdmin, loginLearner,
+  loginRecruiter, logoutAdmin, resetPassword, sendOtp, sendPasswordResetOTP, sendPasswordResetOtp, signIn,
+  signOut, signUpWithRole, updatePassword, updateUserMetadata, verifyOtp, verifyOTPAndResetPassword, verifyOtpAndResetPassword, type AuthResult,
+  type User, type UserRole
 } from './api';
 
 // ============================================================================
 // UTILITIES
 // ============================================================================
 export {
-  redirectToRoleDashboard,
   getRouteForRole,
-  isValidRouteForRole,
+  isValidRouteForRole, redirectToRoleDashboard, resolveRouteRole,
   ssoLoginWithRoleCheck,
-  type SsoLoginResult,
+  type SsoLoginResult
 } from './lib';
 
 export {
-  handleAuthError,
-  AUTH_ERROR_CODES,
-  validateEmail,
-  validatePassword,
-  validateCredentials,
-  generateCorrelationId,
-  logAuthEvent,
-  mapSupabaseError,
-  buildErrorResponse,
-  buildSuccessResponse,
-  isJwtExpiryError,
-  withRetry,
+  AUTH_ERROR_CODES, buildErrorResponse,
+  buildSuccessResponse, generateCorrelationId, handleAuthError, isJwtExpiryError, logAuthEvent,
+  mapSupabaseError, validateCredentials, validateEmail,
+  validatePassword, withRetry,
   withTimeout,
   type AuthError,
-  type AuthErrorCode,
+  type AuthErrorCode
 } from './lib';
+

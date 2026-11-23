@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { completePlanSelection, isSubscriptionCurrent, resolveUserEntitlement, subscriptionScope } from '../../shared/lib/org-subscription';
 
 type Row = Record<string, any>;
@@ -20,23 +20,25 @@ function validateColumn(table: string, column: string) {
 }
 
 function client(failingTable?: string): SupabaseClient {
-  return { from(table: string) {
-    let rows = [...(tables[table] ?? [])];
-    let update: Row | undefined;
-    const result = () => ({ data: rows, error: table === failingTable ? { message: 'database unavailable' } : null });
-    const query: any = {
-      select: (columns: string) => { if (columns !== '*') columns.split(',').forEach(column => validateColumn(table, column.trim())); return query; },
-      eq: (key: string, value: unknown) => { validateColumn(table, key); rows = rows.filter(row => row[key] === value); return query; },
-      in: (key: string, values: unknown[]) => { rows = rows.filter(row => values.includes(row[key])); return query; },
-      order: () => query,
-      limit: (count: number) => { rows = rows.slice(0, count); return query; },
-      update: (value: Row) => { update = value; return query; },
-      maybeSingle: async () => ({ ...result(), data: rows[0] ?? null }),
-      single: async () => { if (update) rows.forEach(row => Object.assign(row, update)); return { ...result(), data: rows[0] ?? null }; },
-      then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
-    };
-    return query;
-  } } as unknown as SupabaseClient;
+  return {
+    from(table: string) {
+      let rows = [...(tables[table] ?? [])];
+      let update: Row | undefined;
+      const result = () => ({ data: rows, error: table === failingTable ? { message: 'database unavailable' } : null });
+      const query: any = {
+        select: (columns: string) => { if (columns !== '*') columns.split(',').forEach(column => validateColumn(table, column.trim())); return query; },
+        eq: (key: string, value: unknown) => { validateColumn(table, key); rows = rows.filter(row => row[key] === value); return query; },
+        in: (key: string, values: unknown[]) => { rows = rows.filter(row => values.includes(row[key])); return query; },
+        order: () => query,
+        limit: (count: number) => { rows = rows.slice(0, count); return query; },
+        update: (value: Row) => { update = value; return query; },
+        maybeSingle: async () => ({ ...result(), data: rows[0] ?? null }),
+        single: async () => { if (update) rows.forEach(row => Object.assign(row, update)); return { ...result(), data: rows[0] ?? null }; },
+        then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
+      };
+      return query;
+    }
+  } as unknown as SupabaseClient;
 }
 const resolve = (roles = ['learner'], scope?: any) => resolveUserEntitlement(client(), 'user', { roles, org_id: 'org', scope });
 
@@ -69,6 +71,17 @@ describe('Catalogue-backed subscription gateway', () => {
     tables.learners = [{ user_id: 'user', college_id: 'org', ...deletion }];
     tables.subscription_cache = [coverage];
     expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] })).toBeNull();
+  });
+  it('grants a personal individual-family catalog plan regardless of the learner organization type', async () => {
+    tables.plans_cache = [{ ...personalPlan, applicable_entities: ['individual'], plan_family: 'individual' }, orgPlan];
+    tables.organizations = [{ id: 'org', organization_type: null }];
+    tables.subscription_cache = [personal];
+    expect((await resolve())?.plan_code).toBe(personalPlan.plan_code);
+    tables.plans_cache[0] = { ...tables.plans_cache[0], plan_family: 'institution' };
+    expect(await resolve()).toBeNull();
+    tables.plans_cache[0] = { ...tables.plans_cache[0], plan_family: 'individual' };
+    tables.subscription_cache = [{ ...personal, is_organization_subscription: true }];
+    expect(await resolve()).toBeNull();
   });
   it('accepts any eligible personal plan without hardcoded names or prices', async () => {
     tables.subscription_cache = [personal];

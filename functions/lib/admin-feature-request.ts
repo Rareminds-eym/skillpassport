@@ -75,7 +75,7 @@ export function resolveAdminFeaturePolicy(
 
 export async function requireAdminRequestFeature(
   supabase: SupabaseClient, request: Request,
-  user: { sub: string; org_id?: string; roles?: readonly string[] },
+  user: { sub: string; org_id?: string; roles?: readonly string[] }, hybridPlanId: string | undefined,
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(url.pathname)) return null;
@@ -114,7 +114,7 @@ export async function requireAdminRequestFeature(
   }
   if (!subscription.plan_code) return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Organization plan could not be verified. Please retry.', request);
   for (const keys of policy) {
-    const denied = await requireHybridFeature(supabase, request, type, keys, user.sub, user.org_id, { plan_code: subscription.plan_code, features: subscription.features });
+    const denied = await requireHybridFeature(supabase, request, type, hybridPlanId, keys, user.sub, user.org_id, { plan_id: subscription.plan_id ?? null, features: subscription.features });
     if (denied) return denied;
   }
   return null;

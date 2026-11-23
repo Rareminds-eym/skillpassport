@@ -32,6 +32,9 @@ import { checkServerFeatureAccess } from '../shared/lib/server-feature-gating';
 /** Subscription statuses that count as currently-entitling. */
 const ENTITLING_STATUSES = ['active', 'grace_period', 'cancelled'] as const;
 
+/** Accepted values are trusted server operation policy, never browser-provided entitlement state. */
+export type FeatureRequirement = string | { key: string; acceptedValues: readonly string[] };
+
 /**
  * Resolve whether the user holds an active purchased ADD-ON entitlement for a
  * single `feature_key`, by reading the `user_entitlements` shadow (app DB).
@@ -103,10 +106,12 @@ export async function hasFeatureEntitlement(
     supabase: SupabaseClient,
     userId: string,
     featureKey: string,
+    acceptedValues?: readonly string[],
 ): Promise<boolean> {
     // 1) Subscription plan / freemium baseline (self-healing, fail-closed).
-    const planResult = await checkServerFeatureAccess(supabase, userId, featureKey);
+    const planResult = await checkServerFeatureAccess(supabase, userId, featureKey, acceptedValues);
     if (planResult.hasAccess) return true;
+    if (planResult.denialIsFinal || acceptedValues !== undefined) return false;
 
     // 2) Purchased add-on entitlement (app-DB shadow of SSO addon_purchases).
     return hasActiveAddonEntitlement(supabase, userId, featureKey);
@@ -138,15 +143,21 @@ export async function hasFeatureEntitlement(
 export async function hasAnyFeature(
     supabase: SupabaseClient,
     userId: string | null | undefined,
-    keys: readonly string[],
+    keys: readonly FeatureRequirement[],
 ): Promise<boolean> {
     // Fail-closed on missing identity or empty/invalid key set.
     if (!userId) return false;
     if (!Array.isArray(keys) || keys.length === 0) return false;
 
-    for (const key of keys) {
-        if (typeof key !== 'string' || key.length === 0) continue;
-        if (await hasFeatureEntitlement(supabase, userId, key)) {
+    for (const requirement of keys) {
+        if (typeof requirement === 'string') {
+            if (requirement.length > 0 && await hasFeatureEntitlement(supabase, userId, requirement)) return true;
+            continue;
+        }
+        if (!requirement || typeof requirement !== 'object' || Array.isArray(requirement)
+            || typeof requirement.key !== 'string' || requirement.key.length === 0
+            || !Array.isArray(requirement.acceptedValues) || requirement.acceptedValues.length === 0) continue;
+        if (await hasFeatureEntitlement(supabase, userId, requirement.key, requirement.acceptedValues)) {
             return true;
         }
     }

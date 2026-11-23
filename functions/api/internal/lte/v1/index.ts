@@ -38,6 +38,7 @@ import { handlePing } from './actions/ping';
 import { handleLearningTrack } from './actions/learning-track';
 import { handleLearnerStatus } from './actions/learner-status';
 import { handleLteSync } from './actions/lte-sync';
+import { handleSubscriptionResourceDelivery } from './actions/subscription-resource-delivery';
 
 const logger = createLogger('lte-gateway');
 
@@ -52,6 +53,7 @@ const REGISTRY: Record<string, GatewayAction> = {
   'catalogue:get': handleCatalogue,
   'learner:status': handleLearnerStatus,
   'lte:sync': handleLteSync,
+  'subscription-resource:acknowledge': handleSubscriptionResourceDelivery,
 };
 
 function gatewayResponse(result: GatewayResult, requestId: string, status = 200): Response {
@@ -154,6 +156,11 @@ export const onRequestPost: PagesFunction<PagesEnv> = async (context) => {
       userId: `${userClaim.sub.slice(0, 8)}…`,
       ok: result.ok,
     });
+    if (action === 'subscription-resource:acknowledge' && !result.ok) {
+      const status = result.error.code === 'BAD_REQUEST' ? 400 : result.error.code === 'FORBIDDEN' ? 403
+        : result.error.code === 'CONFLICT' ? 409 : 503;
+      return gatewayResponse(result, requestId, status);
+    }
     return gatewayResponse(result, requestId);
   } catch (error) {
     if (error instanceof GatewayAuthError) {

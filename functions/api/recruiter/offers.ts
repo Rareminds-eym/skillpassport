@@ -2,9 +2,10 @@ import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
 import { getActiveOrgId, getOrgOwnedOpportunityIds } from '../../lib/org-ownership';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext as AuthenticatedContext, PagesEnv } from '../../lib/types';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
 
 /**
  * Offers API — offers are the recruiter surface's offer letters.
@@ -39,10 +40,13 @@ const OFFER_SORT_FIELDS = ['inserted_at', 'updated_at', 'offer_date', 'expiry_da
 /** Resolve the caller's org + the set of org-owned opportunity ids (job_id scope). */
 async function resolveOrgJobScope(
   supabase: SupabaseClient,
-  user: { id: string; org_id?: string | null }
-): Promise<string[] | null> {
+  user: { id: string; org_id?: string | null }, context: AuthenticatedContext, mode: 'read'|'write'
+): Promise<string[] | null | Response> {
   const orgId = await getActiveOrgId(supabase, user as any);
   if (!orgId) return null;
+  const access=await requireSubscriptionAccess({env:context.env as PagesEnv,request:context.request,actorId:user.id,
+    subject:{kind:'organization',id:orgId},mode});
+  if(access instanceof Response)return access;
   const jobIds = await getOrgOwnedOpportunityIds(supabase, orgId);
   return jobIds;
 }
@@ -61,12 +65,16 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   // 🔒 Org is ALWAYS the caller's server-resolved org — body/query org params
   // are ignored (a client-supplied org id is never an authority).
-  const jobIds = await resolveOrgJobScope(supabase, user);
+  const jobIds = await resolveOrgJobScope(supabase, user, context, 'read');
+  if(jobIds instanceof Response)return jobIds;
   if (!jobIds || jobIds.length === 0) {
     // Fail-closed: no resolvable org or no owned jobs ⇒ empty list, never an
     // all-org dump.
     return apiSuccess({ offers: [], total: 0 }, context.request);
   }
+  const orgId=await getActiveOrgId(supabase,user);
+  const permission=orgId&&await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.VIEW_CANDIDATES);
+  if(!permission||!permission.allowed)return apiError(403,'FORBIDDEN','Candidate viewing permission is required',context.request);
 
   let query = supabase
     .from('offers')
@@ -124,7 +132,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   }
 
   // 🔒 Org ALWAYS server-resolved from the caller.
-  const jobIds = await resolveOrgJobScope(supabase, user);
+  const jobIds = await resolveOrgJobScope(supabase, user, context, 'write');
+  if(jobIds instanceof Response)return jobIds;
   if (!jobIds) {
     return apiError(400, 'VALIDATION_ERROR', 'Organization ID is required', context.request);
   }
@@ -199,7 +208,8 @@ const onRequestDelete = withAuth(async (context: AuthenticatedContext) => {
   // 🔒 Object-level authz (OWASP API1): fetch the row, resolve its job_id and
   // verify it belongs to one of the caller's org-owned opportunities BEFORE
   // deleting. Caller without an org scope is denied (fail-closed).
-  const jobIds = await resolveOrgJobScope(supabase, user);
+  const jobIds = await resolveOrgJobScope(supabase, user, context, 'write');
+  if(jobIds instanceof Response)return jobIds;
   const { data: row, error: fetchError } = await supabase
     .from('offers')
     .select('id, job_id')

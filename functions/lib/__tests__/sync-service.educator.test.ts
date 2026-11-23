@@ -21,7 +21,7 @@ const EDUCATOR_TABLES = ['college_lecturers', 'school_educators'];
 // Real producer payload literals, copied from
 // sso-worker/src/__tests__/fixtures/membership-created-payloads.json (not imported across packages).
 const PRODUCER_PAYLOADS = {
-  login: { user_id: 'user-login-1', organization_id: COLLEGE, roles: ['college_educator'], status: 'active' },
+  login: { user_id: '00c52487-710f-4b3c-9541-3b3928639266', organization_id: COLLEGE, roles: ['college_educator'], status: 'active' },
   userSync: { user_id: 'user-sync-1', organization_id: COLLEGE, roles: ['college_educator'], status: 'active' },
   signupMember: { user_id: 'user-signup-1', organization_id: COLLEGE, roles: ['college_educator'], status: 'active' },
   bulkImport: { user_id: 'user-bulk-1', organization_id: COLLEGE, roles: ['college_educator'], status: 'active' },

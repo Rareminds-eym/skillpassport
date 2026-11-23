@@ -6,6 +6,8 @@ vi.mock('../../../lib/auth', () => ({ withAuth: (handler: unknown) => handler, g
 vi.mock('../../../lib/supabase', () => ({ getServiceClient: () => ({ from: mocks.from }) }));
 vi.mock('../../../lib/newOpportunityNotifications', () => ({ notifyLearnersOfNewOpportunity: mocks.notify }));
 vi.mock('../../../shared/lib/entitlement-service', () => ({ getNumericLimit: mocks.quota }));
+vi.mock('../../../shared/lib/subscription-access', () => ({ requireSubscriptionAccess: async () => ({ current: { access: 'full' } }),
+  readRecruiterContactPermissions: vi.fn(), recruiterCandidateView: vi.fn(), unlockRecruiterCandidateContact: vi.fn() }));
 vi.mock('../../../lib/permissions', () => ({ verifyOrgAccess: mocks.access, getUserRecruitmentRoles: mocks.roles, PERMISSIONS: { CREATE_JOBS: 'create_jobs', EDIT_JOBS: 'edit_jobs', DELETE_JOBS: 'delete_jobs', MANAGE_CANDIDATES: 'manage_candidates', VIEW_CANDIDATES: 'view_candidates' } }));
 vi.mock('../../../lib/org-ownership', () => ({ getActiveOrgId: () => 'org-1', getOrgMemberUserIds: mocks.members, getOrgOwnedOpportunityIds: vi.fn(), assertInterviewAccess: vi.fn(), getInterviewRow: vi.fn(), ALLOWED_REQUISITION_STATUSES: ['draft', 'open', 'closed', 'on_hold'] }));
 let chain: Record<string, ReturnType<typeof vi.fn>>;
