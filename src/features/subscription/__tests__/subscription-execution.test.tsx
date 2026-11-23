@@ -373,7 +373,7 @@ describe('subscription execution consumer', () => {
     expect(JSON.parse(usageRequests[0][1].body)).toEqual({ kind: 'usage', subscriptionId: subscription, poolKey: 'org_pool', recipientId: organization });
     expect(screen.getByText(/Select a managed learner/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /checkout|buy now/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/purchase owner provides executable terms/)).toBeInTheDocument();
+    expect(screen.getAllByText(/purchase owner provides executable terms/)).not.toHaveLength(0);
     expect(screen.getByRole('option', { name: 'cancel' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'suspend' })).not.toBeInTheDocument();
   });
@@ -1102,7 +1102,7 @@ describe('owner-issued customer checkout', () => {
   });
   it('renews from the current subject and expected state rather than creating another subscription', async () => {
     fetchMock.mockImplementation(commerceRouter()); render(<SubscriptionWorkspace />); await selectSubscription();
-    fireEvent.change(screen.getByLabelText('Paid plan revision'), { target: { value: revision } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Plan' }), { target: { value: revision } });
     fireEvent.click(screen.getByRole('button', { name: /Renew Plan/ })); await screen.findByRole('alert');
     const command = JSON.parse(fetchMock.mock.calls.find(([url]) => url.endsWith('/commerce'))![1].body);
     expect(command.request).toMatchObject({ purpose: 'renew', subscriptionId: subscription, subject: row.subject, expectedVersion: 1, expectedRevisionId: revision });
