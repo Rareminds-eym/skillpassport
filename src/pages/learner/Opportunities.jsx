@@ -385,6 +385,9 @@ const Opportunities = () => {
     if (advancedFilters.department.length > 0) {
       filters.department = advancedFilters.department;
     }
+    if (advancedFilters.location && advancedFilters.location.length > 0) {
+      filters.location = advancedFilters.location;
+    }
     if (advancedFilters.salaryMin) {
       filters.salaryMin = advancedFilters.salaryMin;
     }

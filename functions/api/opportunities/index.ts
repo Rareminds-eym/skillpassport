@@ -1,7 +1,7 @@
 import { ApplicationResumeError, validateApplicationResume } from '../../lib/application-resume';
 import { wakeJobIndex } from '../../lib/wake-job-index';
 import { paginationParams, integerParam, readPage } from '../../lib/opportunity-pagination';
-import { opportunitySearchPredicate, workModeVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
+import { opportunitySearchPredicate, workModeVariants, experienceLevelVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
@@ -314,6 +314,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const experienceLevel = url.searchParams.get('experienceLevel');
   const mode = url.searchParams.get('mode');
   const department = url.searchParams.get('department');
+  const location = url.searchParams.get('location');
   const salaryMin = url.searchParams.get('salaryMin');
   const salaryMax = url.searchParams.get('salaryMax');
   const postedWithin = url.searchParams.get('postedWithin');
@@ -367,16 +368,24 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     else query = query.in('employment_type', vals);
   }
   if (experienceLevel) {
-    const vals = experienceLevel.split(',');
-    if (vals.length === 1) query = query.eq('experience_level', vals[0]);
-    else query = query.in('experience_level', vals);
+    query = query.in('experience_level', experienceLevelVariants(experienceLevel));
   }
   if (mode) query = query.in('mode', workModeVariants(mode));
   if (selectedSkills.length) query = query.or(skillsPredicate(selectedSkills));
   if (department) {
-    const vals = department.split(',');
+    // Values come from the facets endpoint which reads DISTINCT department from
+    // the same table, so they always match exactly — use eq/in for precision.
+    const vals = department.split(',').map((d) => d.trim()).filter(Boolean);
     if (vals.length === 1) query = query.eq('department', vals[0]);
     else query = query.in('department', vals);
+  }
+  if (location) {
+    const vals = location.split(',').map((l) => l.trim()).filter(Boolean);
+    if (vals.length === 1) {
+      query = query.ilike('location', `%${vals[0]}%`);
+    } else {
+      query = query.or(vals.map((v) => `location.ilike.%${v}%`).join(','));
+    }
   }
   if (searchTerm) query = query.or(opportunitySearchPredicate(searchTerm));
   if (minimum !== undefined) query = query.gte('salary_range_min', minimum);
