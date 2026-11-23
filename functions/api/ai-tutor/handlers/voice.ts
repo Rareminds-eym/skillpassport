@@ -3,7 +3,7 @@ import { apiError, apiSuccess } from '../../../lib/response';
 import { getCorsHeaders } from '../../../lib/cors';
 import type { PagesEnv } from '../../../lib/types';
 import { requireCourseAccess } from '../utils/course-index';
-import { pcmWave, speechParts, voiceModel } from '../utils/voice-model';
+import { pcmWave, speechParts, VOICE_CONFIG } from '../utils/voice-model';
 
 type Context = { request: Request; env: PagesEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 const ROOT = 'https://openrouter.ai/api/v1/audio';
@@ -13,7 +13,7 @@ export async function handleVoice(context: Context) {
   const { request, env } = context; const user = getContextUser(context);
   if (request.method === 'GET') return apiSuccess({ available: Boolean(env.OPENROUTER_API_KEY) }, request);
   if (!env.OPENROUTER_API_KEY) return apiError(503, 'VOICE_UNAVAILABLE', 'Voice conversation is currently unavailable.', request);
-  const model = voiceModel(env); const db = getServiceClient(env);
+  const model = VOICE_CONFIG; const db = getServiceClient(env);
   const signal = AbortSignal.any([request.signal, AbortSignal.timeout(60000)]);
   const authorization = { Authorization: `Bearer ${env.OPENROUTER_API_KEY}` };
   try {

@@ -1,15 +1,14 @@
-import type { PagesEnv } from '../../../lib/types';
-
 // Generic names keep model/provider choices out of the panel and session logic.
-export function voiceModel(env: PagesEnv) {
-  return {
-    model: env.VOICE_MODEL || 'heygen/heygen-voice-1-turbo:free',
-    transcriptionModel: env.VOICE_TRANSCRIPTION_MODEL || 'openai/whisper-large-v3-turbo',
-    voice: env.VOICE_PRESET || 'nadine',
-    format: env.VOICE_OUTPUT_FORMAT === 'mp3' ? 'mp3' as const : 'pcm' as const,
-    sampleRate: Number(env.VOICE_SAMPLE_RATE) || 44100,
-  };
-}
+export const VOICE_CONFIG: Readonly<{
+  model: string; transcriptionModel: string; voice: string;
+  format: 'mp3' | 'pcm'; sampleRate: number;
+}> = Object.freeze({
+  model: 'heygen/heygen-voice-1-turbo:free',
+  transcriptionModel: 'openai/whisper-large-v3-turbo',
+  voice: 'nadine',
+  format: 'pcm',
+  sampleRate: 44100,
+});
 
 export function speechParts(markdown: string): string[] {
   const text = markdown.replace(/<!--[\s\S]*?-->/g, '').replace(/```[\s\S]*?```/g, ' Code example is available in the transcript. ')

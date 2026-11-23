@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import { pcmWave, speechParts, voiceModel } from '../voice-model';
-it('keeps model choices in generic configuration',()=>{
-  expect(voiceModel({}).model).toBe('heygen/heygen-voice-1-turbo:free');
-  expect(voiceModel({VOICE_MODEL:'other/voice',VOICE_PRESET:'new',VOICE_OUTPUT_FORMAT:'mp3'})).toMatchObject({model:'other/voice',voice:'new',format:'mp3'});
+import { pcmWave, speechParts, VOICE_CONFIG } from '../voice-model';
+it('keeps voice settings in immutable shared constants',()=>{
+  expect(VOICE_CONFIG).toEqual({model:'heygen/heygen-voice-1-turbo:free',transcriptionModel:'openai/whisper-large-v3-turbo',voice:'nadine',format:'pcm',sampleRate:44100});
+  expect(Object.isFrozen(VOICE_CONFIG)).toBe(true);
 });
 it('wraps PCM in a correctly sized mono WAV header',()=>{
   const wave=pcmWave(new Uint8Array([1,2,3,4]).buffer,44100);const view=new DataView(wave);
