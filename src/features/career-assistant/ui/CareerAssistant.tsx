@@ -1,477 +1,161 @@
-/**
- * Career Assistant Component
- * 
- * Main chat interface for Career AI assistant.
- * Refactored with optimized React patterns for better performance.
- * 
- * @author Senior React Developer
- * @pattern Component Composition & Performance Optimization
- */
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocation } from 'react-router-dom';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('career-assistant-ui');
-import toast from 'react-hot-toast';
-import {
-  Send,
-  Mic,
-  Paperclip,
-  X,
-  ArrowDown,
-  Square,
-  PanelLeftClose,
-  PanelLeft,
-  AlertCircle
-} from 'lucide-react';
-import { streamCareerChat } from '@/features/career-assistant';
-
-import { useCareerConversations, Conversation, ConversationMessage } from '@/features/career-assistant/hooks/useCareerConversations';
-import { useAIFeedback, AIFeedback, FeedbackData } from '@/features/career-assistant/hooks/useAIFeedback';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Send, ArrowDown, Square, PanelLeft, AlertCircle } from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { streamCareerChat } from '../api/careerWorkerService';
+import { useCareerConversations, Conversation } from '../hooks/useCareerConversations';
+import { useAIFeedback, AIFeedback, FeedbackData } from '../hooks/useAIFeedback';
 import { ConversationSidebar } from './ConversationSidebar';
 import { EnhancedMessage, SimpleMessage } from './EnhancedMessage';
 import CareerAIToolsGrid from '@/shared/ui/CareerAIToolsGrid';
 import { Card } from '@/shared/ui';
-
-// Import optimized hooks
-import { useOptimizedMessages, Message } from '@/features/career-assistant/hooks/useOptimizedMessages';
-import { useSmartScroll } from '@/features/career-assistant/hooks/useSmartScroll';
-import { useConversationSwitcher } from '@/features/career-assistant/hooks/useConversationSwitcher';
-import { VirtualMessage } from '@/features/career-assistant/hooks/useVirtualMessage';
-
-
+import { useOptimizedMessages, Message } from '../hooks/useOptimizedMessages';
+import { useSmartScroll } from '../hooks/useSmartScroll';
+import { VirtualMessage } from '../hooks/useVirtualMessage';
 import { useUser } from '@/shared/model/authStore';
+import { INITIAL_VISIBLE_MESSAGES, MESSAGE_PRELOAD_MARGIN, USER_MESSAGE_HEIGHT,
+  ASSISTANT_MESSAGE_HEIGHT, MAX_INPUT_LENGTH } from '../constants';
 
-// Import constants
-import {
-  INITIAL_VISIBLE_MESSAGES,
-  MESSAGE_PRELOAD_MARGIN,
-  USER_MESSAGE_HEIGHT,
-  ASSISTANT_MESSAGE_HEIGHT,
-  MIN_MESSAGE_INTERVAL_MS,
-  MAX_INPUT_LENGTH,
-} from '../constants';
-
-/**
- * Career Assistant Container
- * Manages all state and provides it to child components via Context
- */
 const CareerAssistantContainer: React.FC = () => {
   const user = useUser();
   const location = useLocation();
-  
-  // ==================== HOOKS ====================
-  
-  // Conversation management
-  const {
-    conversations,
-    currentConversation,
-    loading: conversationsLoading,
-    fetchConversations,
-    loadConversation,
-    createNewConversation,
-    deleteConversation,
-    currentConversationId,
-    setCurrentConversationId,
-    hasMore,
-    loadMore,
-  } = useCareerConversations();
-
-  // AI Feedback
-  const {
-    submitFeedback,
-    loadFeedback,
-    getFeedback,
-    isLoading: isFeedbackLoading
-  } = useAIFeedback();
-
-  // Optimized message management
-  const {
-    messages,
-    setMessages,
-    clearMessages,
-    replaceMessages,
-  } = useOptimizedMessages();
-
-  // Smart scroll behavior
-  const {
-    messagesEndRef,
-    messagesContainerRef,
-    userScrolledUp,
-    scrollToBottom,
-    handleScroll,
-    setUserScrolledUp,
-  } = useSmartScroll([messages]);
-
-  // ==================== STATE ====================
-  
+  const navigate = useNavigate();
+  const history = useCareerConversations();
+  const { submitFeedback, loadFeedback, getFeedback, isLoading: isFeedbackLoading } = useAIFeedback();
+  const { messages, setMessages, clearMessages, replaceMessages } = useOptimizedMessages();
+  const scroll = useSmartScroll([messages]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [selectedChips, setSelectedChips] = useState<string[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [autoSendQuery, setAutoSendQuery] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
-  
-  // Sidebar state - collapsed on mobile by default
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth < 768;
+  const [failure, setFailure] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth < 768);
+  const active = useRef<AbortController | null>(null);
+  const epoch = useRef(0);
+  const activeTurn = useRef<{ userId: string; assistantId: string; text: string } | null>(null);
+  const navigationQuery = useRef<string | null>(null);
+  const cancel = useCallback(() => {
+    epoch.current++;
+    active.current?.abort();
+    active.current = null;
+    setIsTyping(false);
+    if (activeTurn.current) {
+      const turn = activeTurn.current;
+      setMessages(previous => previous.filter(message => message.id !== turn.userId && message.id !== turn.assistantId));
+      setInput(turn.text);
+      activeTurn.current = null;
     }
-    return false;
-  });
-  
-  // ==================== REFS ====================
-  
-  const inputRef = useRef<HTMLInputElement>(null);
-  const typingTimerRef = useRef<number | null>(null);
-  const userInteractedRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const lastSendTimeRef = useRef<number>(0); // Rate limiting
-  const userMsgIdRef = useRef<string | null>(null);
-
-  // Conversation switching with race condition prevention
-  const {
-    handleSelectConversation: selectConversation,
-    handleNewConversation: newConversation,
-  } = useConversationSwitcher({
-    loadConversation,
-    onMessagesCleared: clearMessages,
-    onWelcomeStateChange: setShowWelcome,
-  });
-
-  // ==================== EFFECTS ====================
-  
-  /**
-   * Load conversation messages when currentConversation changes
-   * Uses replaceMessages from optimized hook
-   */
+  }, [setMessages]);
+  useEffect(() => { cancel(); setLimitReached(false); setFailure(null); setInput('');
+    return () => { epoch.current++; active.current?.abort(); };
+  }, [user?.id, cancel]);
   useEffect(() => {
-    if (currentConversation?.messages) {
-      const loadedMessages: Message[] = currentConversation.messages.map((msg: ConversationMessage) => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        timestamp: msg.timestamp,
-      }));
-      replaceMessages(loadedMessages);
-      setShowWelcome(false);
-    } else if (currentConversation === null && currentConversationId === null) {
-      clearMessages();
-      setShowWelcome(true);
+    if (history.currentConversation) replaceMessages(history.currentConversation.messages);
+    else if (!history.currentConversationId) clearMessages();
+  }, [history.currentConversation, history.currentConversationId, replaceMessages, clearMessages]);
+  useEffect(() => {
+    if (history.currentConversationId) void loadFeedback(history.currentConversationId);
+  }, [history.currentConversationId, loadFeedback]);
+
+  const handleSend = useCallback(async (query?: string) => {
+    const text = (query ?? input).trim();
+    if (!text || active.current || history.loadingConversation || limitReached) return;
+    if (text.length > MAX_INPUT_LENGTH) { setFailure(`Messages must be ${MAX_INPUT_LENGTH} characters or fewer.`); return; }
+    if (!user?.id) { setFailure('Please log in to use Career AI.'); return; }
+    const controller = new AbortController();
+    active.current = controller;
+    const requestEpoch = ++epoch.current;
+    const conversationId = history.currentConversationId;
+    const userId = crypto.randomUUID();
+    const assistantId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    activeTurn.current = { userId, assistantId, text };
+    setMessages(previous => [...previous,
+      { id: userId, role: 'user', content: text, timestamp },
+      { id: assistantId, role: 'assistant', content: '', timestamp }]);
+    setInput(''); setFailure(null); setIsTyping(true); scroll.setUserScrolledUp(false);
+    try {
+      const result = await streamCareerChat(text, conversationId, [], chunk => {
+        if (epoch.current !== requestEpoch) return;
+        setMessages(previous => previous.map(message => message.id === assistantId && message.role === 'assistant'
+          ? { ...message, content: message.content + chunk } : message));
+      }, controller.signal);
+      if (epoch.current !== requestEpoch) return;
+      if (!result.success) throw new Error(typeof result.error === 'string' ? result.error : 'The response could not be saved.');
+      if (!result.conversationId || !result.messageId) throw new Error('The response was not confirmed as saved.');
+      history.setCurrentConversationId(result.conversationId);
+      setMessages(previous => previous.map(message => message.id === assistantId
+        ? { ...message, id: result.messageId!, interactive: result.interactive, intent: result.intent,
+          intentConfidence: result.intentConfidence, phase: result.phase } : message));
+      void history.fetchConversations();
+    } catch (error) {
+      if (epoch.current !== requestEpoch) return;
+      const message = error instanceof Error ? error.message : 'Unable to send your message.';
+      if (message.includes('QUOTA_EXCEEDED')) setLimitReached(true);
+      // Neither a partial reply nor an unconfirmed turn is presented as persisted history.
+      setMessages(previous => previous.filter(item => item.id !== assistantId && item.id !== userId));
+      setInput(text);
+      setFailure(`${message} Your question is in the composer. Check history before sending it again.`);
+    } finally {
+      if (epoch.current === requestEpoch) { active.current = null; activeTurn.current = null; setIsTyping(false); }
     }
-  }, [currentConversation, currentConversationId, replaceMessages, clearMessages]);
+  }, [input, user?.id, history.currentConversationId, history.loadingConversation, limitReached,
+    history.setCurrentConversationId, history.fetchConversations, setMessages, scroll.setUserScrolledUp]);
 
-  /**
-   * Auto-focus input on mount
-   */
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-
-  /**
-   * Handle query from navigation state (e.g., from other pages)
-   */
   useEffect(() => {
     const state = location.state as { query?: string } | null;
-    if (state?.query && messages.length === 0) {
-      setInput(state.query);
-      setAutoSendQuery(true);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, messages.length]);
+    if (!state?.query || navigationQuery.current === location.key) return;
+    const { query, ...rest } = state;
+    // Defer dispatch until effect setup survives Strict Mode's setup/cleanup
+    // replay. Mark the query consumed only when its single request is dispatched.
+    const timer = window.setTimeout(() => {
+      navigationQuery.current = location.key;
+      setInput(query);
+      navigate(location.pathname + location.search, { replace: true, state: rest });
+      void handleSend(query);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [location.key, location.state, location.pathname, location.search, navigate, handleSend]);
 
-  // ==================== HANDLERS ====================
-  
-  /**
-   * Stop AI response generation
-   * Aborts the current request and cleans up state
-   * FIX: Remove empty assistant messages when stopping
-   */
-  const stopTyping = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    if (typingTimerRef.current) {
-      clearTimeout(typingTimerRef.current);
-      typingTimerRef.current = null;
-    }
-    
-    // Remove any empty assistant messages (loading indicators)
-    setMessages(prev => prev.filter(m => 
-      !(m.role === 'assistant' && m.content.trim() === '')
-    ));
-    
-    setIsTyping(false);
-    setLoading(false);
-    userInteractedRef.current = false;
-  }, [setMessages]);
-
-  /**
-   * Send user message to AI
-   * Handles streaming response and conversation management
-   * FIX: Wrapped in useCallback with proper dependencies
-   * FIX: Added rate limiting and input validation
-   */
-  const handleSend = useCallback(async () => {
-    if (!input.trim() || loading) return;
-
-    // Rate limiting check
-    const now = Date.now();
-    if (now - lastSendTimeRef.current < MIN_MESSAGE_INTERVAL_MS) {
-      return;
-    }
-
-    // Input validation
-    const trimmedInput = input.trim();
-    if (trimmedInput.length > MAX_INPUT_LENGTH) {
-      logger.warn('Message exceeds maximum length', {
-        messageLength: trimmedInput.length,
-        maxLength: MAX_INPUT_LENGTH
-      });
-      return;
-    }
-
-    lastSendTimeRef.current = now;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: trimmedInput,
-      timestamp: new Date().toISOString()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    userMsgIdRef.current = userMessage.id;
-    const userInput = trimmedInput;
-    setInput('');
-    setLoading(true);
-    setShowWelcome(false);
-    setUserScrolledUp(false);
-    userInteractedRef.current = false;
-
-    // Track the temporary message ID for cleanup
-    let tempMessageId: string | null = null;
-    
-    try {
-      const learnerId = user?.id;
-      if (!learnerId) {
-        throw new Error('Please log in to use Career AI');
-      }
-
-      const id = (Date.now() + 1).toString();
-      tempMessageId = id; // Track for cleanup
-      
-      const aiMessage: Message = {
-        id,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date().toISOString()
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      setLoading(false);
-      setIsTyping(true);
-
-      // Create abort controller for this request
-      abortControllerRef.current = new AbortController();
-
-      const result = await streamCareerChat(
-        userInput,
-        currentConversationId,
-        selectedChips,
-        (chunk: string) => {
-          setMessages(prev => prev.map(m => 
-            m.id === id ? { ...m, content: m.content + chunk } : m
-          ));
-          
-          if (!userInteractedRef.current) {
-            requestAnimationFrame(() => {
-              if (!userInteractedRef.current) {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' });
-              }
-            });
-          }
-        },
-        abortControllerRef.current.signal
-      );
-      
-      if (!result.success && result.error) {
-        setMessages(prev => prev.filter(m => m.id !== id));
-        tempMessageId = null;
-        const isQuota = typeof result.error === 'string'
-          ? result.error === 'QUOTA_EXCEEDED' || result.error.startsWith('QUOTA_EXCEEDED:')
-          : result.error?.type === 'QUOTA_EXCEEDED';
-        if (isQuota) {
-          setMessages(prev => prev.filter(m => m.id !== userMsgIdRef.current));
-          userMsgIdRef.current = null;
-          setLimitReached(true);
-          return;
-        }
-        throw new Error(result.error);
-      }
-
-      // Success - update message with backend's messageId
-      tempMessageId = null; // Clear since message is now permanent
-      
-      if (result.conversationId && result.conversationId !== currentConversationId) {
-        setCurrentConversationId(result.conversationId);
-        fetchConversations();
-      }
-
-      // Update message with backend's messageId, interactive content and metadata
-      setMessages(prev => prev.map(m => 
-        m.id === id ? { 
-          ...m, 
-          id: result.messageId || m.id,
-          interactive: result.interactive,
-          intent: result.intent,
-          intentConfidence: result.intentConfidence,
-          phase: result.phase
-        } : m
-      ));
-    } catch (error: unknown) {
-      if (error instanceof Error && (error.name === 'AbortError' || error.message.includes('aborted'))) {
-        if (tempMessageId) {
-          setMessages(prev => prev.filter(m => m.id !== tempMessageId));
-        }
-        return;
-      }
-
-      logger.error('Failed to send message to Career AI', error instanceof Error ? error : new Error(String(error)), {
-        userId: user?.id,
-        conversationId: currentConversationId,
-        inputLength: userInput?.length
-      });
-
-      if (tempMessageId) {
-        setMessages(prev => prev.filter(m => m.id !== tempMessageId));
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to send message: ${errorMessage}. Please try again.`);
-    } finally {
-      setLoading(false);
-      setIsTyping(false);
-      if (typingTimerRef.current) {
-        clearTimeout(typingTimerRef.current);
-        typingTimerRef.current = null;
-      }
-      abortControllerRef.current = null;
-    }
-  }, [input, loading, user?.id, currentConversationId, selectedChips, setMessages, setUserScrolledUp, messagesEndRef, setCurrentConversationId, fetchConversations]);
-
-  /**
-   * Auto-send query if set from navigation
-   * FIX: Added handleSend to dependency array
-   */
-  useEffect(() => {
-    if (autoSendQuery && input && !loading) {
-      setAutoSendQuery(false);
-      const timer = setTimeout(() => {
-        handleSend();
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [autoSendQuery, input, loading, handleSend]);
-
-  /**
-   * Handle quick action button clicks
-   */
-  const handleNewConversation = useCallback(() => {
-    createNewConversation();
-    newConversation();
-    setSelectedChips([]);
-    setLimitReached(false);
-  }, [createNewConversation, newConversation, setLimitReached]);
-
-  const handleFeedback = useCallback(async (
-    messageId: string,
-    type: 'positive' | 'negative',
-  ) => {
-    if (!currentConversationId) return;
-
-    const thumbsUp = type === 'positive';
-    const messageIndex = messages.findIndex(m => m.id === messageId);
-    if (messageIndex === -1) return;
-
-    const aiMessage = messages[messageIndex];
-    const userMessage = messages.slice(0, messageIndex).reverse().find(m => m.role === 'user');
-    if (!userMessage) return;
-
-    const feedback: AIFeedback = {
-      conversationId: currentConversationId,
-      messageId,
-      userMessage: userMessage.content,
-      aiResponse: aiMessage.content,
-      detectedIntent: aiMessage.intent,
-      intentConfidence: aiMessage.intentConfidence,
-      conversationPhase: aiMessage.phase,
-    };
-
-    await submitFeedback(feedback, thumbsUp);
-  }, [currentConversationId, messages, submitFeedback]);
-
-  /**
-   * Load feedback when conversation changes
-   */
-  useEffect(() => {
-    if (currentConversationId) {
-      loadFeedback(currentConversationId);
-    }
-  }, [currentConversationId, loadFeedback]);
-
-
-  // ==================== RENDER ====================
-  
-  return (
-    <CareerAssistantUI
-      showWelcome={showWelcome}
-      limitReached={limitReached}
-      selectedChips={selectedChips}
-      setSelectedChips={setSelectedChips}
-      sidebarCollapsed={sidebarCollapsed}
-      setSidebarCollapsed={setSidebarCollapsed}
-      messages={messages}
-      loading={loading}
-      isTyping={isTyping}
-      input={input}
-      setInput={setInput}
-      onSendMessage={handleSend}
-      onStopTyping={stopTyping}
-      messagesContainerRef={messagesContainerRef}
-      messagesEndRef={messagesEndRef}
-      handleScroll={handleScroll}
-      userScrolledUp={userScrolledUp}
-      setUserScrolledUp={setUserScrolledUp}
-      scrollToBottom={scrollToBottom}
-      getFeedback={getFeedback}
-      isFeedbackLoading={isFeedbackLoading}
-      submitFeedback={handleFeedback}
-      onSendQuery={(query: string) => {
-        setInput(query);
-        setAutoSendQuery(true);
-      }}
-      conversations={conversations}
-      currentConversationId={currentConversationId}
-      selectConversation={selectConversation}
-      newConversation={handleNewConversation}
-      deleteConversation={deleteConversation}
-      conversationsLoading={conversationsLoading}
-      hasMore={hasMore}
-      loadMore={loadMore}
-    />
-  );
+  const selectConversation = async (id: string) => {
+    cancel(); setFailure(null);
+    if (await history.loadConversation(id)) setSidebarCollapsed(true);
+  };
+  const newConversation = () => {
+    cancel(); history.createNewConversation(); clearMessages(); setInput(''); setFailure(null); setSidebarCollapsed(true);
+  };
+  const deleteConversation = async (id: string) => {
+    if (id === history.currentConversationId) cancel();
+    await history.deleteConversation(id);
+  };
+  const feedback = async (messageId: string, thumbsUp: boolean, rating?: number, text?: string) => {
+    if (!history.currentConversationId) return false;
+    const index = messages.findIndex(message => message.id === messageId && message.role === 'assistant');
+    const assistant = messages[index];
+    const question = messages.slice(0, index).reverse().find(message => message.role === 'user');
+    if (!assistant || !question) return false;
+    const data: AIFeedback = { conversationId: history.currentConversationId, messageId,
+      userMessage: question.content, aiResponse: assistant.content, detectedIntent: assistant.intent,
+      intentConfidence: assistant.intentConfidence, conversationPhase: assistant.phase };
+    return submitFeedback(data, thumbsUp, rating, text);
+  };
+  return <CareerAssistantUI showWelcome={messages.length === 0} limitReached={limitReached}
+    sidebarCollapsed={sidebarCollapsed}
+    setSidebarCollapsed={setSidebarCollapsed} messages={messages} loading={history.loadingConversation}
+    isTyping={isTyping} input={input} setInput={setInput} onSendMessage={() => void handleSend()}
+    onStopTyping={() => { cancel();
+      setFailure('Generation stopped. This response may not have been saved. Check history before sending again.'); }}
+    {...scroll} getFeedback={getFeedback} isFeedbackLoading={isFeedbackLoading} submitFeedback={feedback}
+    onSendQuery={query => void handleSend(query)} conversations={history.conversations}
+    currentConversationId={history.currentConversationId} selectConversation={selectConversation}
+    newConversation={newConversation} deleteConversation={deleteConversation}
+    conversationsLoading={history.loading} hasMore={history.hasMore} loadMore={history.loadMore}
+    failure={failure} historyError={history.error} retryHistory={history.fetchConversations} />;
 };
 
 interface CareerAssistantUIProps {
   showWelcome: boolean;
   limitReached: boolean;
-  selectedChips: string[];
-  setSelectedChips: React.Dispatch<React.SetStateAction<string[]>>;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   messages: Message[];
@@ -481,15 +165,18 @@ interface CareerAssistantUIProps {
   setInput: React.Dispatch<React.SetStateAction<string>>;
   onSendMessage: () => void;
   onStopTyping: () => void;
-  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  messagesContainerRef: React.RefObject<HTMLDivElement>;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
   handleScroll: () => void;
   userScrolledUp: boolean;
-  setUserScrolledUp: React.Dispatch<React.SetStateAction<boolean>>;
+  setUserScrolledUp: (value: boolean) => void;
   scrollToBottom: (smooth?: boolean) => void;
   getFeedback: (messageId: string) => FeedbackData | null;
   isFeedbackLoading: (messageId: string) => boolean;
-  submitFeedback: (messageId: string, type: 'positive' | 'negative') => void;
+  submitFeedback: (messageId: string, thumbsUp: boolean, rating?: number, text?: string) => Promise<boolean>;
+  failure: string | null;
+  historyError: string | null;
+  retryHistory: () => void;
   onSendQuery: (query: string) => void;
   conversations: Conversation[];
   currentConversationId: string | null;
@@ -508,8 +195,6 @@ interface CareerAssistantUIProps {
 const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   showWelcome,
   limitReached,
-  selectedChips,
-  setSelectedChips,
   sidebarCollapsed,
   setSidebarCollapsed,
   messages,
@@ -536,11 +221,19 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   deleteConversation,
   conversationsLoading,
   hasMore,
-  loadMore,
+  loadMore, failure, historyError, retryHistory,
 }) => {
-  
-  const inputRef = useRef<HTMLInputElement>(null);
-  const userInteractedRef = useRef(false);
+
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const historyToggleRef = useRef<HTMLButtonElement>(null);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)');
+    const update = () => setMobile(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
 
   /**
    * Auto-focus input on mount
@@ -550,7 +243,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 bg-white">
+    <div className="flex h-full min-h-0 min-w-0 bg-white">
+      <div className="hidden md:flex">
       {/* Conversation History Sidebar */}
       <ConversationSidebar
         conversations={conversations}
@@ -565,29 +259,43 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
         onLoadMore={loadMore}
       />
 
+      </div>
+      <Dialog.Root open={!sidebarCollapsed && mobile} onOpenChange={open => setSidebarCollapsed(!open)}>
+        <Dialog.Portal><Dialog.Overlay className="fixed inset-0 bg-black/40 z-50 md:hidden" />
+          <Dialog.Content onCloseAutoFocus={event => { event.preventDefault(); historyToggleRef.current?.focus(); }} className="fixed inset-y-0 left-0 z-50 max-w-[90vw] bg-white md:hidden">
+            <Dialog.Title className="sr-only">Conversation history</Dialog.Title>
+            <Dialog.Description className="sr-only">Open or delete a conversation, or start a new chat.</Dialog.Description>
+            <ConversationSidebar conversations={conversations} currentConversationId={currentConversationId}
+              onSelectConversation={selectConversation} onNewConversation={newConversation} onDeleteConversation={deleteConversation}
+              sidebarCollapsed={false} onToggleSidebar={() => setSidebarCollapsed(true)} conversationsLoading={conversationsLoading}
+              hasMore={hasMore} onLoadMore={loadMore} />
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col max-w-5xl mx-auto relative">
+      <div className="flex-1 min-w-0 flex flex-col max-w-5xl mx-auto relative">
         {/* Mobile sidebar toggle */}
         <div className="md:hidden absolute top-4 left-4 z-10">
           <button
-            onClick={() => setSidebarCollapsed(v => !v)}
+            ref={historyToggleRef} aria-label="Open conversation history" aria-expanded={!sidebarCollapsed}
+            onClick={() => setSidebarCollapsed(false)}
             className="p-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50"
           >
-            {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            <PanelLeft className="w-5 h-5" />
           </button>
         </div>
 
         {/* Messages Area */}
-        <div 
+        <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-8"
+          className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-16 pb-8 md:pt-8"
           style={{ scrollBehavior: 'smooth' }}
         >
           {showWelcome && messages.length === 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
-                <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-5xl font-bold text-gray-900 mb-4">
+                <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-5xl font-bold text-gray-900 mb-4">
                   Welcome to Career AI
                 </motion.h1>
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-lg text-gray-600 max-w-2xl mx-auto">
@@ -595,18 +303,18 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                 </motion.p>
               </div>
 
-              <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} />
- 
+              <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="full" animated={true} disabled={loading || isTyping || limitReached} />
+
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="text-center text-sm text-gray-500 mt-8">
                 💡 Click a card above or type your question below to get started
               </motion.div>
             </motion.div>
           ) : (
             <div className="max-w-4xl mx-auto space-y-6">
-              {selectedChips.length === 0 && messages.length > 0 && (
+              {messages.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
                   <p className="text-sm text-gray-500 mb-3 text-center">Quick Actions:</p>
-                  <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="compact" animated={true} />
+                  <CareerAIToolsGrid onAction={(prompt) => onSendQuery(prompt)} variant="compact" animated={true} disabled={loading || isTyping || limitReached} />
                 </motion.div>
               )}
 
@@ -615,11 +323,11 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                   // Create unique key by combining ID with role and index
                   // Backend uses same turnId for user+assistant pair, so we need unique keys for React
                   const uniqueKey = `${message.id}-${message.role}-${index}`;
-                  
+
                   // Virtual scrolling: Always render first 5 and last 5 messages
                   // Virtualize messages in the middle for performance
                   const isInitialVisible = index < INITIAL_VISIBLE_MESSAGES || index >= messages.length - INITIAL_VISIBLE_MESSAGES;
-                  
+
                   return (
                     <VirtualMessage
                       key={uniqueKey}
@@ -643,12 +351,12 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                           </div>
                         </motion.div>
                       ) : (
-                        <SimpleMessage 
-                          content={message.content} 
-                          timestamp={message.timestamp} 
+                        <SimpleMessage
+                          content={message.content}
+                          timestamp={message.timestamp}
                           isUser={false}
                           messageId={message.id}
-                           onFeedback={(id, type) => submitFeedback(id, type)}
+                           onFeedback={isTyping ? undefined : submitFeedback}
                           feedbackData={getFeedback(message.id)}
                           feedbackLoading={isFeedbackLoading(message.id)}
                         />
@@ -686,10 +394,10 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                   <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-amber-900">
-                      You've used your 2 free messages
+                      Your current message allowance has been reached
                     </p>
                     <p className="text-sm text-amber-700 mt-0.5">
-                      Start a new conversation or contact support for more.
+                      Starting another conversation does not reset your allowance. Review your subscription or contact support.
                     </p>
                   </div>
                 </div>
@@ -713,7 +421,6 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                     whileTap={{ y: 0 }}
                     onClick={() => {
                       setUserScrolledUp(false);
-                      userInteractedRef.current = false;
                       scrollToBottom(true);
                     }}
                     className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-lg hover:shadow-xl hover:bg-gray-50 transition-all"
@@ -748,7 +455,6 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
                     whileTap={{ y: 0 }}
                     onClick={() => {
                       setUserScrolledUp(false);
-                      userInteractedRef.current = false;
                       scrollToBottom(true);
                     }}
                     className="p-3 bg-white border border-gray-300 text-gray-700 rounded-full shadow-md hover:shadow-lg hover:bg-gray-50 transition-all"
@@ -762,47 +468,28 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
           )}
         </AnimatePresence>
 
+        <div role="status" aria-live="polite" className="sr-only">{loading ? 'Loading conversation' : isTyping ? 'Career AI is responding' : 'Ready'}</div>
+        {historyError && <div role="alert" className="p-3 text-red-700">{historyError} <button onClick={retryHistory} className="underline">Retry history</button></div>}
+        {failure && <p role="alert" className="p-3 text-red-700">{failure}</p>}
         {/* Input Area */}
         <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 py-4">
           <div className="max-w-4xl mx-auto">
-            {selectedChips.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap gap-2 mb-3">
-                {selectedChips.map((chip) => (
-                  <motion.div
-                    key={chip}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm font-medium border border-gray-200"
-                  >
-                    <span>{chip}</span>
-                    <button onClick={() => setSelectedChips(prev => prev.filter(c => c !== chip))} className="hover:bg-gray-200 rounded-full p-0.5 transition-colors" aria-label={`Remove ${chip}`}>
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
-
             <div className="relative">
-              <input
+              <textarea
                 ref={inputRef}
-                type="text"
+                rows={2}
+                aria-label="Message Career AI"
+                maxLength={MAX_INPUT_LENGTH}
+                aria-describedby="career-message-help"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && onSendMessage()}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); onSendMessage(); } }}
                 placeholder={limitReached ? "Message limit reached" : (showWelcome ? "Ask me anything about your career..." : "Type your message...")}
                 disabled={loading || isTyping || limitReached}
-                className="w-full px-5 py-4 pr-32 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
+                className="w-full px-5 py-4 pr-16 resize-y text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
               />
-              
+
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Attach file">
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded-lg transition-colors" title="Voice message">
-                  <Mic className="w-5 h-5" />
-                </button>
                 <button
                   onClick={onSendMessage}
                   disabled={loading || isTyping || !input.trim() || limitReached}
@@ -815,8 +502,8 @@ const CareerAssistantUI: React.FC<CareerAssistantUIProps> = ({
             </div>
 
             <div className="mt-2 px-2">
-              <p className="text-xs text-gray-500">
-                Career AI may generate inaccurate information. Please verify important details.
+              <p id="career-message-help" className="text-xs text-gray-500">
+                {input.length}/{MAX_INPUT_LENGTH} characters. Shift+Enter for a new line. Career AI may generate inaccurate information. Please verify important details.
               </p>
             </div>
           </div>
