@@ -52,6 +52,29 @@ beforeEach(() => {
 });
 
 describe('Catalogue-backed subscription gateway', () => {
+  it('retains a paid old purchase when automatic free access is newer', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+      { ...personal, plan_amount: 499, plan_revision_id: null, lifecycle_state: null },
+    ];
+    expect((await resolve())?.id).toBe('individual');
+  });
+  it('does not revive expired paid access ahead of a valid free subscription', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, plan_amount: 499, subscription_end_date: '2020-01-01' },
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    expect((await resolve())?.id).toBe('free');
+  });
+  it('preserves a retired paid plan despite old onboarding selection metadata', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache[0].is_active = false;
+    tables.subscription_cache = [{ ...personal, razorpay_payment_id: 'pay_historical' }];
+    expect((await resolve())?.id).toBe('individual');
+  });
   it('finds assigned bulk coverage through its parent subscription without a license organization_id', async () => {
     tables.organization_members = [];
     tables.subscription_cache = [{ ...coverage, plan_id: personalPlan.id }];

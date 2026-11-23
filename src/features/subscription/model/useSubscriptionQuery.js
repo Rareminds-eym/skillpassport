@@ -28,22 +28,27 @@ export const subscriptionQueryKey = (userId, scope) => [
 /**
  * Format raw subscription data from API
  */
-const formatSubscriptionData = (data) => {
+export const formatSubscriptionData = (data) => {
   if (!data) return null;
 
   // The database `subscription_plans` is the source of truth for the plan code and name.
   // Fallback to legacy `plan_type` text on the `subscriptions` table only if join data is missing.
-  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
-  const planName = data.subscription_plans?.name || data.plan_type;
+  const planId = data.subscription_plans?.plan_code || data.plan_code || data.plan_type;
+  const planName = data.subscription_plans?.name || data.plan_name || data.plan_type;
 
   return {
+    planId: data.plan_id,
+    productId: data.product_id,
+    revisionId: data.plan_revision_id ?? null,
+    lifecycleState: data.lifecycle_state ?? null,
+    isOrganizationSubscription: data.is_organization_subscription === true,
     id: data.id, // Subscription ID for cancellation
     plan: planId,
     status: data.status,
     startDate: data.subscription_start_date,
     endDate: data.subscription_end_date,
     features: data.features || [], // Features will be fetched from plans API
-    autoRenew: data.auto_renew !== false,
+    autoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
     nextBillingDate: data.subscription_end_date,
     paymentStatus: data.status === 'active' ? 'success' : 'pending',
     planName,

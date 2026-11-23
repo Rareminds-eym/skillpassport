@@ -15,6 +15,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
+import { syncManagedSubscriptionStatus } from '../../../shared/lib/subscription-management';
 import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleResumeSubscription(context: AuthenticatedContext): Promise<Response> {
@@ -59,10 +60,16 @@ export async function handleResumeSubscription(context: AuthenticatedContext): P
       return apiError(400, 'VALIDATION_ERROR', 'Only paused subscriptions can be resumed', context.request);
     }
 
+    if (existing.plan_revision_id || existing.lifecycle_state) {
+      return apiError(409, 'REVISION_MANAGEMENT_REQUIRED', 'Refresh Manage Subscription to change this plan using its current terms.', context.request);
+    }
+
     // Write status change through SSO worker (auth DB is source of truth)
     const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'active',
     });
+
+    await syncManagedSubscriptionStatus(supabase, user.id, subscriptionId, 'active', ssoResult);
 
     // Sync shadow table (non-blocking on failure)
     try {

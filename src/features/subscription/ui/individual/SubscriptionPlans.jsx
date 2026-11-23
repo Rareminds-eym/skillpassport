@@ -7,5 +7,11 @@ const revisionPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 export default function SubscriptionPlans({ onPaymentConfirmed }) {
   const [search] = useSearchParams();
   const revision = search.get('revision');
-  return <SubscriptionWorkspace catalogType={search.get('type') ?? undefined} view="catalog" selectedRevisionId={revision && revisionPattern.test(revision) ? revision.toLowerCase() : undefined} onPaymentConfirmed={onPaymentConfirmed} />;
+  const subscriptionId = search.get('subscriptionId');
+  const mode = search.get('mode');
+  return <SubscriptionWorkspace catalogType={search.get('type') ?? undefined} view="catalog"
+    selectedRevisionId={revision && revisionPattern.test(revision) ? revision.toLowerCase() : undefined}
+    managedSubscriptionId={subscriptionId && revisionPattern.test(subscriptionId) ? subscriptionId.toLowerCase() : undefined}
+    catalogMode={mode === 'renew' || mode === 'upgrade' ? mode : undefined}
+    onPaymentConfirmed={onPaymentConfirmed} />;
 }

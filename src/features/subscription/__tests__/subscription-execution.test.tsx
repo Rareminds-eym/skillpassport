@@ -11,13 +11,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decideSubscriptionLifecycle } from '../../../../../sso-worker/src/lib/subscriptions/lifecycle';
 import { subscriptionExecutionService as api, catalogSchema, commerceSettlementRequest, currentSchema, discoverySchema, lifecycleRequestSchema } from '../api/subscriptionExecutionService';
 import { useSubscriptionCheckout } from '../model/useSubscriptionExecution';
-import MySubscription from '../ui/individual/MySubscription';
 import SubscriptionWorkspace from '../ui/SubscriptionWorkspace';
 
-const { fetchMock, auth, payMock, prepareMock } = vi.hoisted(() => ({ fetchMock: vi.fn(), payMock: vi.fn(), prepareMock: vi.fn(), auth: { authenticated: true, user: null as null | { roles: string[] } } }));
+const { fetchMock, auth, payMock, prepareMock } = vi.hoisted(() => ({ fetchMock: vi.fn(), payMock: vi.fn(), prepareMock: vi.fn(), auth: { authenticated: true, user: null as null | { id?: string; roles: string[] } } }));
 vi.mock('@/shared/model/authStore', () => ({
   useIsAuthenticated: () => auth.authenticated, useUserRole: () => ({ role: 'learner' }), useAuthLoading: () => false,
   useUser: () => auth.user, pickPrimaryRole: (roles: string[]) => roles[0] ?? null,
+  useAuthStore: { getState: () => ({ isAuthenticated: auth.authenticated }) },
+}));
+vi.mock('@/entities/learner', () => ({ useLearnerDataByEmail: () => ({ learnerData: null, loading: false, error: null }) }));
+vi.mock('@/features/analytics/model/useUsageStatistics', () => ({ useUsageStatistics: () => ({ usageStats: null, loading: false, error: null }) }));
+vi.mock('../ui/organization/MemberSubscriptionView', () => ({ default: () => null }));
+vi.mock('../ui/individual/SubscriptionDashboard', () => ({ default: () => null }));
+vi.mock('@/shared/api', () => ({ getPaymentReceiptPresignedUrl: vi.fn() }));
+vi.mock('../api/subscriptionService', () => ({ getActiveSubscription: vi.fn(), getUserPayments: vi.fn().mockResolvedValue({ success: true, data: [] }), getUserSubscriptions: vi.fn().mockResolvedValue({ success: true, data: [] }) }));
+vi.mock('../model/useSubscriptionQuery', async importOriginal => ({
+  ...await importOriginal<typeof import('../model/useSubscriptionQuery')>(),
+  useSubscriptionQuery: () => ({ loading: false, error: null, subscriptionData: {
+    id: '00000000-0000-4000-8000-000000000003', productId: '00000000-0000-4000-8000-000000000002',
+    revisionId: '00000000-0000-4000-8000-000000000004', plan: 'configured', planName: 'Configured membership',
+    status: 'active', features: [], autoRenew: true,
+  } }),
 }));
 vi.mock('../api/razorpayService', () => ({ payIssuedSubscriptionOrder: payMock, prepareSubscriptionCheckout: prepareMock }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: fetchMock } }));
@@ -307,15 +321,15 @@ describe('subscription execution consumer', () => {
     expect(screen.getByRole('link', { name: 'Manage your subscription' })).toHaveAttribute('href', '/subscription/manage');
     expect(fetchMock.mock.calls.every(([url, options]) => ['/api/subscriptions/catalog', '/api/subscriptions'].includes(url) && options.method === 'GET')).toBe(true);
     cleanup(); fetchMock.mockClear();
-    render(<MemoryRouter initialEntries={['/subscription/manage']}><Routes>
+    auth.user = { id: actor, roles: ['learner'] };
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/subscription/manage']}><Routes>
       <Route path="/subscription/manage" element={<ProtectedRoute><SubscriptionManagePage /></ProtectedRoute>} />
-    </Routes></MemoryRouter>);
-    await selectSubscription();
-    expect(screen.getByRole('heading', { name: 'Configured membership' })).toBeInTheDocument();
+    </Routes></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole('heading', { name: 'Configured membership' })).toBeInTheDocument();
+    expect(await screen.findByText('custom reports: 8')).toBeInTheDocument();
     cleanup();
-    render(<MySubscriptionPage />);
-    await selectSubscription();
-    expect(screen.getByRole('heading', { name: 'Configured membership' })).toBeInTheDocument();
+    render(<QueryClientProvider client={new QueryClient()}><MemoryRouter><MySubscriptionPage /></MemoryRouter></QueryClientProvider>);
+    expect(await screen.findByRole('heading', { name: 'Configured membership' })).toBeInTheDocument();
   });
   it.each([SubscriptionPlansPage, SubscriptionManagePage])('does not mount subscription data for an unauthenticated routed page', async Page => {
     auth.authenticated = false;
@@ -330,7 +344,7 @@ describe('subscription execution consumer', () => {
     const nextState = { ...state, ...(changed === 'plan' ? { planId: id(99) } : changed === 'revision' ? { revisionId: id(99) } : { version: 2 }) };
     const nextCurrent = { ...current, state: nextState, plan: { ...current.plan, id: nextState.planId } };
     fetchMock.mockImplementation((url: string, init?: RequestInit) => url.includes('/current') ? response(nextCurrent) : router(url, init));
-    render(<SubscriptionManagePage />);
+    render(<SubscriptionWorkspace />);
     fireEvent.change(await screen.findByRole('combobox', { name: 'Subscription' }), { target: { value: subscription } });
     expect(await screen.findByRole('alert')).toHaveTextContent('Current subscription scope differs');
     expect(screen.queryByLabelText('Operation')).not.toBeInTheDocument();
@@ -340,14 +354,14 @@ describe('subscription execution consumer', () => {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => url === '/api/subscriptions'
       ? response({ ...discovery, items: [], nextCursor: id(30) })
       : url.startsWith('/api/subscriptions?cursor=') ? response(discovery) : router(url, init));
-    render(<SubscriptionManagePage />);
+    render(<SubscriptionWorkspace />);
     expect(await screen.findByText('No authorized subscriptions on this page. Continue to the next page.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Next subscriptions' }));
     expect(await screen.findByRole('combobox', { name: 'Subscription' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(`/api/subscriptions?cursor=${id(30)}`, expect.anything());
   });
-  it('connects existing feature management view to owner reads and renders exact terms and usage', async () => {
-    render(<MySubscription />);
+  it('connects the execution workspace to owner reads and renders exact terms and usage', async () => {
+    render(<SubscriptionWorkspace />);
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
     expect(await screen.findByText('USD 12.345')).toBeInTheDocument();
     expect(screen.getByText(/per seat/)).toBeInTheDocument();

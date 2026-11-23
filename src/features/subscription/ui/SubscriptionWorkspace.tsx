@@ -35,6 +35,7 @@ function taxLabel(tax: Catalog['tax'], taxInclusive: boolean) {
 }
 /** Called once after owner-confirmed settlement; the page layer decides where the buyer goes next. */
 type PaymentConfirmed = () => void;
+type CatalogSelection = { managedSubscriptionId?: string; catalogMode?: 'upgrade' | 'renew' };
 function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType<typeof useSubscriptionCheckout>; onPaymentConfirmed?: PaymentConfirmed }) {
   const { state } = checkout;
   const committed = state.status === 'committed';
@@ -132,14 +133,14 @@ function CatalogPrices({ plan, catalog }: { plan: Catalog['plans'][number]; cata
     {taxLabel(catalog.tax, plan.presentation.taxInclusive) && <span className={styles.tax}> {taxLabel(catalog.tax, plan.presentation.taxInclusive)}</span>}
     <small>Available to {price.audiences.join(', ')}</small></li>)}</ul>;
 }
-function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, onPaymentConfirmed }: { catalog: Catalog; selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed }) {
+function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, onPaymentConfirmed, managedSubscriptionId, catalogMode }: { catalog: Catalog; selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed } & CatalogSelection) {
   const checkout = useSubscriptionCheckout(catalog);
   const user = useUser();
   const subject = catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
-  const [context, retryContext] = useCatalogPurchaseContext(catalog, subject);
+  const [context, retryContext] = useCatalogPurchaseContext(catalog, subject, managedSubscriptionId);
   const purchase = (plan: Catalog['plans'][number]) => <ReadPanel state={context} retry={retryContext}>{value =>
-    <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} />
+    <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} allowRenewal={catalogMode === 'renew'} />
   }</ReadPanel>;
   if (qaPresentation) return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><SubscriptionCatalog catalog={catalog} selectedRevisionId={selectedRevisionId}
     currentPlanId={context.status === 'ready' ? context.data.current?.state.planId : undefined}
@@ -156,25 +157,25 @@ function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, 
     <FeatureList features={plan.features} />{purchase(plan)}
   </article>)}</div></>;
 }
-function PublishedPlans({ selectedRevisionId, qaPresentation = false, onPaymentConfirmed }: { selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed }) {
+function PublishedPlans({ selectedRevisionId, qaPresentation = false, onPaymentConfirmed, managedSubscriptionId, catalogMode }: { selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed } & CatalogSelection) {
   const [state, retry] = usePublishedCatalog();
   return <section aria-label={qaPresentation ? "Published plans" : undefined} aria-labelledby={qaPresentation ? undefined : "published-plans"}>{!qaPresentation && <div className={styles.sectionHeading}><span>02 / Explore</span><h2 id="published-plans">Published plans</h2></div>}
     <ReadPanel state={state} retry={retry}>{catalog => <>
-      {catalog.plans.length === 0 ? <p className={styles.notice}>{catalog.audience === null ? 'No plans are offered for your account type. Contact the subscription owner if this looks wrong.' : 'No published plans are available.'}</p> : <PurchaseCatalog key={`${catalog.actorId}:${catalog.productId}`} catalog={catalog} selectedRevisionId={selectedRevisionId} qaPresentation={qaPresentation} onPaymentConfirmed={onPaymentConfirmed} />}
+      {catalog.plans.length === 0 ? <p className={styles.notice}>{catalog.audience === null ? 'No plans are offered for your account type. Contact the subscription owner if this looks wrong.' : 'No published plans are available.'}</p> : <PurchaseCatalog key={`${catalog.actorId}:${catalog.productId}`} catalog={catalog} selectedRevisionId={selectedRevisionId} qaPresentation={qaPresentation} onPaymentConfirmed={onPaymentConfirmed} managedSubscriptionId={managedSubscriptionId} catalogMode={catalogMode} />}
     </>}</ReadPanel>
   </section>;
 }
-function PaidSubscriptionChange({ current, operations }: { current: Current; operations: Discovery['items'][number]['lifecycleOperations'] }) {
+export function PaidSubscriptionChange({ current, operations, onPaymentConfirmed }: { current: Current; operations: Discovery['items'][number]['lifecycleOperations']; onPaymentConfirmed?: PaymentConfirmed }) {
   const [catalog, retry] = usePublishedCatalog();
   const checkout = useSubscriptionCheckout({ actorId: current.actorId, productId: current.state.productId });
-  const [selected, setSelected] = useState('');
+  const [selected, setSelected] = useState(current.state.revisionId);
   return <section className={styles.actions}><h3>Renew or upgrade with payment</h3><ReadPanel state={catalog} retry={retry}>{data => {
     if (data.actorId !== current.actorId || data.productId !== current.state.productId) return <p role="alert">Published catalog scope differs.</p>;
     const plan = data.plans.find(value => value.revisionId === selected);
-    return <><label>Paid plan revision<select value={selected} disabled={checkout.state.status !== 'idle'} onChange={event => setSelected(event.target.value)}>
+    return <><label>Plan<select value={selected} disabled={checkout.state.status !== 'idle'} onChange={event => setSelected(event.target.value)}>
       <option value="">Choose published terms</option>{data.plans.map(value => <option key={value.revisionId} value={value.revisionId}>{value.name} · Revision {value.revisionNumber}</option>)}</select></label>
       {plan && <PlanPurchase plan={plan} catalog={data} current={current} operations={operations} checkout={checkout} allowRenewal />}</>;
-  }}</ReadPanel><CheckoutStatus checkout={checkout} /></section>;
+  }}</ReadPanel><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /></section>;
 }
 function PoolHistory({ current, pool, recipientId, revisionId }: { current: Current; pool: Current['pools'][number]; recipientId: string; revisionId?: string }) {
   const [after, setAfter] = useState<string | null>(null);
@@ -193,7 +194,7 @@ function PoolHistory({ current, pool, recipientId, revisionId }: { current: Curr
       {history.nextCursor && <button onClick={() => setAfter(history.nextCursor)}>Next allocations</button>}</div>
   </section>}</ReadPanel>;
 }
-function SubscriptionActivity({ current }: { current: Current }) {
+export function SubscriptionActivity({ current }: { current: Current }) {
   const [after, setAfter] = useState<string | null>(null);
   const [revisionId, setRevisionId] = useState<string | null>(null);
   const [state, retry] = useSubscriptionAudit(current, after);
@@ -227,7 +228,7 @@ function PoolUsage({ current, pool, recipientId }: { current: Current; pool: Cur
   </div>}</ReadPanel><button aria-expanded={showHistory} onClick={() => setShowHistory(value => !value)}>{showHistory ? 'Hide allocation history' : 'View allocation history'}</button>
     {showHistory && <PoolHistory current={current} pool={pool} recipientId={recipientId} />}</>;
 }
-function CreditPool({ current, pool, revisionId }: { current: Current; pool: Current['pools'][number]; revisionId?: string }) {
+export function CreditPool({ current, pool, revisionId }: { current: Current; pool: Current['pools'][number]; revisionId?: string }) {
   const [recipient, setRecipient] = useState('');
   const [selected, setSelected] = useState('');
   const [invalid, setInvalid] = useState(false);
@@ -351,8 +352,8 @@ function SubscriptionAccess() {
   </>;
 }
 /** `selectedRevisionId` only highlights a published revision; it never sets price or grants purchase. */
-export default function SubscriptionWorkspace({ view = 'all', selectedRevisionId, catalogType, onPaymentConfirmed }: { view?: 'all' | 'catalog'; selectedRevisionId?: string; catalogType?: string; onPaymentConfirmed?: PaymentConfirmed }) {
-  if (view === 'catalog') return <SubscriptionCatalogFrame type={catalogType}><PublishedPlans qaPresentation selectedRevisionId={selectedRevisionId} onPaymentConfirmed={onPaymentConfirmed} /></SubscriptionCatalogFrame>;
+export default function SubscriptionWorkspace({ view = 'all', selectedRevisionId, catalogType, onPaymentConfirmed, managedSubscriptionId, catalogMode }: { view?: 'all' | 'catalog'; selectedRevisionId?: string; catalogType?: string; onPaymentConfirmed?: PaymentConfirmed } & CatalogSelection) {
+  if (view === 'catalog') return <SubscriptionCatalogFrame type={catalogType}><PublishedPlans qaPresentation selectedRevisionId={selectedRevisionId} onPaymentConfirmed={onPaymentConfirmed} managedSubscriptionId={managedSubscriptionId} catalogMode={catalogMode} /></SubscriptionCatalogFrame>;
   return <SubscriptionManagement selectedRevisionId={selectedRevisionId} />;
 }
 function SubscriptionManagement({ selectedRevisionId }: { selectedRevisionId?: string }) {

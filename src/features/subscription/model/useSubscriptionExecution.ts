@@ -58,7 +58,7 @@ export function useCurrentSubscription(row: Discovery['items'][number], context:
   return useRead<Current>(useCallback(signal => api.current(row, context, signal), [row, context]));
 }
 /** Resolve the buyer's live subscription before choosing purchase, renewal or upgrade. */
-export function useCatalogPurchaseContext(catalog: Catalog, subject: Current['state']['subject'] | null) {
+export function useCatalogPurchaseContext(catalog: Catalog, subject: Current['state']['subject'] | null, selectedSubscriptionId?: string) {
   const actorId = catalog.actorId, productId = catalog.productId, kind = subject?.kind, subjectId = subject?.id;
   return useRead(useCallback(async signal => {
     if (!kind || !subjectId) throw new Error('Your purchasing account is unavailable. Refresh your identity before purchasing.');
@@ -76,12 +76,15 @@ export function useCatalogPurchaseContext(catalog: Catalog, subject: Current['st
       if (page.nextCursor && page.nextCursor === cursor) throw new Error('Subscription discovery did not advance.');
       cursor = page.nextCursor ?? undefined;
     } while (cursor);
-    if (matches.length > 1) throw new Error('Multiple current subscriptions need review before another payment.');
-    const row = matches[0];
+    if (!selectedSubscriptionId && matches.length > 1) throw new Error('Multiple current subscriptions need review before another payment.');
+    // A URL may select a record, but only the owner's subject-scoped discovery
+    // can authorize it. Never turn a missing selection into another purchase.
+    const row = selectedSubscriptionId ? matches.find(item => item.id === selectedSubscriptionId) : matches[0];
+    if (selectedSubscriptionId && !row) throw new Error('The selected subscription is no longer available for this account. Return to Manage Subscription and refresh.');
     if (!row) return { current: null, operations: [] as Discovery['items'][number]['lifecycleOperations'] };
     if (row.kind !== 'initialized') throw new Error('Your current subscription needs setup before it can be upgraded. Contact support before paying.');
     return { current: await api.current(row, { actorId, productId }, signal), operations: row.lifecycleOperations };
-  }, [actorId, productId, kind, subjectId]));
+  }, [actorId, productId, kind, subjectId, selectedSubscriptionId]));
 }
 export function useCreditUsage(current: Current, pool: Current['pools'][number], recipientId: string) {
   return useRead<Usage>(useCallback(signal => api.usage(current, pool, recipientId, signal), [current, pool, recipientId]));

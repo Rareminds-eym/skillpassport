@@ -114,11 +114,14 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     if (!explicitSeat && plan.business_type === 'b2b') return format(sub, plan, org);
   }
   if (organizationDashboard) return null;
-  for (const sub of own) {
+  // A newer automatic free entry must not hide an existing paid purchase.
+  const purchased = (sub: Subscription) => Number(sub.plan_amount) > 0 || Boolean(sub.razorpay_payment_id);
+  const personalCandidates = [...own].sort((left, right) => Number(purchased(right)) - Number(purchased(left)));
+  for (const sub of personalCandidates) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
     // Email verification activates the free individual subscription; old onboarding metadata cannot require a second selection.
     const automaticallyActivatedFree = sub.billing_cycle === 'free' && plan?.plan_family === 'individual';
-    if (profile.metadata?.subscription_selection_required === true && !automaticallyActivatedFree) continue;
+    if (profile.metadata?.subscription_selection_required === true && !automaticallyActivatedFree && !purchased(sub)) continue;
     // Individual-family plans are personal by definition (audience subject is the user), not tied to an organization type.
     const applicable = plan?.plan_family === 'individual'
       || plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));
