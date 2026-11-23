@@ -44,7 +44,7 @@ export async function checked<T>(query: PromiseLike<{ data: T | null; error: unk
 export function isSubscriptionCurrent(sub: Pick<Subscription, 'status' | 'subscription_start_date' | 'subscription_end_date' | 'billing_cycle'>, now = Date.now()): boolean {
   if (!['active', 'paused', 'cancelled', 'grace_period'].includes(sub.status)) return false;
   if (sub.subscription_start_date && !(Date.parse(sub.subscription_start_date) <= now)) return false;
-  if (!sub.subscription_end_date) return sub.billing_cycle === 'lifetime' && sub.status !== 'cancelled';
+  if (!sub.subscription_end_date) return (sub.billing_cycle === 'lifetime' || sub.billing_cycle === 'free') && sub.status !== 'cancelled';
   const end = Date.parse(sub.subscription_end_date);
   return Number.isFinite(end) && (end > now || (sub.status === 'grace_period' && end + 7 * 86400000 > now));
 }
@@ -113,9 +113,12 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     const explicitSeat = seats?.some(seat => seat.organization_subscription_id === sub.id);
     if (!explicitSeat && plan.business_type === 'b2b') return format(sub, plan, org);
   }
-  if (organizationDashboard || profile?.metadata?.subscription_selection_required === true) return null;
+  if (organizationDashboard) return null;
   for (const sub of own) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
+    // Email verification activates the free individual subscription; old onboarding metadata cannot require a second selection.
+    const automaticallyActivatedFree = sub.billing_cycle === 'free' && plan?.plan_family === 'individual';
+    if (profile.metadata?.subscription_selection_required === true && !automaticallyActivatedFree) continue;
     // Individual-family plans are personal by definition (audience subject is the user), not tied to an organization type.
     const applicable = plan?.plan_family === 'individual'
       || plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));

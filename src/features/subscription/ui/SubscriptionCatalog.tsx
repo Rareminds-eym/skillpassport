@@ -9,17 +9,30 @@ import SubscriptionCatalogSummary, { CatalogHeading } from './SubscriptionCatalo
 
 const AddOnMarketplace = lazy(() => import('./AddOnMarketplace'));
 const headingFont = { fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' };
-const featureName = (key: string) => key.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase());
+const acronyms = (text: string) => text.replace(/\b(ai|lte)\b/gi, word => word.toUpperCase());
+const featureName = (key: string) => acronyms(key.replace(/_/g, ' ').replace(/\b\w/g, character => character.toUpperCase()));
+const enumLabel = (value: string) => acronyms(value.replace(/_/g, ' ').replace(/^\w/, character => character.toUpperCase()));
 function featureValue(feature?: FeatureGrant) {
   if (!feature?.enabled) return 'Not included';
   if (feature.type === 'boolean') return 'Included';
-  if (feature.type === 'enum') return feature.value === null ? 'No configured value' : feature.value;
+  if (feature.type === 'enum') return feature.value === null ? 'No configured value' : enumLabel(feature.value);
   if (feature.limit.kind === 'finite') return feature.limit.value.toLocaleString();
   if (feature.limit.kind === 'unlimited') return 'Unlimited';
   return feature.limit.kind === 'contract_required' ? 'Contract required' : 'Allocated by policy';
 }
 
 const featureCategories: Record<string, string> = {
+    'included_learner_capacity': 'Essentials',
+    'ai_credits': 'Essentials',
+    'assessment_attempts': 'Learning',
+    'assessment_access': 'Learning',
+    'course_lte_assignments': 'Learning',
+    'career_roadmap': 'Career',
+    'learner_portfolio': 'Career',
+    'profile_review': 'Career',
+    'interview_practice': 'Career',
+    'opportunity_access': 'Career',
+    'support_tier': 'Support',
     // Essentials
     'access_basic_assessments': 'Essentials',
     '5_assessments_month': 'Essentials',
@@ -94,7 +107,7 @@ export function SubscriptionCatalogFrame({ children, type = 'learner' }: { child
   </main>;
 }
 
-function PublishedPlanCard({ plan, selected, organization, prices, purchase }: { plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode }) {
+function PublishedPlanCard({ plan, selected, current, organization, prices, purchase }: { current: boolean; plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode }) {
   const [expanded, setExpanded] = useState(false);
   // Preserve QA's action palette; commercial eligibility remains in the purchase owner.
   const actionColors = organization
@@ -106,13 +119,13 @@ function PublishedPlanCard({ plan, selected, organization, prices, purchase }: {
         : '[&_button]:bg-slate-100 [&_button]:text-slate-900 [&_button]:border-2 [&_button]:border-slate-300 [&_button:hover]:bg-slate-200';
   return <article aria-current={selected ? 'true' : undefined} aria-label={plan.name}
     ref={selected ? node => node?.scrollIntoView?.({ block: 'center' }) : undefined}
-    className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${selected ? 'border-emerald-500 shadow-emerald-500/20' : plan.presentation.badge ? 'border-slate-900 shadow-slate-900/10' : 'border-slate-200 hover:border-slate-300'}`}>
+    className={`relative bg-white rounded-3xl border-2 transition-all duration-300 h-full flex flex-col shadow-lg hover:shadow-2xl ${selected || current ? 'border-emerald-500 shadow-emerald-500/20' : plan.presentation.badge ? 'border-slate-900 shadow-slate-900/10' : 'border-slate-200 hover:border-slate-300'}`}>
     {plan.presentation.badge && <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10 w-max max-w-[90%] text-center">
       <span className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">{plan.presentation.badge}</span>
     </div>}
     <div className="p-8 flex flex-col h-full">
       <div className="mb-6 pt-2">
-        {selected && <p className="text-emerald-700 font-semibold mb-2">Your selected plan</p>}
+        {current ? <p className="text-emerald-700 font-semibold mb-2">Your current plan</p> : selected && <p className="text-emerald-700 font-semibold mb-2">Your selected plan</p>}
         <h3 className="text-3xl font-semibold text-slate-900 mb-2" style={headingFont}>{plan.name}</h3>
         {plan.presentation.copy && <p className="text-sm text-amber-600 font-semibold">{plan.presentation.copy.tagline}</p>}
         <div className="mt-6 text-slate-900 [&_strong]:text-5xl [&_strong]:font-bold [&_strong]:font-sans [&_small]:block [&_small]:text-slate-500">{prices}</div>
@@ -127,7 +140,7 @@ function PublishedPlanCard({ plan, selected, organization, prices, purchase }: {
             {feature.enabled && <Check className="h-3 w-3 text-white" strokeWidth={3} aria-hidden="true" />}
           </div>
           <div className="flex-1 min-w-0"><span className="text-sm font-medium text-slate-700">{featureName(feature.key)}</span>
-            <span className="block text-xs text-slate-500 mt-0.5">{featureValue(feature)}</span></div>
+            <span className={`${styles.featureValue} block text-xs text-slate-500 mt-0.5`}>{featureValue(feature)}</span></div>
         </li>)}</ul>
         {plan.features.length > 6 && <button aria-expanded={expanded} onClick={() => setExpanded(value => !value)} className="mt-4 w-full py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl flex items-center justify-center gap-2">
           {expanded ? <>Show less<ChevronUp className="h-4 w-4" /></> : <>Show all {plan.features.length} features<ChevronDown className="h-4 w-4" /></>}
@@ -141,8 +154,8 @@ function PublishedPlanCard({ plan, selected, organization, prices, purchase }: {
 }
 
 /** Receives validated terms and caller-owned actions; never reads legacy plans or infers checkout authority. */
-export default function SubscriptionCatalog({ catalog, selectedRevisionId, renderPrices, renderPurchase }: {
-  catalog: Catalog; selectedRevisionId?: string;
+export default function SubscriptionCatalog({ catalog, selectedRevisionId, currentPlanId, renderPrices, renderPurchase }: {
+  catalog: Catalog; selectedRevisionId?: string; currentPlanId?: string;
   renderPrices: (plan: Catalog['plans'][number]) => ReactNode;
   renderPurchase: (plan: Catalog['plans'][number]) => ReactNode;
 }) {
@@ -156,7 +169,7 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, rende
   }
   return <>
     <div className={`grid md:grid-cols-2 gap-6 ${catalog.plans.length >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
-      {catalog.plans.map(plan => <PublishedPlanCard key={plan.revisionId} plan={plan} selected={plan.revisionId === selectedRevisionId} organization={catalog.subjectKind === 'organization'}
+      {catalog.plans.map(plan => <PublishedPlanCard key={plan.revisionId} plan={plan} selected={plan.revisionId === selectedRevisionId} current={plan.plan.id === currentPlanId} organization={catalog.subjectKind === 'organization'}
         prices={renderPrices(plan)} purchase={renderPurchase(plan)} />)}
     </div>
     <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
@@ -170,12 +183,12 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, rende
       <ChevronDown className="h-4 w-4" />Show Feature Comparison</button></div>
       : <section className="mt-20" aria-labelledby="comparison-heading">
         <div className="flex items-center justify-between mb-8"><div>
-          <h2 id="comparison-heading" className="text-5xl font-semibold text-slate-900" style={headingFont}>Compare Plans</h2>
+          <h2 id="comparison-heading" className="text-3xl sm:text-5xl font-semibold text-slate-900" style={headingFont}>Compare Plans</h2>
           <p className="text-slate-600 mt-2 text-lg font-light">See what's included in each plan</p>
         </div><button onClick={() => setComparison(false)} aria-expanded={true}
           className="text-slate-500 hover:text-slate-700 flex items-center gap-2 text-sm font-semibold transition-colors"><ChevronUp className="h-4 w-4" />Hide</button></div>
-        <div className="bg-white rounded-3xl border-2 border-slate-200 overflow-x-auto shadow-2xl">
-          <table className="w-full table-fixed" style={{ minWidth: 250 + 150 * catalog.plans.length }}>
+        <div role="region" aria-label="Plan comparison" tabIndex={0} className="bg-white rounded-3xl border-2 border-slate-200 overflow-x-auto shadow-2xl">
+          <table className={`${styles.comparisonTable} w-full table-fixed`} style={{ minWidth: 250 + 220 * catalog.plans.length }}>
             <colgroup><col style={{ width: 250 }} />{catalog.plans.map(plan => <col key={plan.revisionId} />)}</colgroup>
             <thead className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white border-t-4 border-amber-400"><tr>
               <th scope="col" className="p-8 font-light text-xl text-left" style={headingFont}>Features</th>

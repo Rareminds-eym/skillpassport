@@ -24,8 +24,35 @@ function useRead<T>(read: (signal: AbortSignal) => Promise<T>): [LoadState<T>, (
 export function useSubscriptionDiscovery(cursor?: string) {
   return useRead(useCallback(signal => api.discover(signal, cursor), [cursor]));
 }
-export function usePublishedCatalog(cursor?: string) {
-  return useRead<Catalog>(useCallback(signal => api.catalog(signal, cursor), [cursor]));
+/** The owner cursor advances scanned records, including offers filtered out for this buyer.
+ * Resolve the complete catalog so comparison and upgrade selectors never navigate to empty pages. */
+export function usePublishedCatalog() {
+  return useRead<Catalog>(useCallback(async signal => {
+    const first = await api.catalog(signal);
+    const plans = [...first.plans];
+    const ids = new Set(plans.map(plan => plan.plan.id));
+    const cursors = new Set<string>();
+    let cursor = first.nextCursor;
+    // Match the bounded discovery budget used by the subscription owner boundary.
+    const maxPages = 100;
+    while (cursor !== null) {
+      if (cursors.has(cursor) || cursors.size >= maxPages - 1) throw new Error('Published catalog pagination did not complete.');
+      cursors.add(cursor);
+      const page = await api.catalog(signal, cursor);
+      if (page.actorId !== first.actorId || page.productId !== first.productId
+        || page.audience !== first.audience || page.subjectKind !== first.subjectKind
+        || JSON.stringify(page.tax) !== JSON.stringify(first.tax)) throw new Error('Published catalog scope differs.');
+      if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error('Published catalog cursor did not advance.');
+      for (const plan of page.plans) {
+        if (ids.has(plan.plan.id)) throw new Error('Published catalog repeated a plan.');
+        ids.add(plan.plan.id);
+        plans.push(plan);
+      }
+      cursor = page.nextCursor;
+    }
+    // This is a complete presentation collection; the service response remains unchanged.
+    return {...first, plans, nextCursor: null};
+  }, []));
 }
 export function useCurrentSubscription(row: Discovery['items'][number], context: Discovery) {
   return useRead<Current>(useCallback(signal => api.current(row, context, signal), [row, context]));

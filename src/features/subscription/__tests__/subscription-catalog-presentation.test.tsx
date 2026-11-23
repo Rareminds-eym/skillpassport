@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SubscriptionWorkspace from '../ui/SubscriptionWorkspace';
 import SubscriptionCatalogSummary from '../ui/SubscriptionCatalogSummary';
 
-const { fetchMock, accountQuery } = vi.hoisted(() => ({ fetchMock: vi.fn(), accountQuery: vi.fn() }));
+const { fetchMock, accountQuery, identity } = vi.hoisted(() => ({ fetchMock: vi.fn(), accountQuery: vi.fn(), identity: { role: 'learner' as string | null } }));
 vi.mock('../model/useSubscriptionQuery', () => ({ useSubscriptionQuery: accountQuery }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: fetchMock } }));
 vi.mock('@/shared/api/httpClient', () => ({ DEFAULT_TIMEOUT: 30000 }));
-vi.mock('@/shared/model/authStore', () => ({ useUser: () => null, useUserRole: () => ({ role: 'learner' }) }));
+vi.mock('@/shared/model/authStore', () => ({ useUser: () => null, useUserRole: () => ({ role: identity.role }) }));
 vi.mock('../api/razorpayService', () => ({ payIssuedSubscriptionOrder: vi.fn(), prepareSubscriptionCheckout: vi.fn() }));
 vi.mock('../ui/AddOnMarketplace', () => ({ default: ({ role }: { role: string }) => <p>Existing add-ons for {role}</p> }));
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -25,12 +25,35 @@ let visibleCatalog = catalog;
 const response = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
 beforeEach(() => {
   sessionStorage.clear(); fetchMock.mockReset(); accountQuery.mockReset();
-  visibleCatalog = catalog;
+  visibleCatalog = catalog; identity.role = 'learner';
   fetchMock.mockImplementation((url: string) => response(url === '/api/subscriptions/catalog' ? visibleCatalog : emptyDiscovery));
 });
 afterEach(cleanup);
 
 describe('restored QA catalog presentation', () => {
+  it('formats published enum terms and acronyms consistently in cards and comparison cells', async () => {
+    const terms = [
+      {key: 'career_roadmap', type: 'enum', enabled: true, value: 'advanced_roadmap_with_milestone_tracking'},
+      {key: 'profile_review', type: 'enum', enabled: true, value: 'ai_expert_assisted_review_as_add_on_included_by_policy'},
+      {key: 'ai_credits', type: 'numeric_limit', enabled: true, limit: {kind: 'finite', value: 12}},
+      {key: 'course_lte_assignments', type: 'numeric_limit', enabled: true, limit: {kind: 'finite', value: 25}},
+    ];
+    fetchMock.mockImplementation((url: string) => response(url === '/api/subscriptions/catalog'
+      ? {...catalog, plans: [{...offer, features: terms}]} : emptyDiscovery));
+    render(<SubscriptionWorkspace view="catalog" />);
+    const card = await screen.findByRole('article', {name: offer.name});
+    const comparison = screen.getByRole('region', {name: 'Plan comparison'});
+    for (const container of [card, comparison]) {
+      expect(container).toHaveTextContent('Advanced roadmap with milestone tracking');
+      expect(container).toHaveTextContent('AI expert assisted review as add on included by policy');
+      expect(container).toHaveTextContent('AI Credits');
+      expect(container).toHaveTextContent('Course LTE Assignments');
+      expect(container.textContent).not.toContain('_');
+    }
+    expect(within(comparison).getByRole('button', {name: 'Career 2 features'})).toBeInTheDocument();
+    expect(comparison).toHaveAttribute('tabindex', '0');
+    expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
+  });
   it('uses the existing free subscription for an upgrade even when it is on a later discovery page', async () => {
     const subject = { kind: 'user', id: catalog.actorId };
     const row = { id: id(20), planId: id(21), productId: catalog.productId, subject, status: 'active', kind: 'initialized',
@@ -49,18 +72,43 @@ describe('restored QA catalog presentation', () => {
       throw new Error('Unexpected request');
     });
     render(<SubscriptionWorkspace view="catalog" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Upgrade Plan/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Change Plan/ }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options.method === 'POST')).toBe(true));
     const [, options] = fetchMock.mock.calls.find(([, init]) => init.method === 'POST')!;
     expect(JSON.parse(options.body).request).toMatchObject({ purpose: 'upgrade', subscriptionId: row.id, expectedVersion: 1,
       expectedRevisionId: row.revisionId, revisionId: offer.revisionId, subject });
     expect(screen.queryByRole('button', { name: /Buy Now/ })).not.toBeInTheDocument();
   });
+  it('identifies the paid current plan separately from a selected offer and never asks to buy it again', async () => {
+    const subject = { kind: 'user', id: catalog.actorId };
+    const row = { id: id(20), planId: offer.plan.id, productId: catalog.productId, subject, status: 'active', kind: 'initialized',
+      revisionId: offer.revisionId, version: 1, lifecycleOperations: ['renew', 'upgrade'] };
+    const current = { schemaVersion: 1, actorId: catalog.actorId, audience: 'learner', activatedAt: 1000, subscriptionEndsAt: 9999999999999,
+      access: 'full', pools: [], features: [], plan: { ...offer.plan, name: offer.name, revisionNumber: 1 },
+      state: { id: row.id, planId: row.planId, revisionId: row.revisionId, productId: catalog.productId, subject, version: 1,
+        status: 'active', periodStartsAt: 1000, periodEndsAt: 9999999999999, trialEndsAt: null,
+        renewalEnabled: true, cancelledAt: null, paymentFailedAt: null, scheduledChange: null } };
+    const other = { ...offer, plan: { ...offer.plan, id: id(8) }, revisionId: id(9), name: 'Another membership' };
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/subscriptions/catalog') return response({ ...catalog, plans: [offer, other] });
+      if (url === '/api/subscriptions') return response({ ...emptyDiscovery, items: [row] });
+      if (url.includes('/current?')) return response(current);
+      throw new Error('Unexpected request');
+    });
+    render(<SubscriptionWorkspace view="catalog" selectedRevisionId={other.revisionId} />);
+    const card = await screen.findByRole('article', {name: offer.name});
+    expect(await within(card).findByText('Your current plan')).toBeInTheDocument();
+    expect(within(card).getByRole('link', {name: 'Manage subscription'})).toHaveAttribute('href', '/subscription/manage');
+    expect(within(card).queryByRole('button', {name: /Buy Now|Renew Plan|Change Plan|Upgrade Plan/})).not.toBeInTheDocument();
+    expect(screen.getByRole('article', {name: other.name})).toHaveTextContent('Your selected plan');
+    expect(within(screen.getByRole('article', {name: other.name})).getByRole('button', {name: /Change Plan/})).toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
+  });
   it('does not offer payment when current-subscription discovery fails', async () => {
     fetchMock.mockImplementation((url: string) => url === '/api/subscriptions/catalog' ? response(catalog) : response({}, 503));
     render(<SubscriptionWorkspace view="catalog" />);
     expect(await screen.findByRole('alert')).toHaveTextContent('503');
-    expect(screen.queryByRole('button', { name: /Buy Now|Upgrade Plan/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Buy Now|Change Plan/ })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
   });
   it('uses the prior page heading, rounded cards and comparison with current owner terms', async () => {
@@ -104,13 +152,30 @@ describe('restored QA catalog presentation', () => {
     render(<SubscriptionWorkspace view="catalog" />);
     const freeCard = await screen.findByRole('article', { name: offer.name });
     expect(within(freeCard).getByText('Free')).toBeInTheDocument();
-    expect(await within(freeCard).findByRole('link', { name: 'View my access' })).toHaveAttribute('href', '/subscription/manage');
+    expect(await within(freeCard).findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', '/learner/dashboard');
     expect(screen.queryByLabelText('Owner contract reference')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Activate recorded contract' })).not.toBeInTheDocument();
     expect(freeCard).not.toHaveTextContent('INR 4567.89');
     const enterprise = screen.getByRole('article', { name: sales.name });
     expect(within(enterprise).getByRole('link', { name: 'Talk to Sales' })).toHaveAttribute('href', '/contact');
     expect(within(enterprise).queryByRole('button', { name: /Buy Now/ })).not.toBeInTheDocument();
+  });
+  it.each([['learner', '/learner/dashboard'], ['educator', '/educator/dashboard'], ['school_admin', '/school-admin/dashboard']])('takes free-access %s users to their dashboard without a purchase', async (role, route) => {
+    identity.role = role;
+    visibleCatalog = { ...catalog, plans: [{ ...offer, purchaseMode: 'free', prices: [] }] };
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', route);
+    expect(screen.queryByText('View my access')).not.toBeInTheDocument();
+    expect(screen.getByText('Free access is activated automatically after email verification.')).toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
+  });
+  it('surfaces missing role context instead of linking free access to an unrelated page', async () => {
+    identity.role = null;
+    visibleCatalog = { ...catalog, plans: [{ ...offer, purchaseMode: 'free', prices: [] }] };
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByText('Your dashboard is unavailable. Refresh your identity to continue.')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Go to dashboard' })).not.toBeInTheDocument();
+    expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
   });
   it('restores the account banner from the existing query without deriving purchase authority', () => {
     accountQuery.mockReturnValue({ subscriptionData: { planName: 'Existing account plan', status: 'active',
@@ -122,6 +187,25 @@ describe('restored QA catalog presentation', () => {
     expect(screen.getByText('Enabled')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Manage Your Plan' })).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('renders enabled typed account features without treating objects as strings', () => {
+    accountQuery.mockReturnValue({ subscriptionData: { planName: 'Existing account plan', status: 'active',
+      startDate: '2026-11-01', endDate: null, features: [
+        {key: 'career_roadmap', type: 'enum', enabled: true, value: 'sample_roadmap'},
+        {key: 'assessment_access', type: 'boolean', enabled: false},
+      ], billingCycle: 'free', autoRenew: false },
+      loading: false, error: null, hasActiveOrPausedSubscription: true });
+    render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose a plan" />);
+    const banner = screen.getByRole('region', {name: 'Current subscription'});
+    expect(banner).toHaveTextContent('career roadmap');
+    expect(banner).not.toHaveTextContent('assessment access');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it('surfaces invalid account feature data without fabricating benefits', () => {
+    accountQuery.mockReturnValue({ subscriptionData: { status: 'active', features: [{unexpected: true}] },
+      loading: false, error: null, hasActiveOrPausedSubscription: true });
+    render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose a plan" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to read your current subscription features');
   });
   it('surfaces account read errors without substituting a successful subscription summary', () => {
     const refresh = vi.fn();

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { featureGrant } from '../api/subscriptionExecutionService';
 import { Calendar, Check, Clock, Shield, Sparkles } from 'lucide-react';
 import { useSubscriptionQuery } from '../model/useSubscriptionQuery';
 import { calculateDaysRemaining, formatDate } from '../lib/subscriptionHelpers';
@@ -21,6 +23,9 @@ export default function SubscriptionCatalogSummary({ title, subtitle }: { title:
   if (loading) return <p role="status" className="mb-8 text-white">Loading your current subscription…</p>;
   // A successful empty account read is the normal new-subscriber page, not an error recovery path.
   if (!subscription || !hasActiveOrPausedSubscription) return <CatalogHeading title={title} subtitle={subtitle} />;
+  const features = z.array(z.union([z.string().min(1), featureGrant])).safeParse(subscription.features);
+  if (!features.success) return <div role="alert" className="mb-8 bg-red-50 border-2 border-red-200 rounded-3xl p-6">Unable to read your current subscription features. Please try again.</div>;
+  const activeFeatures = features.data.flatMap(feature => typeof feature === 'string' ? [feature] : feature.enabled ? [feature.key] : []);
   const days = calculateDaysRemaining(subscription.endDate);
   return <>
     <section aria-label="Current subscription" className="mb-16">
@@ -51,7 +56,7 @@ export default function SubscriptionCatalogSummary({ title, subtitle }: { title:
         <div className="relative overflow-hidden rounded-3xl bg-white border-2 border-slate-200 shadow-lg">
           <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-50 to-transparent rounded-full -translate-y-32 translate-x-32" />
           <div className="relative p-8"><div className="flex items-center gap-3 mb-8"><div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg"><Sparkles className="h-5 w-5 text-white" /></div><h3 className="text-2xl font-semibold text-slate-900" style={headingFont}>Active Features</h3></div>
-            <div className="grid sm:grid-cols-2 gap-4">{subscription.features.map((feature: string) => <div key={feature} className="flex items-start gap-3"><div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-lg"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></div><span className="text-sm text-slate-700 font-medium">{feature.replace(/_/g, ' ')}</span></div>)}</div>
+            <div className="grid sm:grid-cols-2 gap-4">{activeFeatures.map(feature => <div key={feature} className="flex items-start gap-3"><div className="flex-shrink-0 w-6 h-6 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center shadow-lg"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></div><span className="text-sm text-slate-700 font-medium">{feature.replace(/_/g, ' ')}</span></div>)}</div>
           </div>
         </div>
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border-2 border-slate-200 shadow-lg p-8">

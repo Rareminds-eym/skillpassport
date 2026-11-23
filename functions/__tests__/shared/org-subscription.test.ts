@@ -87,6 +87,26 @@ describe('Catalogue-backed subscription gateway', () => {
     tables.subscription_cache = [personal];
     expect((await resolve())?.plan_code).toBe(personalPlan.plan_code);
   });
+  it('admits the verified perpetual free individual plan without another selection or metadata write', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual', applicable_entities: ['individual'] }];
+    tables.subscription_cache = [{ ...personal, billing_cycle: 'free', subscription_end_date: null }];
+    const snapshot = JSON.stringify(tables);
+    expect(await resolve()).toMatchObject({ id: personal.id, status: 'active', subscription_end_date: null });
+    expect(JSON.stringify(tables)).toBe(snapshot);
+    expect(await resolve(['school_admin'])).toBeNull();
+  });
+  it.each(['expired', 'pending', 'cancelled'])('does not admit a %s free subscription', async status => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
+    tables.subscription_cache = [{ ...personal, status, billing_cycle: 'free', subscription_end_date: null }];
+    expect(await resolve()).toBeNull();
+  });
+  it('does not infer automatic free access from a name, price or an unrelated plan family', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.subscription_cache = [{ ...personal, billing_cycle: 'free', subscription_end_date: null, plan_amount: 0, plan_type: 'Free' }];
+    expect(await resolve()).toBeNull();
+  });
   it('requires explicit plan selection for a new self-signup despite a default subscription', async () => {
     tables.users[0].metadata.subscription_selection_required = true;
     tables.subscription_cache = [personal];
@@ -227,6 +247,9 @@ describe('Subscription validity', () => {
     expect(isSubscriptionCurrent({ status: 'active' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'active', subscription_end_date: '2020-01-01' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'lifetime' })).toBe(true);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free' })).toBe(true);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free', subscription_end_date: '2020-01-01' })).toBe(false);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free', subscription_start_date: '2098-01-01' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'cancelled', billing_cycle: 'lifetime' })).toBe(false);
   });
 });

@@ -386,13 +386,41 @@ describe('subscription execution consumer', () => {
     expect(screen.queryByRole('combobox', { name: 'Subscription' })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([url]) => url.startsWith('/api/subscriptions'))).toBe(true);
   });
-  it('renders no published plans, permits next scanned page even when filtered results are empty', async () => {
+  it('scans empty filtered catalog pages without offering an empty Next page', async () => {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => url.includes('/catalog')
       ? response({ ...catalog, plans: [], nextCursor: url.includes('?') ? null : id(30) }) : router(url, init));
     render(<SubscriptionWorkspace view="catalog" />);
     expect(await screen.findByText('No published plans are available.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Next plans' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(`/api/subscriptions/catalog?cursor=${id(30)}`, expect.anything()));
+    expect(screen.queryByRole('button', { name: 'Next plans' })).not.toBeInTheDocument();
+  });
+  it('keeps first and later catalog plans together after scanning an empty intermediate page', async () => {
+    const later = {...catalog.plans[0], plan: {...catalog.plans[0].plan, id: id(32)}, revisionId: id(33), name: 'Later membership'};
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/subscriptions/catalog') return response({...catalog, nextCursor: id(30)});
+      if (url === `/api/subscriptions/catalog?cursor=${id(30)}`) return response({...catalog, plans: [], nextCursor: id(31)});
+      if (url === `/api/subscriptions/catalog?cursor=${id(31)}`) return response({...catalog, plans: [later], nextCursor: id(34)});
+      if (url === `/api/subscriptions/catalog?cursor=${id(34)}`) return response({...catalog, plans: [], nextCursor: null});
+      return router(url, init);
+    });
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('article', {name: 'Later membership'})).toBeInTheDocument();
+    expect(screen.getByRole('article', {name: 'Published membership'})).toBeInTheDocument();
+    expect(screen.queryByRole('button', {name: 'Next plans'})).not.toBeInTheDocument();
+  });
+  it.each(['unavailable', 'repeated cursor', 'different actor', 'duplicate plan'])('surfaces %s on a later catalog page without presenting a partial catalog', async fault => {
+    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+      if (url === '/api/subscriptions/catalog') return response({...catalog, nextCursor: id(30)});
+      if (url.includes('/catalog?')) {
+        if (fault === 'unavailable') return response({}, 503);
+        return response({...catalog, actorId: fault === 'different actor' ? id(90) : actor,
+          plans: fault === 'duplicate plan' ? catalog.plans : [], nextCursor: fault === 'repeated cursor' ? id(30) : null});
+      }
+      return router(url, init);
+    });
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('article', {name: 'Published membership'})).not.toBeInTheDocument();
   });
   it('renders setup state for uninitialized rows without current or credit substitution', async () => {
     fetchMock.mockImplementation((url: string, init?: RequestInit) => url === '/api/subscriptions'

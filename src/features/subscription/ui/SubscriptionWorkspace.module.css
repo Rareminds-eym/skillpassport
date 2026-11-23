@@ -44,6 +44,8 @@
 .sales:hover { background: var(--accent); border-color: var(--accent); color: white; }
 .selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .catalogPage { --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --accent: #047857; }
+.featureValue, .comparisonTable th, .comparisonTable td { white-space: normal; overflow-wrap: anywhere; }
+.comparisonTable th, .comparisonTable td { vertical-align: top; }
 .catalogPage .notice { border-radius: 1rem; background: #f8fafc; color: var(--ink); }
 .catalogPage .notice button, .catalogPage .pagination button { background: var(--ink); color: white; border-radius: .75rem; padding: .75rem 1.25rem; }
 .catalogPage .purchase label { display: flex; flex-direction: column; gap: .5rem; margin: 1rem 0; font-weight: 600; }

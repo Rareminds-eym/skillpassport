@@ -1,4 +1,5 @@
 import { Shield, Sparkles, Calendar, HelpCircle } from 'lucide-react';
+import { ROLE_DASHBOARD_MAP } from '@/features/auth/lib/roleBasedRouter';
 import { ROUTES } from '@/shared/config/constants';
 import { useUser, useUserRole } from '@/shared/model/authStore';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
@@ -83,21 +84,31 @@ function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType
     {(state.stage === 'sdk' || state.stage === 'checkout') && <button onClick={checkout.stopCheckout}>
       {state.stage === 'sdk' ? 'Stop connecting' : 'Close payment window'}</button>}</div>;
 }
-function PlanPurchase({ plan, catalog, checkout, current, operations }: {
-  plan: Catalog['plans'][number]; catalog: Catalog;
+function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenewal = false }: {
+  allowRenewal?: boolean; plan: Catalog['plans'][number]; catalog: Catalog;
   checkout: ReturnType<typeof useSubscriptionCheckout>; current?: Current; operations?: Discovery['items'][number]['lifecycleOperations']
 }) {
   const user = useUser();
-  const purpose = current ? plan.plan.id === current.state.planId ? 'renew' : 'upgrade' : 'purchase';
+  const { role } = useUserRole();
+  const dashboardRoute = role ? ROLE_DASHBOARD_MAP[role] : undefined;
+  const isCurrentPlan = current?.state.planId === plan.plan.id;
+  const purpose = current ? isCurrentPlan ? 'renew' : 'upgrade' : 'purchase';
   const permitted = !current || operations?.includes(purpose as 'renew' | 'upgrade');
   // The owner fixes the buyer subject per audience: individuals buy for themselves, institutions for their organization.
   const subject = current ? current.state.subject : catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
   return <div className={styles.purchase}>
-    {!subject ? <p>Your selected organization context is unavailable. Refresh your identity before purchasing.</p>
+    {isCurrentPlan && !allowRenewal ? <section aria-label="Current plan access"><p className="font-semibold">Current plan</p>
+      {plan.purchaseMode === 'free' && <p>Free access is activated automatically after email verification.</p>}
+      {plan.purchaseMode === 'free'
+        ? dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700">Go to dashboard</a>
+          : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>
+        : <a href="/subscription/manage" className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-slate-100 text-slate-900">Manage subscription</a>}
+    </section> : !subject ? <p>Your selected organization context is unavailable. Refresh your identity before purchasing.</p>
       : plan.purchaseMode === 'free' ? <section aria-label="Free plan access">
         <p>Free access is activated automatically after email verification.</p>
-        <a href="/subscription/manage" className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700">View my access</a>
+        {dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700">Go to dashboard</a>
+          : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>}
       </section>
         : plan.purchaseMode === 'contact_sales' ? <p>Contact our team to arrange your plan.</p>
           : !permitted ? <p>This change is unavailable for your configured role.</p>
@@ -110,7 +121,7 @@ function PlanPurchase({ plan, catalog, checkout, current, operations }: {
                       subscriptionId: current?.state.id ?? crypto.randomUUID(), subject, expectedVersion: current?.state.version ?? 0,
                       expectedRevisionId: current?.state.revisionId ?? plan.revisionId, revisionId: plan.revisionId, priceId: price.id
                     })}>
-                      {purpose === 'purchase' ? 'Buy Now' : purpose === 'renew' ? 'Renew Plan' : 'Upgrade Plan'} · {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
+                      {purpose === 'purchase' ? 'Buy Now' : purpose === 'renew' ? 'Renew Plan' : 'Change Plan'} · {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
               </div>)}
   </div>;
 }
@@ -131,6 +142,7 @@ function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, 
     <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} />
   }</ReadPanel>;
   if (qaPresentation) return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><SubscriptionCatalog catalog={catalog} selectedRevisionId={selectedRevisionId}
+    currentPlanId={context.status === 'ready' ? context.data.current?.state.planId : undefined}
     renderPrices={plan => <CatalogPrices plan={plan} catalog={catalog} />}
     renderPurchase={plan => <>{plan.purchaseMode === 'contact_sales' && <a className="flex items-center justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-black text-white hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl" href={ROUTES.CONTACT}>Talk to Sales</a>}{purchase(plan)}</>} /></>;
   return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><div className={styles.catalog}>{catalog.plans.map(plan => <article className={plan.revisionId === selectedRevisionId ? `${styles.plan} ${styles.selected}` : styles.plan} key={plan.revisionId}
@@ -145,13 +157,10 @@ function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, 
   </article>)}</div></>;
 }
 function PublishedPlans({ selectedRevisionId, qaPresentation = false, onPaymentConfirmed }: { selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed }) {
-  const [cursor, setCursor] = useState<string>();
-  const [state, retry] = usePublishedCatalog(cursor);
+  const [state, retry] = usePublishedCatalog();
   return <section aria-label={qaPresentation ? "Published plans" : undefined} aria-labelledby={qaPresentation ? undefined : "published-plans"}>{!qaPresentation && <div className={styles.sectionHeading}><span>02 / Explore</span><h2 id="published-plans">Published plans</h2></div>}
     <ReadPanel state={state} retry={retry}>{catalog => <>
       {catalog.plans.length === 0 ? <p className={styles.notice}>{catalog.audience === null ? 'No plans are offered for your account type. Contact the subscription owner if this looks wrong.' : 'No published plans are available.'}</p> : <PurchaseCatalog key={`${catalog.actorId}:${catalog.productId}`} catalog={catalog} selectedRevisionId={selectedRevisionId} qaPresentation={qaPresentation} onPaymentConfirmed={onPaymentConfirmed} />}
-      <div className={styles.pagination}>{cursor && <button onClick={() => setCursor(undefined)}>First plans</button>}
-        {catalog.nextCursor && <button onClick={() => setCursor(catalog.nextCursor!)}>Next plans</button>}</div>
     </>}</ReadPanel>
   </section>;
 }
@@ -164,7 +173,7 @@ function PaidSubscriptionChange({ current, operations }: { current: Current; ope
     const plan = data.plans.find(value => value.revisionId === selected);
     return <><label>Paid plan revision<select value={selected} disabled={checkout.state.status !== 'idle'} onChange={event => setSelected(event.target.value)}>
       <option value="">Choose published terms</option>{data.plans.map(value => <option key={value.revisionId} value={value.revisionId}>{value.name} · Revision {value.revisionNumber}</option>)}</select></label>
-      {plan && <PlanPurchase plan={plan} catalog={data} current={current} operations={operations} checkout={checkout} />}</>;
+      {plan && <PlanPurchase plan={plan} catalog={data} current={current} operations={operations} checkout={checkout} allowRenewal />}</>;
   }}</ReadPanel><CheckoutStatus checkout={checkout} /></section>;
 }
 function PoolHistory({ current, pool, recipientId, revisionId }: { current: Current; pool: Current['pools'][number]; recipientId: string; revisionId?: string }) {
