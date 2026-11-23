@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getLogger } from '@/shared/config/logging';
 
@@ -31,6 +31,8 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Current lesson plan data
   const [lessonPlans, setLessonPlans] = useState<CollegeLessonPlan[]>([]);
+  const planRequest = useRef(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [units, setUnits] = useState<any[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
   const [currentCurriculumId, setCurrentCurriculumId] = useState<string | undefined>(undefined);
@@ -74,15 +76,15 @@ const CollegeLessonPlanManagement: React.FC = () => {
     }
   }, [selectedProgram, selectedSemester]);
 
-  // Load lesson plans when filters change
+  // The list owns its visible filters. Fetch all college plans so the form's
+  // academic-year default does not silently filter the list.
   useEffect(() => {
-    loadLessonPlans();
-  }, [selectedDepartment, selectedProgram, selectedCourse, selectedSemester, selectedAcademicYear]);
+    void loadLessonPlans();
+    return () => { planRequest.current += 1; };
+  }, []);
 
   const loadConfigurationData = async () => {
     try {
-      setLoading(true);
-
       // Load departments
       const deptResult = await lessonPlanService.getDepartments();
       if (deptResult.success) {
@@ -95,8 +97,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
       const years = lessonPlanService.getAcademicYears();
       setAcademicYears(years);
       
-      // Auto-select current academic year (2025-2026 is the current academic year)
-      const currentYear = years.find(year => year === '2025-2026') || years[0];
+      const now = new Date();
+      const start = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+      const currentYear = years.find(year => year === `${start}-${start + 1}`);
       
       if (currentYear) {
         setSelectedAcademicYear(currentYear);
@@ -105,8 +108,6 @@ const CollegeLessonPlanManagement: React.FC = () => {
     } catch (error: any) {
       logger.error('Error loading configuration', error);
       toast.error('Failed to load configuration data');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -159,29 +160,23 @@ const CollegeLessonPlanManagement: React.FC = () => {
   };
 
   const loadLessonPlans = async () => {
+    const request = ++planRequest.current;
     try {
       setLoading(true);
-      
-      const filters: any = {};
-      if (selectedDepartment) filters.department_id = selectedDepartment;
-      if (selectedProgram) filters.program_id = selectedProgram;
-      if (selectedCourse) filters.course_id = selectedCourse;
-      if (selectedSemester) filters.semester = parseInt(selectedSemester);
-      if (selectedAcademicYear) filters.academic_year = selectedAcademicYear;
-
-      const result = await lessonPlanService.getLessonPlans(filters);
+      setLoadError(null);
+      const result = await lessonPlanService.getLessonPlans();
+      if (request !== planRequest.current) return;
       if (result.success) {
         setLessonPlans(result.data || []);
       } else {
-        toast.error('Failed to load lesson plans');
-        setLessonPlans([]);
+        setLoadError(result.error?.message || 'Failed to load lesson plans');
       }
     } catch (error) {
+      if (request !== planRequest.current) return;
       logger.error('Error loading lesson plans', error as Error);
-      toast.error('Failed to load lesson plans');
-      setLessonPlans([]);
+      setLoadError(error instanceof Error ? error.message : 'Failed to load lesson plans');
     } finally {
-      setLoading(false);
+      if (request === planRequest.current) setLoading(false);
     }
   };
 
@@ -299,17 +294,13 @@ const CollegeLessonPlanManagement: React.FC = () => {
       // Validate required fields before sending to service
       const sessionDate = lessonPlan.sessionDate || lessonPlan.session_date;
       if (!sessionDate || sessionDate.trim() === '') {
-        toast.error('Session date is required');
-        setSaveStatus("idle");
-        return;
+        throw new Error('Session date is required');
       }
       
       // Validate date format
       const dateObj = new Date(sessionDate);
       if (isNaN(dateObj.getTime())) {
-        toast.error('Please enter a valid session date');
-        setSaveStatus("idle");
-        return;
+        throw new Error('Please enter a valid session date');
       }
       
       if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
@@ -345,15 +336,7 @@ const CollegeLessonPlanManagement: React.FC = () => {
         } else {
           setSaveStatus("idle");
           const errorMessage = result.error?.message || 'Failed to update lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          throw new Error(errorMessage);
         }
       } else {
         // Create new lesson plan
@@ -389,24 +372,17 @@ const CollegeLessonPlanManagement: React.FC = () => {
         } else {
           setSaveStatus("idle");
           const errorMessage = result.error?.message || 'Failed to create lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          throw new Error(errorMessage);
         }
       }
       
+      await loadLessonPlans();
       // Reset save status after a delay
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error: any) {
       logger.error('Error saving lesson plan', error);
       setSaveStatus("idle");
-      toast.error('Failed to save lesson plan');
+      throw error;
     }
   };
 
@@ -447,6 +423,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
   };
 
   return (
+    <>
+    {loadError && <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"><p>Session plans could not be loaded: {loadError}</p><button type="button" disabled={loading} className="mt-2 min-h-11 rounded-lg px-3 font-semibold underline disabled:opacity-50" onClick={() => { void loadLessonPlans(); }}>Retry loading plans</button></div>}
+    {(!loadError || lessonPlans.length > 0) &&
     <CollegeLessonPlanUI
       // College-specific selections
       selectedCourse={selectedCourse}
@@ -484,6 +463,8 @@ const CollegeLessonPlanManagement: React.FC = () => {
       onCurriculumContextChange={handleCurriculumContextChange}
       onUnitChange={handleUnitChange}
     />
+    }
+    </>
   );
 };
 

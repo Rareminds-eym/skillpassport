@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import type { Assessment } from '@/shared/types/college';
 import { formatProgramLabel } from '@/shared/lib';
+import { useQuery } from '@tanstack/react-query';
+import { apiPost } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/shared/model/authStore';
 
 interface AssessmentFormModalProps {
   isOpen: boolean;
@@ -39,19 +42,30 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filteredPrograms, setFilteredPrograms] = useState(programs);
-  const [filteredCourses, setFilteredCourses] = useState(courses);
+  const actorId = useAuthStore(state => state.user?.id);
+  const mappedCourses = useQuery({
+    queryKey: ['assessment-mapped-courses', actorId, formData.program_id, formData.semester],
+    enabled: isOpen && Boolean(actorId && formData.program_id && formData.semester),
+    queryFn: async () => {
+      const result = await apiPost<{ data: typeof courses }>('/college-admin/curriculum', {
+        action: 'get-courses', program_id: formData.program_id, semester: formData.semester,
+      });
+      return result.data;
+    },
+  });
+  const filteredCourses = formData.program_id && formData.semester ? (mappedCourses.data || []) : [];
 
   // Generate assessment code preview
   const assessmentCodePreview = React.useMemo(() => {
     if (!formData.type || !formData.semester || !formData.academic_year) return '';
     
-    const selectedCourse = courses.find(c => c.id === formData.course_id);
+    const selectedCourse = filteredCourses.find(c => c.id === formData.course_id);
     const courseCode = selectedCourse?.course_code || 'COURSE';
     const typeCode = formData.type.substring(0, 3).toUpperCase();
     const year = formData.academic_year.split('-')[0] || new Date().getFullYear();
     
     return `${typeCode}-${courseCode.toUpperCase()}-S${formData.semester}-${year}`;
-  }, [formData.type, formData.semester, formData.academic_year, formData.course_id, courses]);
+  }, [formData.type, formData.semester, formData.academic_year, formData.course_id, filteredCourses]);
 
   useEffect(() => {
     if (assessment) {
@@ -90,26 +104,25 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
     }
   }, [formData.department_id, programs]);
 
-  // Filter courses when semester changes
+  // Clear selections that are no longer mapped after configuration changes.
   useEffect(() => {
-    if (formData.semester) {
-      setFilteredCourses(courses.filter(c => c.semester === formData.semester));
-      // Reset course if semester changed
-      if (!courses.find(c => c.id === formData.course_id && c.semester === formData.semester)) {
-        setFormData(prev => ({ ...prev, course_id: '' }));
-      }
-    } else {
-      setFilteredCourses([]);
+    if (mappedCourses.isSuccess && formData.course_id &&
+        !mappedCourses.data.some(course => course.id === formData.course_id)) {
       setFormData(prev => ({ ...prev, course_id: '' }));
     }
-  }, [formData.semester, courses]);
+  }, [mappedCourses.data, mappedCourses.isSuccess, formData.course_id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mappedCourses.isFetching || mappedCourses.isError ||
+        !filteredCourses.some(course => course.id === formData.course_id)) {
+      setError('Select an available course mapped to this program and semester.');
+      return;
+    }
     setLoading(true);
     setError(null);
 
-    const result = await onSubmit(formData);
+    const result = await onSubmit({ ...formData, assessment_code: formData.assessment_code?.trim() || assessmentCodePreview });
 
     if (result.success) {
       onClose();
@@ -285,18 +298,24 @@ const AssessmentFormModal: React.FC<AssessmentFormModalProps> = ({
                 value={formData.course_id}
                 onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={!formData.semester}
+                disabled={!formData.program_id || !formData.semester || mappedCourses.isFetching || mappedCourses.isError}
               >
-                <option value="">Select Course</option>
+                <option value="">{mappedCourses.isFetching ? 'Loading courses...' : 'Select Course'}</option>
                 {Array.isArray(filteredCourses) && filteredCourses.map((course) => (
                   <option key={course.id} value={course.id}>
                     {course.course_code} - {course.course_name}
                   </option>
                 ))}
               </select>
-              {formData.semester && filteredCourses.length === 0 && (
+              {mappedCourses.isError && (
+                <p role="alert" className="mt-1 text-sm text-red-700">
+                  Could not load mapped courses.{' '}
+                  <button type="button" className="underline" onClick={() => mappedCourses.refetch()}>Retry</button>
+                </p>
+              )}
+              {formData.program_id && mappedCourses.isSuccess && !mappedCourses.isFetching && filteredCourses.length === 0 && (
                 <p className="mt-1 text-xs text-amber-600">
-                  No courses found for Semester {formData.semester}
+                  No courses are mapped to this program for Semester {formData.semester}.
                 </p>
               )}
             </div>

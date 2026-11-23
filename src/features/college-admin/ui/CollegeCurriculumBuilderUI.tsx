@@ -345,6 +345,7 @@ export const AddLearningOutcomeModal = ({
   editOutcome,
   assessmentTypes,
   selectedUnitForOutcome,
+  onCreateAssessmentType,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -353,6 +354,7 @@ export const AddLearningOutcomeModal = ({
   editOutcome?: LearningOutcome | null;
   assessmentTypes: AssessmentType[];
   selectedUnitForOutcome?: string | null;
+  onCreateAssessmentType?: (name: string, description: string) => Promise<{ id: string; name: string }>;
 }) => {
   const bloomLevels = [
     "Remember",
@@ -369,6 +371,11 @@ export const AddLearningOutcomeModal = ({
   const [assessmentMappings, setAssessmentMappings] = useState<AssessmentMapping[]>([]);
   const [currentAssessmentType, setCurrentAssessmentType] = useState("");
   const [currentWeightage, setCurrentWeightage] = useState("");
+  const [creatingType, setCreatingType] = useState(false);
+  const [typeName, setTypeName] = useState('');
+  const [typeDescription, setTypeDescription] = useState('');
+  const [savingType, setSavingType] = useState(false);
+  const [typeError, setTypeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -388,6 +395,29 @@ export const AddLearningOutcomeModal = ({
     setCurrentAssessmentType("");
     setCurrentWeightage("");
   }, [editOutcome, isOpen, selectedUnitForOutcome]);
+  useEffect(() => {
+    setCreatingType(false);
+    setTypeName('');
+    setTypeDescription('');
+    setTypeError(null);
+  }, [isOpen]);
+
+  const handleCreateType = async () => {
+    if (!onCreateAssessmentType || !typeName.trim() || savingType) return;
+    setSavingType(true);
+    setTypeError(null);
+    try {
+      const type = await onCreateAssessmentType(typeName.trim(), typeDescription.trim());
+      setCurrentAssessmentType(type.name);
+      setCreatingType(false);
+      setTypeName('');
+      setTypeDescription('');
+    } catch (error) {
+      setTypeError(error instanceof Error ? error.message : 'Could not save assessment type.');
+    } finally {
+      setSavingType(false);
+    }
+  };
   const resetForm = () => {
     setUnitId("");
     setOutcome("");
@@ -399,6 +429,7 @@ export const AddLearningOutcomeModal = ({
   };
 
   const handleClose = () => {
+    if (savingType) return;
     resetForm();
     onClose();
   };
@@ -435,6 +466,7 @@ export const AddLearningOutcomeModal = ({
       setError("Please select a unit");
       return;
     }
+    if (savingType || submitting) return;
     if (!outcome.trim()) {
       setError("Learning Outcome required.");
       return;
@@ -539,14 +571,24 @@ export const AddLearningOutcomeModal = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-gray-700">
             Assessment Type Mappings {assessmentTypes.length > 0 && <span className="text-red-500">*</span>}
-          </label>
+          </span>
+          {onCreateAssessmentType && !creatingType && (
+            <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-indigo-200 px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600" onClick={() => setCreatingType(true)}>
+              <PlusCircleIcon className="h-4 w-4" aria-hidden="true" /> Add assessment type
+            </button>
+          )}
+          </div>
           <p className="text-xs text-gray-500 mb-3">
-            Map this learning outcome to one or more assessment types
+            {assessmentTypes.length === 0
+              ? 'No assessment types yet. Choose “Add assessment type” to create your first type, then map it to this outcome.'
+              : 'Select an existing assessment type below, or add a new type if it is missing.'}
           </p>
 
           {/* Add Assessment Mapping */}
+          {assessmentTypes.length > 0 && !creatingType && (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <div>
@@ -570,7 +612,7 @@ export const AddLearningOutcomeModal = ({
                 </select>
                 {assessmentTypes.length === 0 && (
                   <p className="mt-1 text-xs text-amber-600">
-                    No active assessment types are configured. You can save this outcome and add mappings later.
+                    Add an assessment type below to complete the mappings required for approval.
                   </p>
                 )}
               </div>
@@ -600,6 +642,26 @@ export const AddLearningOutcomeModal = ({
               {assessmentTypes.length === 0 ? "No assessment types available" : "Add Assessment Mapping"}
             </button>
           </div>
+          )}
+
+          {onCreateAssessmentType && creatingType && (
+            <div className="mt-3">
+                <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+                  <label className="block text-sm font-medium text-gray-700">Assessment type name
+                    <input autoFocus maxLength={100} disabled={savingType} value={typeName} onChange={event => setTypeName(event.target.value)} placeholder="e.g. Internal Assessment" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Description (optional)
+                    <textarea maxLength={1000} rows={2} disabled={savingType} value={typeDescription} onChange={event => setTypeDescription(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                  </label>
+                  <p className="text-xs text-gray-500">Available for learning outcome mappings throughout your college.</p>
+                  {typeError && <p role="alert" className="text-sm text-red-700">{typeError}</p>}
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <button type="button" disabled={savingType} onClick={() => setCreatingType(false)} className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="button" disabled={savingType || !typeName.trim()} onClick={handleCreateType} className="min-h-11 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-50">{savingType ? 'Saving...' : 'Save assessment type'}</button>
+                  </div>
+                </div>
+            </div>
+          )}
 
           {/* Display Added Mappings */}
           {assessmentMappings.length > 0 && (
@@ -660,7 +722,7 @@ export const AddLearningOutcomeModal = ({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || savingType}
           className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
         >
           {submitting ? (
@@ -1069,6 +1131,7 @@ interface CollegeCurriculumBuilderProps {
   units?: Unit[]; // Changed from chapters
   learningOutcomes?: LearningOutcome[];
   assessmentTypes?: AssessmentType[];
+  onCreateAssessmentType?: (name: string, description: string) => Promise<{ id: string; name: string }>;
   status?: "draft" | "submitted" | "pending_approval" | "approved" | "published" | "archived" | "rejected";
   loading?: boolean;
   isRealTimeConnected?: boolean;
@@ -2206,7 +2269,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 <option value="">{!selectedDepartment ? "Select Department First" : "Select Program"}</option>
                 {programs.map((program) => (
                   <option key={program.id} value={program.id}>
-                    {program.name}
+                    {formatProgramLabel(program.name, program)}
                   </option>
                 ))}
               </select>
@@ -3023,6 +3086,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         units={units}
         editOutcome={editingOutcome}
         assessmentTypes={assessmentTypes}
+        onCreateAssessmentType={props.onCreateAssessmentType}
         selectedUnitForOutcome={selectedUnitForOutcome}
       />
 

@@ -51,6 +51,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
 
   try {
+    // Shared academic selectors must stay within the authenticated college.
+    let lookupCollegeId: string | undefined;
+    if (['get-programs', 'get-courses', 'get-semesters'].includes(action)) {
+      const actor = await supabase.from('users').select('organizationId').eq('id', user.id).single();
+      if (actor.error) return apiDbError(actor.error, context.request, { startTime });
+      lookupCollegeId = actor.data?.organizationId;
+      if (!lookupCollegeId) return apiError(400, 'AFFILIATION_ERROR', 'User has no college organization', context.request, { startTime });
+      if (action !== 'get-programs') {
+        if (!params.program_id) return apiError(400, 'VALIDATION_ERROR', 'Missing program_id', context.request, { startTime });
+        const program = await supabase.from('programs').select('id, departments!inner(college_id)')
+          .eq('id', params.program_id).eq('departments.college_id', lookupCollegeId).maybeSingle();
+        if (program.error) return apiDbError(program.error, context.request, { startTime });
+        if (!program.data) return apiError(403, 'FORBIDDEN', 'Program does not belong to your college', context.request, { startTime });
+      }
+    }
     switch (action) {
       // ── Curriculum CRUD ────────────────────────────────────────
 
@@ -824,7 +839,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         let query = supabase
           .from('programs')
-          .select('id, name, code, department_id, specializations')
+          .select('id, name, code, department_id, specializations, departments!inner(college_id)')
+          .eq('departments.college_id', lookupCollegeId)
           .eq('status', 'active')
           .order('name');
 
@@ -850,8 +866,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .select(`
             id,
             offering_type,
-            course:college_courses(
+            course:college_courses!inner(
               id,
+              college_id,
+              is_active,
               course_code,
               course_name,
               credits,
@@ -859,6 +877,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             )
           `)
           .eq('program_id', program_id)
+          .eq('course.college_id', lookupCollegeId)
+          .eq('course.is_active', true)
           .eq('semester', courseSemester);
 
         if (mappedError) return apiDbError(mappedError, context.request, { startTime });

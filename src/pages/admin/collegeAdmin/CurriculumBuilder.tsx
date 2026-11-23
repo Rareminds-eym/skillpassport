@@ -1,4 +1,4 @@
-import { CurriculumExcelImport, CourseAccessReview } from '@/features/college-course-workflow';
+import { CurriculumExcelImport, CourseAccessReview, courseWorkflow } from '@/features/college-course-workflow';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { FeatureGate } from '@/features/subscription';
 import { ConfirmationModal } from '@/shared/ui';
@@ -981,6 +981,12 @@ const CollegeCurriculumBuilderContent: React.FC = () => {
         units={transformedUnits}
         learningOutcomes={transformedOutcomes}
         assessmentTypes={assessmentTypes.map(at => ({ id: at.id, name: at.name, description: at.description }))}
+        onCreateAssessmentType={async (name, description) => {
+          if (!selectedCourse || !selectedProgram) throw new Error('Select a program and course first.');
+          const type = await courseWorkflow.createAssessmentType(selectedCourse, selectedProgram, name, description);
+          setAssessmentTypes(previous => [...previous.filter(item => item.id !== type.id), { ...type, description }].sort((a, b) => a.name.localeCompare(b.name)));
+          return type;
+        }}
         status={status}
         loading={loading}
         isRealTimeConnected={isRealTimeConnected}

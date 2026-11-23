@@ -13,6 +13,7 @@ import {
   LockOpenIcon,
   PencilIcon,
   PlusCircleIcon,
+  TrashIcon,
   UserGroupIcon,
   XCircleIcon,
   XMarkIcon,
@@ -536,9 +537,10 @@ const CourseMappingCard = ({
                     onClick={() => onDelete(mapping.id)}
                     disabled={isLocked}
                     className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Remove mapping"
+                    title="Delete course mapping"
+                    aria-label="Delete course mapping"
                 >
-                    <XMarkIcon className="h-4 w-4" />
+                    <TrashIcon className="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
 

@@ -245,7 +245,10 @@ const LessonPlanCard = ({
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <BookOpenIcon className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
-            {getPlanProperty(plan, 'courseName') || getPlanProperty(plan, 'course')}
+            {getPlanProperty(plan, 'courseName') ||
+              (typeof getPlanProperty(plan, 'course') === 'string'
+                ? getPlanProperty(plan, 'course')
+                : getPlanProperty(plan, 'course')?.course_name) || 'No course'}
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -689,6 +692,9 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
   const departments = props.departments ?? [];
   const semesters = props.semesters ?? [];
   const academicYears = props.academicYears ?? [];
+  const now = new Date();
+  const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const defaultAcademicYear = props.selectedAcademicYear || `${academicStartYear}-${academicStartYear + 1}`;
   const units = props.units ?? [];
   const learningOutcomes = props.learningOutcomes ?? [];
   const loading = props.loading ?? false;
@@ -1174,7 +1180,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         // Validate file
         const validation = validateFile(file, {
           maxSize: 50, // 50MB max
-          allowedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
+          allowedTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
         });
 
         if (!validation.valid) {
@@ -1221,7 +1227,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         try {
           const uploadResult = await uploadFile(
             tempFile.tempFile,
-            'college-lesson-plans'
+            'college-lesson-plans', undefined, 'course_resource'
           );
           
           if (uploadResult.success && uploadResult.url) {
@@ -1660,11 +1666,11 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
             <button
               onClick={() => {
                 resetForm();
-                // Set current academic year as default (2025-2026)
+                // Follow the selected academic year instead of a fixed past year.
                 const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
                 setFormData(prev => ({ 
                   ...prev, 
-                  academicYear: "2025-2026",
+                  academicYear: defaultAcademicYear,
                   sessionDate: today // Set today as default session date
                 }));
                 setShowEditor(true);
@@ -1954,7 +1960,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                         const today = new Date().toISOString().split('T')[0];
                         setFormData(prev => ({ 
                           ...prev, 
-                          academicYear: "2025-2026",
+                          academicYear: defaultAcademicYear,
                           sessionDate: today
                         }));
                         setShowEditor(true);
@@ -2190,7 +2196,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       </option>
                       {Array.isArray(formPrograms) && formPrograms.map((program) => (
                         <option key={program.id} value={program.id}>
-                          {program.name} ({program.code})
+                          {formatProgramLabel(program.name, program)}
                         </option>
                       ))}
                     </select>
@@ -2329,6 +2335,11 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                         </option>
                       ))}
                     </select>
+                    {!loadingUnits && formData.course && formData.program && formData.academicYear && availableUnits.length === 0 && (
+                      <p className="mt-2 text-sm text-amber-700">
+                        No curriculum units found for this course and program in {formData.academicYear}. Select the year used in Curriculum Builder, or add units there first.
+                      </p>
+                    )}
                     {errors.unitId && (
                       <p className="mt-1 text-xs text-red-600">{errors.unitId}</p>
                     )}
@@ -2480,7 +2491,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       <input
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
                         onChange={handleFileUpload}
                         className="hidden"
                         id="file-upload"
@@ -2497,7 +2508,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                           {uploadingFiles ? 'Uploading...' : 'Click to upload files'}
                         </span>
                         <span className="text-xs text-gray-500 mt-1">
-                          PDF, DOC, PPT, Images, Videos (Max 50MB each)
+                          PDF, Word, Excel, CSV, PowerPoint, images and videos (max 50MB each)
                         </span>
                       </label>
                     </div>

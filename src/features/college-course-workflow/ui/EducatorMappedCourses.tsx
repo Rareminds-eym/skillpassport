@@ -1,4 +1,5 @@
 import { useUser } from '@/shared/model/authStore';
+import { EducatorLessonPlansPanel } from '@/features/college-lesson-plans';
 import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Tabs from '@radix-ui/react-tabs';
@@ -16,12 +17,12 @@ import { CourseCardsSkeleton, CurriculumSkeleton } from './CourseSkeletons';
 type CurriculumEdit = { curriculum: string; type: 'unit' | 'outcome'; id: string; name: string; text: string };
 const secondaryAction = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:opacity-50';
 
-function CurriculumContent({ course }: { course: MappedCourse }) {
+function CurriculumContent({ course, lessonPlans = false }: { course: MappedCourse; lessonPlans?: boolean }) {
   const actor = useUser();
   const client = useQueryClient();
   const content = useQuery({ queryKey: ['mapped-course-content',actor?.id,course.id,course.program_id],queryFn: () => courseWorkflow.content(course.id,course.program_id!),refetchInterval: 15000 });
   const [params] = useSearchParams();
-  const [view, setView] = useState(params.get('reviewChange') ? 'decisions' : 'curriculum');
+  const [view, setView] = useState(params.get('reviewChange') ? 'decisions' : lessonPlans ? 'lesson-plans' : 'curriculum');
   const requestedDecision = params.get('reviewChange');
   useEffect(() => { if (requestedDecision) setView('decisions'); }, [requestedDecision]);
   const decisions = actor?.id ? reviewDecisions((content.data || []).map(curriculum => ({ ...curriculum, course: { course_name: course.title } })), actor.id) : [];
@@ -40,10 +41,11 @@ function CurriculumContent({ course }: { course: MappedCourse }) {
   return <Tabs.Root value={view} onValueChange={setView} className="space-y-5">
     {content.isPending && <CurriculumSkeleton />}
     {content.error && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">{content.error.message} <button className="min-h-11 px-2 font-semibold underline" onClick={() => { void content.refetch(); }}>Try again</button></div>}
-    {content.data && <Tabs.List aria-label="Course curriculum and review decisions" className="flex border-b border-gray-200">
+    <Tabs.List aria-label="Curriculum, lesson plans and review decisions" className="flex border-b border-gray-200">
       <Tabs.Trigger value="curriculum" className="min-h-11 flex-1 border-b-2 border-transparent px-3 py-3 text-sm font-medium text-gray-500 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Curriculum</Tabs.Trigger>
+      <Tabs.Trigger value="lesson-plans" className="min-h-11 flex-1 border-b-2 border-transparent px-3 py-3 text-sm font-medium text-gray-500 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Lesson plans</Tabs.Trigger>
       <Tabs.Trigger value="decisions" className="min-h-11 flex-1 border-b-2 border-transparent px-3 py-3 text-sm font-medium text-gray-500 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">Review decisions{decisions.length > 0 && ` (${decisions.length})`}</Tabs.Trigger>
-    </Tabs.List>}
+    </Tabs.List>
     <Tabs.Content value="curriculum" className="space-y-5">
     {content.data?.length === 0 && course.can_propose_edits && <AddCurriculumContent course={course} emptyState />}
     {content.data?.length===0 && !course.can_propose_edits && <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-10 text-center"><BookOpenIcon aria-hidden="true" className="mx-auto mb-3 h-9 w-9 text-gray-300" /><h3 className="text-base font-semibold text-gray-800">Curriculum not available yet</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-gray-500">No curriculum content has been added for this course yet.</p><p className="mt-2 text-xs text-gray-500">{course.can_propose_edits ? 'Use Add unit to submit the first unit and learning outcomes for approval.' : 'Your college administrator needs to add units and learning outcomes.'}</p></div>}
@@ -87,6 +89,7 @@ function CurriculumContent({ course }: { course: MappedCourse }) {
     })}
     </Tabs.Content>
     <Tabs.Content value="decisions" className="space-y-4"><ReviewHistory decisions={decisions} filter /></Tabs.Content>
+    <Tabs.Content value="lesson-plans" className="space-y-4">{course.program_id && course.semester != null && <EducatorLessonPlansPanel courseId={course.id} programId={course.program_id} semester={course.semester} />}</Tabs.Content>
   </Tabs.Root>;
 }
 
@@ -101,7 +104,7 @@ function RaremindsContent({ course }: { course: MappedCourse }) {
   </div>;
 }
 
-export function EducatorMappedCourses({ embedded = false }: { embedded?: boolean } = {}) {
+export function EducatorMappedCourses({ embedded = false, lessonPlans = false }: { embedded?: boolean; lessonPlans?: boolean } = {}) {
   const actor = useUser();
   const submitting = useIsMutating() > 0;
   const courses = useQuery({ queryKey: ['educator-mapped-courses',actor?.id],queryFn: courseWorkflow.courses });
@@ -131,7 +134,7 @@ export function EducatorMappedCourses({ embedded = false }: { embedded?: boolean
     && (ownership !== 'institution' || ((!department || course.department_id === department) && (!program || course.program_id === program) && (!semester || String(course.semester) === semester) && (!permission || course.can_propose_edits === (permission === 'edit')))));
   return <section aria-label="Mapped courses" className="space-y-5">
     {!embedded && <><h1 className="text-2xl font-semibold">Courses</h1>
-    <p>View the courses mapped to you. College course edits require admin approval; Rareminds courses are read only.</p></>}
+    <p>View mapped courses and lesson plans. Curriculum changes require admin approval; lesson plan editing follows your course access.</p><Link to="/educator/lesson-plans" className="inline-flex min-h-11 items-center gap-2 text-sm font-medium text-indigo-700 hover:underline">Open college lesson plans<ArrowRightIcon aria-hidden="true" className="h-4 w-4" /></Link></>}
     {!embedded && <div role="tablist" aria-label="Course ownership" className="flex gap-3 border-b">
       {([['institution','College Course'],['rareminds','Resource Studio']] as const).map(([value,label]) => <button key={value} id={`ownership-${value}`} role="tab" aria-selected={ownership===value} aria-controls="mapped-courses-panel" tabIndex={ownership===value ? 0 : -1} className={`px-4 py-3 ${ownership===value ? 'border-b-2 border-indigo-600 font-semibold' : ''}`} onClick={() => { setOwnership(value);setSelected(null); }} onKeyDown={event => {
         if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault();const next = event.key==='Home' ? 'institution' : event.key==='End' ? 'rareminds' : ownership==='institution' ? 'rareminds' : 'institution';setOwnership(next);setSelected(null);document.getElementById(`ownership-${next}`)?.focus(); }
@@ -163,7 +166,7 @@ export function EducatorMappedCourses({ embedded = false }: { embedded?: boolean
 
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50/40 px-5 py-3.5">
-          <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={event => { courseButton.current = event.currentTarget; setSelected(course); }}>View course<ArrowRightIcon aria-hidden="true" className="h-3.5 w-3.5" /></button>
+          <button type="button" className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600" onClick={event => { courseButton.current = event.currentTarget; setSelected(course); }}>{lessonPlans ? 'View lesson plans' : 'View course'}<ArrowRightIcon aria-hidden="true" className="h-3.5 w-3.5" /></button>
           {course.ownership==='institution' && <Link className="inline-flex items-center gap-1.5 rounded px-1 py-2 text-xs font-medium text-gray-600 hover:text-indigo-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600" to={`/educator/college-assignments?courseId=${course.id}&programId=${course.program_id}`}><PlusIcon aria-hidden="true" className="h-3.5 w-3.5" />Create assignment</Link>}
         </div>
       </article>)}</div>
@@ -171,8 +174,8 @@ export function EducatorMappedCourses({ embedded = false }: { embedded?: boolean
         <Dialog.Overlay className="fixed inset-0 z-50 bg-gray-900/50" />
         <Dialog.Content onCloseAutoFocus={event => { event.preventDefault(); courseButton.current?.focus(); }} className="fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-2xl flex-col bg-white shadow-2xl focus:outline-none">
           {selected && <>
-            <div className="shrink-0 border-b border-gray-200 p-4 sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><span className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-600">{selected.code}</span><Dialog.Close disabled={submitting} aria-label="Close course" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"><XMarkIcon className="h-5 w-5" /></Dialog.Close></div><Dialog.Title className="!text-xl !leading-7 font-semibold text-gray-900">{selected.title}</Dialog.Title><Dialog.Description className="mt-2 !text-sm !leading-6 text-gray-500">{selected.semester ? `Semester ${selected.semester} · ` : ''}{selected.can_propose_edits ? 'Propose edits · administrator approval required' : 'Read-only curriculum access'}</Dialog.Description></div>
-            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">{selected.description && <p className="text-sm leading-6 text-gray-600">{selected.description}</p>}{selected.ownership !== 'institution' && <h2 className="!text-sm !leading-5 font-semibold text-gray-900">Course curriculum</h2>}{selected.ownership==='institution' ? <CurriculumContent key={`${selected.id}-${selected.program_id}`} course={selected}/> : <RaremindsContent key={selected.id} course={selected}/>}</div>
+            <div className="shrink-0 border-b border-gray-200 p-4 sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><span className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-600">{selected.code}</span><Dialog.Close disabled={submitting} aria-label="Close course" className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"><XMarkIcon className="h-5 w-5" /></Dialog.Close></div><Dialog.Title className="!text-xl !leading-7 font-semibold text-gray-900">{selected.title}</Dialog.Title><Dialog.Description className="mt-2 !text-sm !leading-6 text-gray-500">{selected.semester ? `Semester ${selected.semester} · ` : ''}{selected.can_propose_edits ? 'Curriculum proposals require approval; lesson plan edits save directly' : 'Read-only curriculum and lesson plan access'}</Dialog.Description></div>
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">{selected.description && <p className="text-sm leading-6 text-gray-600">{selected.description}</p>}{selected.ownership !== 'institution' && <h2 className="!text-sm !leading-5 font-semibold text-gray-900">Course curriculum</h2>}{selected.ownership==='institution' ? <CurriculumContent key={`${selected.id}-${selected.program_id}`} course={selected} lessonPlans={lessonPlans}/> : <RaremindsContent key={selected.id} course={selected}/>}</div>
 
           </>}
         </Dialog.Content>

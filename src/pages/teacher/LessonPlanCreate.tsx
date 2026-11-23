@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/shared/model/authStore';
+import { Navigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle, Plus, Save, Send, X } from "lucide-react";
 import React, { useState } from "react";
 import { apiPost } from '@/shared/api/apiClient';
@@ -15,7 +16,7 @@ interface Resource {
   url?: string;
 }
 
-const LessonPlanCreate: React.FC = () => {
+const SchoolLessonPlanCreate: React.FC = () => {
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
@@ -448,4 +449,8 @@ const LessonPlanCreate: React.FC = () => {
   );
 };
 
-export default LessonPlanCreate;
+export default function LessonPlanCreate() {
+  const user = useAuthStore(state => state.user);
+  if (user?.role === 'college_educator' || user?.roles?.includes('college_educator')) return <Navigate to="/educator/lesson-plans" replace />;
+  return <SchoolLessonPlanCreate />;
+}
