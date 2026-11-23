@@ -99,3 +99,82 @@
 .managementPage .statuses span[data-state="active"] { color: #fff; background: linear-gradient(90deg, #10b981, #059669); }
 .managementPage .statuses span[data-state="paused"], .managementPage .statuses span[data-state="grace_period"] { color: #fff; background: linear-gradient(90deg, #f59e0b, #d97706); }
 .managementPage .statuses span[data-state="cancelled"], .managementPage .statuses span[data-state="expired"] { color: #334155; background: #e2e8f0; }
+
+/* Preserve the QA palette while sharing row sizes across each group of plan cards. */
+.catalogPage, .managementPage { min-width: 0; font-family: inherit; line-height: 1.5; }
+.catalogPage * { box-sizing: border-box; }
+.catalogHeading { text-wrap: balance; }
+.optionTabs { max-width: 100%; flex-wrap: wrap; justify-content: center; }
+.optionTabs button { justify-content: center; min-height: 44px; }
+.planGrid { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.planCard { min-width: 0; display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 0; }
+.planCardBody { display: contents; }
+.planCardHeader { min-width: 0; padding: 1.75rem 1.5rem 0; overflow-wrap: anywhere; }
+.planCardHeader h3 { margin: 0; line-height: 1.25; text-wrap: balance; }
+.cardFeatures { min-width: 0; padding: 0 1.5rem 1.5rem; }
+.cardFeatures li { min-height: 3.75rem; }
+.cardFeatures svg { flex-shrink: 0; }
+.cardPrices { min-width: 0; padding: .75rem 1.5rem 1.25rem; color: var(--ink); }
+.cardPrices .prices { margin: 0; }
+.cardPrices .prices strong { font-family: inherit; font-weight: 700; font-size: clamp(1.75rem, 2.4vw, 2.25rem); line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+.prices li + li { margin-top: 1rem; }
+.billingPeriod { display: block; font-size: .875rem; margin-top: .375rem; }
+.prices small, .tax { font-size: .875rem; line-height: 1.5; }
+.cardActions { padding: 0 1.5rem 1.5rem; min-width: 0; }
+.cardActions .purchase { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.cardActions button, .cardActions a { min-height: 48px; line-height: 1.4; overflow-wrap: anywhere; }
+.cardActions a:hover { filter: brightness(.95); }
+.catalogPage [hidden] { display: none; }
+.catalogPage :focus-visible { outline: 3px solid #1e40af; outline-offset: 4px; }
+.summaryHero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; }
+.summaryHero h2 { overflow-wrap: anywhere; }
+.daysRemaining { padding: 1.5rem; }
+.subscriptionSummary h3 { line-height: 1.3; }
+.subscriptionSummary [aria-hidden="true"] { flex-shrink: 0; }
+.comparisonRegion { scroll-margin-top: 6rem; }
+.comparisonTable { font-size: .875rem; }
+.comparisonTable th, .comparisonTable td { padding: 1.25rem; vertical-align: middle; }
+.comparisonTable thead th { padding: 1.5rem 1.25rem; }
+.comparisonTable thead .prices { margin: .75rem 0 0; }
+.comparisonTable .prices strong { font-family: inherit; font-weight: 700; font-size: 1.5rem; color: white; line-height: 1.3; }
+.comparisonTable thead .tax, .comparisonTable thead small { color: #cbd5e1; }
+.comparisonTable thead .billingPeriod { color: #e2e8f0; }
+.comparisonTable tbody th[scope="row"] { position: sticky; left: 0; background: #f8fafc; z-index: 1; box-shadow: 1px 0 #e2e8f0; }
+.comparisonTable tbody th[colspan] { padding: 0; }
+.comparisonTable tbody th[colspan] button { padding: 1rem 1.25rem; }
+.managementPage h1, .managementPage h2, .managementPage h3, .managementPage .prices strong, .managementPage .usage strong { font-family: inherit; }
+.managementPage .hero h1 { font-weight: 600; }
+.managementPage h3 { font-weight: 600; }
+.managementPage .features li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+.managementPage .features strong { overflow-wrap: anywhere; }
+.managementPage .statuses span[data-state="active"] { background: #047857; }
+.managementPage .statuses span[data-state="paused"], .managementPage .statuses span[data-state="grace_period"] { color: #78350f; background: #fef3c7; }
+.managementHeading > div { min-width: 0; }
+.managementIdentity > span { max-width: 100%; overflow-wrap: anywhere; }
+.managementTabs { max-width: 100%; }
+.managementTabs button { min-height: 44px; }
+.managementPage summary { padding: .5rem 0; }
+.managementPage details[open] > summary { margin-bottom: 1rem; }
+.managementPage .dates { margin: 1rem 0 1.5rem; }
+.managementPage .dates dd { min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 768px) { .planGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .planGrid:has(> :nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); } .planGrid:not(:has(> :nth-child(4))) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 639px) {
+  .summaryHero { grid-template-columns: minmax(0, 1fr); }
+  .daysRemaining { display: flex; justify-content: center; padding: 1rem; }
+  .daysRemaining > div { display: flex; align-items: baseline; gap: .75rem; }
+  .summaryHero h2 { font-size: 2rem; }
+  .comparisonTable th[scope="row"] { max-width: 9rem; }
+  .optionTabs button { flex: 1 1 auto; padding: .75rem 1rem; }
+  .planCardHeader, .cardPrices, .cardFeatures, .cardActions { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .catalogPage .notice { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .catalogPage *, .managementPage * { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+.catalogPage .planState { min-height: 1.25rem; font-size: .875rem; line-height: 1.25rem; color: #047857; font-weight: 600; margin: 0 0 .25rem; }
+
+.comparisonTable col:first-child { width: clamp(8rem, 24vw, 12rem); }
+
+.cardFeatures { display: flex; flex-direction: column; }
+.cardFeatures > button { margin-top: auto; }
+.managementPage p { font-size: 1rem; line-height: 1.6; font-weight: 400; }

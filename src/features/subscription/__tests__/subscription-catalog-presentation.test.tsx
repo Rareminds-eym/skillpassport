@@ -2,6 +2,8 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ascendingPlans, featureValue, formatPrice } from '../lib/subscriptionPresentation';
+import { catalogSchema } from '../api/subscriptionExecutionService';
 import SubscriptionWorkspace from '../ui/SubscriptionWorkspace';
 import SubscriptionCatalogSummary from '../ui/SubscriptionCatalogSummary';
 
@@ -117,10 +119,10 @@ describe('restored QA catalog presentation', () => {
     expect(screen.queryByText('Find your next chapter.')).not.toBeInTheDocument();
     const card = await screen.findByRole('article', { name: offer.name });
     expect(card).toHaveClass('rounded-3xl');
-    expect(card.closest('main')).toHaveClass('bg-gradient-to-b', 'from-blue-400', 'via-blue-100', 'to-white');
+    expect(card.closest('[class*=catalogPage]')).toHaveClass('bg-gradient-to-b', 'from-blue-400', 'via-blue-100', 'to-white');
     expect(screen.getByRole('tab', { name: 'Subscription Plans' })).toHaveClass('bg-black');
     expect(card).toHaveAttribute('aria-current', 'true');
-    expect(card).toHaveTextContent('From INR 4567.89');
+    expect(card).toHaveTextContent('From ₹4,567.89');
     expect(card).toHaveTextContent('+18% GST');
     expect(card).toHaveTextContent('Configured badge');
     expect(within(card).queryByText('Configured Feature 6')).not.toBeInTheDocument();
@@ -155,7 +157,7 @@ describe('restored QA catalog presentation', () => {
     expect(await within(freeCard).findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', '/learner/dashboard');
     expect(screen.queryByLabelText('Owner contract reference')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Activate recorded contract' })).not.toBeInTheDocument();
-    expect(freeCard).not.toHaveTextContent('INR 4567.89');
+    expect(freeCard).not.toHaveTextContent('₹4,567.89');
     const enterprise = screen.getByRole('article', { name: sales.name });
     expect(within(enterprise).getByRole('link', { name: 'Talk to Sales' })).toHaveAttribute('href', '/contact');
     expect(within(enterprise).queryByRole('button', { name: /Buy Now/ })).not.toBeInTheDocument();
@@ -179,7 +181,7 @@ describe('restored QA catalog presentation', () => {
   });
   it('restores the account banner from the existing query without deriving purchase authority', () => {
     accountQuery.mockReturnValue({ subscriptionData: { planName: 'Existing account plan', status: 'active',
-      startDate: '2026-11-01', endDate: '2027-01-01', features: [], billingCycle: 'monthly', autoRenew: true },
+      startDate: '2026-11-01', endDate: '2027-01-01', features: [], billingCycle: 'monthly', autoRenew: true, reportedAutoRenew: true },
       loading: false, error: null, hasActiveOrPausedSubscription: true });
     render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose a plan" />);
     expect(screen.getByRole('region', { name: 'Current subscription' })).toHaveTextContent('Existing account plan');
@@ -193,11 +195,11 @@ describe('restored QA catalog presentation', () => {
       startDate: '2026-11-01', endDate: null, features: [
         {key: 'career_roadmap', type: 'enum', enabled: true, value: 'sample_roadmap'},
         {key: 'assessment_access', type: 'boolean', enabled: false},
-      ], billingCycle: 'free', autoRenew: false },
+      ], billingCycle: 'free', autoRenew: false, reportedAutoRenew: false },
       loading: false, error: null, hasActiveOrPausedSubscription: true });
     render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose a plan" />);
     const banner = screen.getByRole('region', {name: 'Current subscription'});
-    expect(banner).toHaveTextContent('career roadmap');
+    expect(banner).toHaveTextContent('Career Roadmap');
     expect(banner).not.toHaveTextContent('assessment access');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -217,4 +219,77 @@ describe('restored QA catalog presentation', () => {
     expect(refresh).toHaveBeenCalledOnce();
   });
 
+});
+
+
+describe('subscription presentation accessibility and precision', () => {
+  it('orders cards and comparison columns from free to higher equivalent prices without changing source data', async () => {
+    const lower = {...offer, plan:{...offer.plan,id:id(31)},revisionId:id(32),name:'Lower membership',prices:[{...offer.prices[0],amountMinor:123400}]};
+    const free = {...offer, plan:{...offer.plan,id:id(33)},revisionId:id(34),name:'Free membership',purchaseMode:'free',prices:[]};
+    visibleCatalog = {...catalog,plans:[offer,lower,free]};
+    const original = JSON.stringify(visibleCatalog);
+    render(<SubscriptionWorkspace view="catalog" />);
+    await screen.findByRole('article', {name: free.name});
+    const names = [free.name,lower.name,offer.name];
+    expect(screen.getAllByRole('article').map(card=>card.getAttribute('aria-label'))).toEqual(names);
+    expect(within(screen.getByRole('table')).getAllByRole('columnheader').filter(cell=>cell.closest('thead')).slice(1).map(cell=>cell.firstElementChild?.textContent)).toEqual(names);
+    expect(JSON.stringify(visibleCatalog)).toBe(original);
+    expect(screen.getByRole('article',{name:lower.name})).toHaveTextContent('/ year');
+    expect(screen.getByRole('article',{name:lower.name})).not.toHaveTextContent('per subscription');
+  });
+  it('compares exact prices across minor-unit precision while keeping different billing bases separate', () => {
+    const make = (n:number,amountMinor:number,minorUnit:number,intervalUnit='year')=>({...offer,plan:{...offer.plan,id:id(n)},revisionId:id(n+1),prices:[{...offer.prices[0],amountMinor,minorUnit,intervalUnit}]});
+    const plans = catalogSchema.parse({...catalog,plans:[make(40,1234,2),make(42,100,2,'month'),make(44,12339,3),{...make(46,1,2),purchaseMode:'contact_sales',prices:[]}]}).plans;
+    expect(ascendingPlans(plans).map(plan=>plan.revisionId)).toEqual([plans[2].revisionId,plans[1].revisionId,plans[0].revisionId,plans[3].revisionId]);
+  });
+  it('describes published limits without inventing policy amounts or reset periods', () => {
+    expect(featureValue({key:'ai_credits',type:'metered',enabled:true,limit:{kind:'allocation_policy'}})).toBe('Policy-based; amount not specified');
+    expect(featureValue({key:'assessment_attempts',type:'numeric_limit',enabled:true,limit:{kind:'finite',value:2}})).toBe('2 attempts');
+    expect(featureValue({key:'course_lte_assignments',type:'numeric_limit',enabled:true,limit:{kind:'finite',value:1}})).toBe('1 assignment');
+  });
+  it('groups Indian prices without rounding configured minor units', () => {
+    expect(formatPrice(123456789, 2, 'INR')).toBe('₹12,34,567.89');
+    expect(formatPrice(9007199254740991, 3, 'INR')).toBe('₹90,07,19,92,54,740.991');
+    expect(formatPrice(12345, 3, 'USD')).toBe('USD 12.345');
+    expect(formatPrice(0, 2, 'INR')).toBe('₹0.00');
+  });
+  it('supports arrow, Home and End keys with a single tab stop', async () => {
+    render(<SubscriptionWorkspace view="catalog" />);
+    await screen.findByRole('article');
+    const plans = screen.getByRole('tab', {name: 'Subscription Plans'});
+    const addons = screen.getByRole('tab', {name: 'Add-Ons'});
+    plans.focus(); fireEvent.keyDown(plans, {key: 'ArrowRight'});
+    expect(addons).toHaveFocus(); expect(addons).toHaveAttribute('aria-selected', 'true');
+    expect(plans).toHaveAttribute('tabindex', '-1');
+    fireEvent.keyDown(addons, {key: 'Home'});
+    expect(plans).toHaveFocus(); expect(plans).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(plans, {key: 'End'}); expect(addons).toHaveFocus();
+  });
+  it('keeps focus on the comparison toggle after hiding and restoring the table', async () => {
+    render(<SubscriptionWorkspace view="catalog" />); await screen.findByRole('article');
+    fireEvent.click(screen.getByRole('button', {name:'Hide'}));
+    expect(screen.getByRole('button', {name:'Show Feature Comparison'})).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', {name:'Show Feature Comparison'}));
+    expect(screen.getByRole('button', {name:'Hide'})).toHaveFocus();
+  });
+  it('uses singular feature counts in comparison categories', async () => {
+    visibleCatalog = {...catalog, plans:[{...offer, features:[{key:'support_tier',type:'enum',enabled:true,value:'priority_email'}]}]};
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('button', {name:'Support 1 feature'})).toHaveTextContent('1 feature');
+  });
+  it('displays free-plan expiry and renewal from account data rather than assuming perpetual access', () => {
+    accountQuery.mockReturnValue({ subscriptionData: {planName:'Free fixture',status:'active',startDate:'2026-11-01',endDate:null,features:[],billingCycle:'free',autoRenew:false,reportedAutoRenew:false},loading:false,error:null,hasActiveOrPausedSubscription:true });
+    const {rerender}=render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose" />);
+    expect(screen.getByText('No expiry')).toBeInTheDocument(); expect(screen.getByText('Disabled')).toBeInTheDocument();
+    accountQuery.mockReturnValue({ subscriptionData: {planName:'Free fixture',status:'active',startDate:'2026-11-01',endDate:'2026-12-01',features:[],billingCycle:'free',autoRenew:true,reportedAutoRenew:true},loading:false,error:null,hasActiveOrPausedSubscription:true });
+    rerender(<SubscriptionCatalogSummary title="Plans" subtitle="Choose" />);
+    expect(screen.queryByText('No expiry')).not.toBeInTheDocument(); expect(screen.getByText('December 1, 2026')).toBeInTheDocument(); expect(screen.getByText('Enabled')).toBeInTheDocument();
+  });
+});
+
+it('does not claim renewal is enabled when the summary source omits it', () => {
+  accountQuery.mockReturnValue({subscriptionData:{planName:'Free fixture',status:'active',startDate:'2026-11-01',endDate:null,features:[],billingCycle:'free',autoRenew:true,reportedAutoRenew:null},loading:false,error:null,hasActiveOrPausedSubscription:true});
+  render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose" />);
+  expect(screen.queryByText('Enabled')).not.toBeInTheDocument();
+  expect(screen.getByText('Not reported — check subscription details')).toBeInTheDocument();
 });

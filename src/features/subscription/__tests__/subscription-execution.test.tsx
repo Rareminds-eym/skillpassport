@@ -365,7 +365,7 @@ describe('subscription execution consumer', () => {
     expect(screen.getAllByRole('status').length).toBeGreaterThan(0);
     expect(await screen.findByText('USD 12.345')).toBeInTheDocument();
     expect(screen.getByText(/per seat/)).toBeInTheDocument();
-    expect(screen.getByText('custom reports')).toBeInTheDocument();
+    expect(screen.getByText('Custom Reports')).toBeInTheDocument();
     await selectSubscription();
     await screen.findByText('7');
     const usageRequests = fetchMock.mock.calls.filter(([url]) => url.endsWith('/credits'));
@@ -376,6 +376,13 @@ describe('subscription execution consumer', () => {
     expect(screen.getByText(/purchase owner provides executable terms/)).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'cancel' })).toBeInTheDocument();
     expect(screen.queryByRole('option', { name: 'suspend' })).not.toBeInTheDocument();
+  });
+  it('retains the explicit subscription selection across a refresh', async () => {
+    render(<SubscriptionWorkspace />); await selectSubscription();
+    await screen.findByRole('button', {name:'View subscription activity'});
+    fireEvent.click(screen.getByRole('button', {name:'Refresh subscriptions'}));
+    await waitFor(() => expect(screen.getByRole('combobox', {name:'Subscription'})).toHaveValue(subscription));
+    expect(await screen.findByRole('button', {name:'View subscription activity'})).toBeInTheDocument();
   });
   it('requires explicit managed learner selection and never substitutes the actor', async () => {
     render(<SubscriptionWorkspace />); await selectSubscription();

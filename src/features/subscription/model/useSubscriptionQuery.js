@@ -49,6 +49,8 @@ export const formatSubscriptionData = (data) => {
     endDate: data.subscription_end_date,
     features: data.features || [], // Features will be fetched from plans API
     autoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
+    // Keep both subscription presentations explicit when the source omits renewal.
+    reportedAutoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
     nextBillingDate: data.subscription_end_date,
     paymentStatus: data.status === 'active' ? 'success' : 'pending',
     planName,

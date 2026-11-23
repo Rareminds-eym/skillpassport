@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { lifecycleOperation, lifecycleReferenceFields, type Catalog, type Current, type Discovery, type FeatureGrant, type LifecycleRequest } from '../api/subscriptionExecutionService';
 import { useCatalogPurchaseContext, useCreditHistory, useCreditUsage, useCurrentSubscription, useHistoricalCreditPools, usePublishedCatalog, useSubscriptionAudit, useSubscriptionCheckout, useSubscriptionDiscovery, useSubscriptionExecution, type LoadState } from '../model/useSubscriptionExecution';
 import SubscriptionCatalog, { SubscriptionCatalogFrame, SubscriptionAddOns } from './SubscriptionCatalog';
+import { enumLabel, featureName, featureValue, formatPrice, handleTabKeyDown } from '../lib/subscriptionPresentation';
 import styles from './SubscriptionWorkspace.module.css';
 
 function ReadPanel<T>({ state, retry, children }: { state: LoadState<T>; retry: () => void; children: (value: T) => ReactNode }) {
@@ -16,22 +17,13 @@ function ReadPanel<T>({ state, retry, children }: { state: LoadState<T>; retry: 
 }
 function FeatureList({ features }: { features: FeatureGrant[] }) {
   return <ul className={styles.features}>{features.map(feature => <li key={feature.key}>
-    <span>{feature.key.replace(/_/g, ' ')}</span><strong>{!feature.enabled ? 'Not included' : feature.type === 'boolean' ? 'Included'
-      : feature.type === 'enum' ? (feature.value === null ? 'No configured value' : feature.value)
-        : feature.limit.kind === 'finite' ? feature.limit.value.toLocaleString()
-          : feature.limit.kind === 'unlimited' ? 'Unlimited' : feature.limit.kind === 'contract_required' ? 'Contract required' : 'Allocated by policy'}</strong>
+    <span>{featureName(feature.key)}</span><strong>{featureValue(feature)}</strong>
   </li>)}</ul>;
 }
-// Precision is validated before bounded padding; preserve every configured minor unit without floating-point rounding.
-function formatPrice(amount: number, precision: number, currency: string) {
-  const digits = String(amount).padStart(precision + 1, '0');
-  return `${currency} ${precision === 0 ? digits : `${digits.slice(0, -precision)}.${digits.slice(-precision)}`}`;
-}
-/** Tax label from the owner tax policy, e.g. "+18% GST" for exclusive display; nothing when prices include tax. */
+/** Display only the tax treatment supplied by the published owner policy. */
 function taxLabel(tax: Catalog['tax'], taxInclusive: boolean) {
-  if (taxInclusive) return null;
   const rate = (tax.rateBasisPoints / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-  return `+${rate}% ${tax.kind.toUpperCase()}`;
+  return taxInclusive ? `Includes ${rate}% ${tax.kind.toUpperCase()}` : `+${rate}% ${tax.kind.toUpperCase()}`;
 }
 /** Called once after owner-confirmed settlement; the page layer decides where the buyer goes next. */
 type PaymentConfirmed = () => void;
@@ -102,13 +94,13 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
     {isCurrentPlan && !allowRenewal ? <section aria-label="Current plan access"><p className="font-semibold">Current plan</p>
       {plan.purchaseMode === 'free' && <p>Free access is activated automatically after email verification.</p>}
       {plan.purchaseMode === 'free'
-        ? dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700">Go to dashboard</a>
+        ? dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">Go to dashboard</a>
           : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>
         : <a href="/subscription/manage" className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-slate-100 text-slate-900">Manage subscription</a>}
     </section> : !subject ? <p>Your selected organization context is unavailable. Refresh your identity before purchasing.</p>
       : plan.purchaseMode === 'free' ? <section aria-label="Free plan access">
         <p>Free access is activated automatically after email verification.</p>
-        {dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700">Go to dashboard</a>
+        {dashboardRoute ? <a href={dashboardRoute} className="inline-flex justify-center w-full py-4 px-4 rounded-2xl font-semibold bg-emerald-700 text-white hover:bg-emerald-800">Go to dashboard</a>
           : <p>Your dashboard is unavailable. Refresh your identity to continue.</p>}
       </section>
         : plan.purchaseMode === 'contact_sales' ? <p>Contact our team to arrange your plan.</p>
@@ -127,11 +119,15 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
   </div>;
 }
 function CatalogPrices({ plan, catalog }: { plan: Catalog['plans'][number]; catalog: Catalog }) {
+  if (plan.purchaseMode !== 'self_service') return <div className={styles.prices}>
+    <strong>{plan.purchaseMode === 'free' ? 'Free' : 'Contact Sales'}</strong>
+    <span className={styles.billingPeriod}>{plan.purchaseMode === 'free' ? 'No payment required' : 'Contact our team for pricing'}</span>
+  </div>;
   return <ul className={styles.prices}>{plan.prices.map(price => <li key={price.id}>
     <strong>{plan.presentation.priceLabel === 'starting_at' ? 'From ' : ''}{formatPrice(price.amountMinor, price.minorUnit, price.currency)}</strong>
-    <span> / {price.intervalCount} {price.intervalUnit}{price.intervalCount === 1 ? '' : 's'} · per {price.quantityBasis}</span>
+    <span className={styles.billingPeriod}>/ {price.intervalCount === 1 ? '' : `${price.intervalCount} `}{price.intervalUnit}{price.intervalCount === 1 ? '' : 's'}{price.quantityBasis === 'seat' ? ' · per seat' : ''}</span>
     {taxLabel(catalog.tax, plan.presentation.taxInclusive) && <span className={styles.tax}> {taxLabel(catalog.tax, plan.presentation.taxInclusive)}</span>}
-    <small>Available to {price.audiences.join(', ')}</small></li>)}</ul>;
+    <small>For {price.audiences.map(audience => audience === 'individual' ? 'individuals' : enumLabel(audience)).join(', ')}</small></li>)}</ul>;
 }
 function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, onPaymentConfirmed, managedSubscriptionId, catalogMode }: { catalog: Catalog; selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed } & CatalogSelection) {
   const checkout = useSubscriptionCheckout(catalog);
@@ -322,8 +318,7 @@ function CurrentSubscription({ row, context, execution }: { row: Discovery['item
     {showActivity && <SubscriptionActivity current={current} />}</div>
   </>}</ReadPanel>;
 }
-function DiscoveredSubscriptions({ discovery, refresh, execution }: { discovery: Discovery; refresh: () => void; execution: ReturnType<typeof useSubscriptionExecution> }) {
-  const [selectedId, setSelectedId] = useState('');
+function DiscoveredSubscriptions({ discovery, refresh, execution, selectedId, setSelectedId }: { discovery: Discovery; refresh: () => void; execution: ReturnType<typeof useSubscriptionExecution>; selectedId: string; setSelectedId: (id: string) => void }) {
   const selected = discovery.items.find(row => row.id === selectedId);
   return <>
     <div className={styles.sectionHeading}><h2>Your subscription</h2></div>
@@ -337,12 +332,13 @@ function DiscoveredSubscriptions({ discovery, refresh, execution }: { discovery:
 }
 function SubscriptionAccess() {
   const [cursor, setCursor] = useState<string>();
+  const [selectedId, setSelectedId] = useState('');
   const [discovery, retry] = useSubscriptionDiscovery(cursor);
   const execution = useSubscriptionExecution(discovery.status === 'ready' ? discovery.data : null);
   return <><section><ReadPanel state={discovery} retry={retry}>{data => <>
-    <DiscoveredSubscriptions key={cursor ?? 'first'} discovery={data} refresh={retry} execution={execution} />
-    <div className={styles.pagination}>{cursor && <button onClick={() => setCursor(undefined)}>First subscriptions</button>}
-      {data.nextCursor && <button onClick={() => setCursor(data.nextCursor!)}>Next subscriptions</button>}</div>
+    <DiscoveredSubscriptions key={cursor ?? 'first'} discovery={data} refresh={retry} execution={execution} selectedId={selectedId} setSelectedId={setSelectedId} />
+    <div className={styles.pagination}>{cursor && <button onClick={() => { setSelectedId(''); setCursor(undefined); }}>First subscriptions</button>}
+      {data.nextCursor && <button onClick={() => { setSelectedId(''); setCursor(data.nextCursor!); }}>Next subscriptions</button>}</div>
   </>}</ReadPanel></section>
     {execution.state.status !== 'idle' && execution.state.status !== 'checking' && <div className={styles.notice} role={execution.state.status === 'error' || execution.state.status === 'blocked' ? 'alert' : 'status'}>
       <p>{execution.state.status === 'blocked' ? execution.state.message : execution.state.status === 'pending' ? 'Submitting change request…' : execution.state.status === 'committed' ? 'Change committed. Refresh subscriptions to read the authoritative state.'
@@ -360,13 +356,13 @@ function SubscriptionManagement({ selectedRevisionId }: { selectedRevisionId?: s
   const [tab, setTab] = useState<'subscription' | 'addons'>('subscription');
   const user = useUser();
   const { role } = useUserRole();
-  return <main className={`${styles.workspace} ${styles.managementPage}`}>
+  return <div className={`${styles.workspace} ${styles.managementPage}`}>
     <header className={styles.hero}><div className={styles.managementContainer}>
       <div className={styles.managementHeading}><div><h1>My Subscription</h1><div className={styles.managementIdentity}>{user?.email && <span>{user.email}</span>}{role && <span className={styles.managementRole}><Shield size={12} aria-hidden="true" />{role.replace(/_/g, ' ')}</span>}</div><p>Manage your subscription and billing</p></div>
         <span className={styles.managementIcon}><Shield aria-hidden="true" /></span></div>
       <div className={styles.managementTabs} role="tablist" aria-label="Manage subscription">
-        <button id="management-subscription-tab" role="tab" aria-selected={tab === 'subscription'} aria-controls="management-subscription-panel" onClick={() => setTab('subscription')}><Shield size={16} aria-hidden="true" /> Subscription</button>
-        <button id="management-addons-tab" role="tab" aria-selected={tab === 'addons'} aria-controls="management-addons-panel" onClick={() => setTab('addons')}><Sparkles size={16} aria-hidden="true" /> Add-Ons</button>
+        <button id="management-subscription-tab" role="tab" tabIndex={tab === 'subscription' ? 0 : -1} onKeyDown={handleTabKeyDown} aria-selected={tab === 'subscription'} aria-controls="management-subscription-panel" onClick={() => setTab('subscription')}><Shield size={16} aria-hidden="true" /> Subscription</button>
+        <button id="management-addons-tab" role="tab" tabIndex={tab === 'addons' ? 0 : -1} onKeyDown={handleTabKeyDown} aria-selected={tab === 'addons'} aria-controls="management-addons-panel" onClick={() => setTab('addons')}><Sparkles size={16} aria-hidden="true" /> Add-Ons</button>
       </div>
     </div></header>
     <div className={styles.managementContainer}>
@@ -376,5 +372,5 @@ function SubscriptionManagement({ selectedRevisionId }: { selectedRevisionId?: s
       </div>
       {tab === 'addons' && <section id="management-addons-panel" role="tabpanel" aria-labelledby="management-addons-tab" className={styles.managementCard}><SubscriptionAddOns /></section>}
     </div>
-  </main>;
+  </div>;
 }
