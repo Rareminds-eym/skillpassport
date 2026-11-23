@@ -13,24 +13,10 @@ import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { getAuthInstance } from '../../../lib/auth';
 import { isSalesOnlyPlan } from '../lib/salesPlan';
-
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_ALLOWED_PLAN_CODE = 'skill_starter';
-const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
+import { confirmPromoRedemption, isDidacAllowedPlan, isSupportedPromoRole } from '../lib/promoCode';
 
 const normalizePromoCode = (code: unknown): string =>
   String(code || '').trim().toUpperCase();
-
-const getPlanCode = (plan: Record<string, unknown>): string => {
-  const explicitCode = plan.plan_code || plan.planCode || plan.code;
-  const fallbackCode = plan.display_name || plan.name;
-
-  return String(explicitCode || fallbackCode || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-};
 
 /**
  * Transform a raw subscription_plans row into the shape the frontend PlanCard expects.
@@ -142,15 +128,15 @@ async function getOptionalUserIdentity(
   }
 }
 
-async function getStoredReferralCode(
+async function getStoredReferralCodeAndRole(
   supabase: ReturnType<typeof getServiceClient>,
   identity: { id: string | null; email: string | null },
-): Promise<string> {
-  if (!identity.id && !identity.email) return '';
+): Promise<{ referralCode: string; role: string | null }> {
+  if (!identity.id && !identity.email) return { referralCode: '', role: null };
 
   let query = supabase
     .from('users')
-    .select('metadata');
+    .select('metadata, role');
 
   if (identity.email) {
     query = query.eq('email', identity.email);
@@ -161,24 +147,47 @@ async function getStoredReferralCode(
   const { data } = await query.maybeSingle();
 
   const metadata = (data?.metadata || {}) as Record<string, unknown>;
-  return normalizePromoCode(metadata.referralCode || metadata.referral_code);
+  return {
+    referralCode: normalizePromoCode(metadata.referralCode || metadata.referral_code),
+    role: (data?.role as string) || null,
+  };
 }
 
-function applyCollegeLearnerPromoRules(plans: Record<string, unknown>[]): Record<string, unknown>[] {
+// priceAdjustment comes from the caller's already-confirmed promo_codes row
+// (see confirmPromoRedemption) — applied here so the frontend can trust this
+// response for BOTH gating and price display, with no client-side
+// re-derivation of either (see SubscriptionPlans.jsx, Phase 3). Every plan
+// other than the one role-specific eligible plan (isDidacAllowedPlan) is
+// disabled — this is a generalization of the original learner-only rule,
+// under which the three non-"skill_starter" learner plans were likewise
+// always disabled together (i.e. "disabled" was already exactly "every
+// other visible plan").
+function applyDidacPromoRules(
+  plans: Record<string, unknown>[],
+  role: string,
+  priceAdjustment: number,
+): Record<string, unknown>[] {
   return plans
     .map((plan) => {
-      const planCode = getPlanCode(plan);
-      const isDisabled =
-        planCode !== COLLEGE_LEARNER_ALLOWED_PLAN_CODE &&
-        COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode);
+      const isAllowedPlan = isDidacAllowedPlan(role, plan as { plan_code?: unknown; name?: unknown });
+
+      if (isAllowedPlan) {
+        return {
+          ...plan,
+          price: typeof plan.price === 'number' ? plan.price + priceAdjustment : plan.price,
+          yearlyPrice: typeof plan.yearlyPrice === 'number' ? plan.yearlyPrice + priceAdjustment : plan.yearlyPrice,
+          hidePrice: false,
+          isDisabled: false,
+        };
+      }
 
       return {
         ...plan,
-        recommended: isDisabled ? false : plan.recommended,
-        hidePrice: isDisabled,
-        isDisabled,
-        availabilityLabel: isDisabled ? 'Not available' : undefined,
-        actionLabel: isDisabled ? 'Get Started' : undefined,
+        recommended: false,
+        hidePrice: true,
+        isDisabled: true,
+        availabilityLabel: 'Not available',
+        actionLabel: 'Get Started',
       };
     });
 }
@@ -190,7 +199,6 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     const url = new URL(context.request.url);
     const businessType = url.searchParams.get('businessType') || 'b2c';
     const entityType = url.searchParams.get('entityType') || 'all';
-    const roleType = url.searchParams.get('roleType') || 'all';
     const referralCodeFromQuery = normalizePromoCode(
       url.searchParams.get('referralCode') ||
       url.searchParams.get('referral_code') ||
@@ -274,15 +282,21 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     }
 
     const userIdentity = await getOptionalUserIdentity(context.request, context.env);
-    const storedReferralCode = await getStoredReferralCode(supabase, userIdentity);
+    const { referralCode: storedReferralCode, role: storedRole } = await getStoredReferralCodeAndRole(supabase, userIdentity);
     const referralCode = storedReferralCode || referralCodeFromQuery;
 
-    if (
-      businessType === 'b2c' &&
-      roleType === 'learner' &&
-      referralCode === COLLEGE_LEARNER_PROMO_CODE
-    ) {
-      plans = applyCollegeLearnerPromoRules(plans);
+    // DIDAC 2026: covers all three supported roles (learner, college_admin,
+    // school_admin — see role_and_quota_rules in the TSD), keyed off the
+    // user's actual DB role (server-truth), not the client-supplied
+    // businessType/roleType query params. confirmPromoRedemption() commits
+    // the redemption synchronously right here if it hasn't already landed
+    // via withAuth()'s fire-and-forget hook, so pricing/eligibility is never
+    // stale relative to a redemption that is still in flight.
+    if (isSupportedPromoRole(storedRole) && referralCode && userIdentity.id) {
+      const redemption = await confirmPromoRedemption(supabase, userIdentity.id, storedRole, referralCode);
+      if (redemption) {
+        plans = applyDidacPromoRules(plans, storedRole, redemption.priceAdjustment);
+      }
     }
 
     return apiSuccess({ plans }, context.request, 200);

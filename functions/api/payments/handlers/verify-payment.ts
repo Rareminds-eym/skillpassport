@@ -36,12 +36,18 @@ import type { EventConfirmationTemplateData } from '../../email/types';
 import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
+import { confirmPromoRedemption, isDidacAllowedPlan, isSupportedPromoRole } from '../lib/promoCode';
 
 const logger = createLogger('verify-payment');
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
+
+// A role's own business-type family — mirrors the original learner/b2c-only
+// scoping (a promo redemption never discounts a plan outside the redeeming
+// role's own business-type catalog).
+const DIDAC_BUSINESS_TYPE_BY_ROLE: Record<string, 'b2c' | 'b2b'> = {
+  learner: 'b2c',
+  college_admin: 'b2b',
+  school_admin: 'b2b',
+};
 
 // Receipt configuration constants
 const RECEIPT_CONFIG = {
@@ -77,16 +83,17 @@ function isPricingMatrix(value: unknown): value is PricingMatrix {
   return true;
 }
 
-const normalizePromoCode = (code: unknown): string =>
-  String(code || '').trim().toUpperCase();
-
-async function isCollegeLearnerPromoStarterPlan(
+// DIDAC 2026: gated on a COMMITTED redemption — confirmPromoRedemption()
+// commits it synchronously here if it hasn't already landed via
+// withAuth()'s fire-and-forget hook. Covers all three supported roles
+// (learner, college_admin, school_admin), not just learner.
+async function isDidacPromoAllowedPlan(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
   userEmail: string,
-  plan: { plan_code?: string | null; name?: string | null },
+  plan: { plan_code?: string | null; name?: string | null; business_type?: string | null },
   requestReferralCode?: unknown,
-): Promise<boolean> {
+): Promise<{ allowed: boolean; priceAdjustment: number }> {
   let userQuery = supabase
     .from('users')
     .select('role, metadata');
@@ -99,18 +106,20 @@ async function isCollegeLearnerPromoStarterPlan(
 
   const { data: userRow } = await userQuery.maybeSingle();
   const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
-  const planCode = String(plan.plan_code || '').toLowerCase();
-  const planName = String(plan.name || '').trim().toLowerCase();
+  const role = (userRow?.role as string | null) ?? null;
 
-  return (
-    userRow?.role === 'learner' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    (
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
-    )
+  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role] || !isDidacAllowedPlan(role, plan)) {
+    return { allowed: false, priceAdjustment: 0 };
+  }
+  const redemption = await confirmPromoRedemption(
+    supabase,
+    userId,
+    role,
+    requestReferralCode ?? metadata.referralCode ?? metadata.referral_code,
   );
+  return redemption
+    ? { allowed: true, priceAdjustment: redemption.priceAdjustment }
+    : { allowed: false, priceAdjustment: 0 };
 }
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
@@ -245,7 +254,8 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
     let detectedBillingCycle: 'yearly' | 'monthly' | undefined;
-    const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, userEmail, validPlan, notes.referral_code);
+    const { allowed: allowPromoStarterAmount, priceAdjustment } =
+      await isDidacPromoAllowedPlan(supabase, user.id, userEmail, validPlan, notes.referral_code);
 
     // CRITICAL: Search for ANY matching price in the pricing matrix
     // Plans may have duration label that doesn't match actual billing cycle
@@ -256,7 +266,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
         // Try yearly first
         const promoYearlyPrice = entityPricing?.yearly
-          ? entityPricing.yearly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
+          ? entityPricing.yearly + priceAdjustment
           : undefined;
         if (
           entityPricing?.yearly &&
@@ -265,9 +275,9 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
         ) {
           planPrice = allowPromoStarterAmount && promoYearlyPrice === clientPrice ? promoYearlyPrice : entityPricing.yearly;
           detectedBillingCycle = 'yearly';
-          logger.info('Price matched to yearly billing cycle', { 
-            clientPrice, 
-            planPrice, 
+          logger.info('Price matched to yearly billing cycle', {
+            clientPrice,
+            planPrice,
             entityKey,
             planId: plan.id
           });
@@ -276,7 +286,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
         // Then try monthly
         const promoMonthlyPrice = entityPricing?.monthly
-          ? entityPricing.monthly + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON
+          ? entityPricing.monthly + priceAdjustment
           : undefined;
         if (
           entityPricing?.monthly &&

@@ -97,6 +97,37 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
 
       const blocked = requireVerifiedEmail(authedContext.user);
       if (blocked) return blocked;
+
+      // DIDAC 2026 promo-code redemption (fire-and-forget, fail-soft).
+      // See TSD-didac-2026-dynamic-promo-code-management.yml — hooked here,
+      // not the email-verification sync path, which was found unreliable.
+      try {
+        const waitUntil = (context as any).waitUntil as ((p: Promise<any>) => void) | undefined;
+        const promoPromise = (async () => {
+          const { maybeRedeemPromoCode } = await import('./promo-redemption');
+          const svc = getServiceClient(env as unknown as PagesEnv);
+          // referralCode lives in public.users.metadata, not the SSO JWT's
+          // user_metadata — the JWT never carries it.
+          const { data: userRow } = await svc
+            .from('users')
+            .select('metadata')
+            .eq('id', authedContext.user.sub)
+            .maybeSingle();
+          await maybeRedeemPromoCode(
+            svc,
+            env as unknown as PagesEnv,
+            authedContext.user.sub,
+            authedContext.user.email,
+            authedContext.user.roles,
+            userRow?.metadata as Record<string, unknown> | undefined
+          );
+        })().catch(() => {});
+        if (waitUntil) waitUntil(promoPromise);
+        else promoPromise.catch(() => {});
+      } catch {
+        // fail-soft
+      }
+
       if (authedContext.user.user_metadata?.must_change_password === true) {
         return Response.json({ error: 'Change your temporary password before accessing teaching data',
           code: 'PASSWORD_CHANGE_REQUIRED' }, { status: 403 });
