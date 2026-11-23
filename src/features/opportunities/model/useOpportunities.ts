@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { opportunityFailure } from '../lib/accessFailure';
 import { opportunitiesService } from '@/features/opportunities';
 import type { Opportunity } from '../api/opportunitiesService';
 
@@ -47,6 +48,7 @@ export const useOpportunities = (options: OpportunityPageOptions = {}) => {
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<ReturnType<typeof opportunityFailure> | null>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const pageKey = JSON.stringify([filters, activeOnly, searchTerm, page, pageSize, sortBy, serverSidePagination, includeFactoryVisits]);
@@ -64,6 +66,7 @@ export const useOpportunities = (options: OpportunityPageOptions = {}) => {
     pendingRequest.current = controller;
     setLoading(true);
     setError(null);
+    setFailure(null);
 
     try {
       let data;
@@ -118,7 +121,9 @@ export const useOpportunities = (options: OpportunityPageOptions = {}) => {
       setResolvedPageKey(pageKey);
     } catch (err) {
       if (version !== requestVersion.current) return;
-      setError(err instanceof Error ? err.message : 'Failed to fetch opportunities');
+      const failure = opportunityFailure(err, 'Failed to fetch opportunities');
+      setFailure(failure);
+      setError(failure.message);
       setResolvedPageKey(pageKey);
 
       // Fallback to empty array on error
@@ -212,6 +217,7 @@ export const useOpportunities = (options: OpportunityPageOptions = {}) => {
     loading: loading || (fetchOnMount && resolvedPageKey !== pageKey),
     hasLoadedPage: resolvedPageKey === pageKey,
     error,
+    failure,
     totalCount,
     totalPages,
     fetchOpportunities,
