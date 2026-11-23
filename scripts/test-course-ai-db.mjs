@@ -27,8 +27,11 @@ CREATE TABLE school_educators(id uuid,user_id uuid,account_status text,school_id
 CREATE TABLE college_lecturers(user_id uuid,"collegeId" uuid,"accountStatus" text);
 CREATE TABLE organization_staff(user_id uuid,organization_id uuid,account_status text);
 CREATE TABLE course_enrollments(course_id uuid,learner_id uuid,educator_id uuid,status text);
+CREATE TABLE learners(id uuid PRIMARY KEY,user_id uuid);
+CREATE TABLE demo_course_access(learner_id uuid,course_id uuid,is_enabled boolean);
 `);
   sql(readFileSync(new URL('../supabase/migrations/20270318000002_course_content_index.sql', import.meta.url), 'utf8'));
+  sql(readFileSync(new URL('../supabase/migrations/20270318000008_fix_course_ai_learner_access.sql', import.meta.url), 'utf8'));
   sql(`DO $$
 DECLARE u uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid();
  c uuid:=gen_random_uuid(); module uuid:=gen_random_uuid(); lesson uuid:=gen_random_uuid(); analysis uuid; lease uuid; embedding text;
@@ -36,6 +39,21 @@ DECLARE u uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); student uui
 BEGIN
  INSERT INTO users(id) VALUES(u),(student); INSERT INTO courses(course_id,educator_id) VALUES(c,u); INSERT INTO course_modules VALUES(module,c); INSERT INTO lessons VALUES(lesson,module,'Text');
  IF can_access_course_ai(outsider,c) THEN RAISE EXCEPTION 'Unauthorized course access'; END IF;
+ INSERT INTO learners VALUES(learner,student);
+ INSERT INTO course_enrollments VALUES(c,learner,NULL,'active');
+ IF NOT can_access_course_ai(student,c) THEN RAISE EXCEPTION 'Profile enrollment denied'; END IF;
+ UPDATE course_enrollments SET status='in_progress' WHERE learner_id=learner;
+ IF NOT can_access_course_ai(student,c) THEN RAISE EXCEPTION 'In-progress enrollment denied'; END IF;
+ UPDATE course_enrollments SET status='cancelled' WHERE learner_id=learner;
+ IF can_access_course_ai(student,c) THEN RAISE EXCEPTION 'Cancelled enrollment allowed'; END IF;
+ INSERT INTO demo_course_access VALUES(learner,c,true);
+ IF NOT can_access_course_ai(student,c) THEN RAISE EXCEPTION 'Assigned learner denied'; END IF;
+ IF can_access_course_ai(outsider,c) THEN RAISE EXCEPTION 'Assigned access leaked'; END IF;
+ UPDATE courses SET deleted_at=now() WHERE course_id=c;
+ IF can_access_course_ai(student,c) THEN RAISE EXCEPTION 'Deleted course allowed'; END IF;
+ UPDATE courses SET deleted_at=NULL WHERE course_id=c;
+ UPDATE demo_course_access SET is_enabled=false;
+ IF can_access_course_ai(student,c) THEN RAISE EXCEPTION 'Disabled assignment allowed'; END IF;
  analysis:=enqueue_course_source(u,c,lesson,NULL,'hash','google/gemini-embedding-2-preview','v1');
  IF analysis<>enqueue_course_source(u,c,lesson,NULL,'hash','google/gemini-embedding-2-preview','v1') THEN RAISE EXCEPTION 'Duplicate enqueue'; END IF;
  IF analysis<>enqueue_course_source(NULL,c,lesson,NULL,'hash','google/gemini-embedding-2-preview','v1') THEN RAISE EXCEPTION 'Trusted import not idempotent'; END IF;
