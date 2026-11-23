@@ -70,6 +70,14 @@ export const STREAM_KNOWLEDGE_PROMPTS: Record<string, StreamKnowledgePrompt> = {
   // ═══════════════════════════════════════════════════════════════════════════
   // GENERIC/FALLBACK STREAMS (used for normalization only, topics not accessed)
   // ═══════════════════════════════════════════════════════════════════════════
+  cs: {
+    name: 'Computer Science',
+    topics: ['Programming basics', 'Algorithms and data structures', 'Database management', 'Computer systems', 'Networking fundamentals', 'Software development']
+  },
+  ca: {
+    name: 'Chartered Accountancy',
+    topics: ['Accounting principles', 'Financial reporting', 'Auditing basics', 'Taxation basics', 'Business law', 'Financial management']
+  },
   engineering: {
     name: 'Engineering',
     topics: ['Physics applications', 'Mathematics', 'Engineering mechanics', 'Technical drawing', 'Problem solving', 'Design thinking']

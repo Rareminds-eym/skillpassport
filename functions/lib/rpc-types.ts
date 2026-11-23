@@ -4,6 +4,9 @@
  */
 
 export interface SsoWorkerRpc {
+  getSubscriptionPaymentFulfillment(input: Pick<import('./sso-client').SubscriptionPaymentInput,
+    'user_id' | 'plan_id' | 'organization_id' | 'razorpay_order_id' | 'razorpay_payment_id' | 'amount' | 'currency'>): Promise<import('./sso-client').SubscriptionPaymentResult | null>;
+  fulfillSubscriptionPayment(input: import('./sso-client').SubscriptionPaymentInput): Promise<import('./sso-client').SubscriptionPaymentResult>;
   // User lookups
   getUserByEmail(email: string): Promise<{ id: string; email: string; is_email_verified: boolean } | null>;
   getUserById(userId: string): Promise<{ id: string; email: string; is_email_verified: boolean; is_blocked: boolean; user_metadata: Record<string, unknown> | null; created_at: string; last_login_at: string | null } | null>;

@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../lib/course-catalog';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -66,13 +67,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // ─────────────────────────────────────────
       case 'list-courses': {
         const { filters, select: selectField, orderBy = 'created_at', orderDir = 'desc' } = params;
-        let q = selectField ? supabase.from('courses').select(selectField) : supabase.from('courses').select('*');
+        const includeCatalog = !selectField || selectField === '*';
+        let q = supabase.from('courses').select(includeCatalog ? COURSE_CATALOG_SELECT : selectField);
         if (filters) {
           for (const [key, value] of Object.entries(filters)) {
             if (typeof value === 'object' && value !== null) {
               const v = value as Record<string, any>;
               if (v.in) q = q.in(key, v.in);
-              if (v.is) q = q.is(key, v.is);
+              if ('is' in v) q = q.is(key, v.is);
               if (v.eq) q = q.eq(key, v.eq);
               if (v.neq) q = q.neq(key, v.neq);
             } else {
@@ -82,7 +84,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
         const { data, error } = await q.order(orderBy, { ascending: orderDir === 'asc' });
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(includeCatalog ? (data || []).map(presentCatalogCourse) : (data || []), context.request, { startTime });
       }
 
       case 'upsert-course': {

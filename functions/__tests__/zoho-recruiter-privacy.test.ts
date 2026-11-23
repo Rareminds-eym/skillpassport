@@ -48,3 +48,21 @@ describe('private imported candidate discovery',()=>{
   expect(mocks.from).not.toHaveBeenCalledWith('learners');
  });
 });
+
+it('rich recruiter discovery retains the filtered parent and locked-contact masking',async()=>{
+ const response=await request(onRequest,{action:'list-learners',include_details:true});
+ expect(response.status).toBe(200);
+ expect((await response.json()).data).toEqual([{...legacy,email:null,contact_number:null}]);
+ const index=mocks.from.mock.calls.findIndex(call=>call[0]==='zoho_recruiter_learners');
+ const query=mocks.from.mock.results[index].value;
+ expect(query.select).toHaveBeenCalledWith(expect.stringContaining('skills!skills_learner_id_fkey'));
+ expect(query.select.mock.calls[0][0]).not.toMatch(/guardian|alternate_number|date_of_birth/);
+ expect(query.eq).toHaveBeenCalledWith('is_deleted',false);
+ expect(query.limit).toHaveBeenCalledWith(500);
+ expect(mocks.from).not.toHaveBeenCalledWith('learners');
+});
+it('rejects an invalid rich-discovery flag',async()=>{
+ const response=await request(onRequest,{action:'list-learners',include_details:'true'});
+ expect(response.status).toBe(400);
+ expect(mocks.from).not.toHaveBeenCalledWith('zoho_recruiter_learners');
+});

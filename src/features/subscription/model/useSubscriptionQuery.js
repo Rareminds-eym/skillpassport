@@ -14,6 +14,17 @@ import { useUser } from '@/shared/model/authStore';
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
+export const getSubscriptionScope = (pathname) => pathname.startsWith('/college-admin') ? 'college_admin'
+  : pathname.startsWith('/school-admin') ? 'school_admin'
+    : pathname.startsWith('/university-admin') ? 'university_admin'
+      : pathname.startsWith('/learner') ? 'learner'
+        : pathname.startsWith('/educator') ? 'educator'
+          : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
+
+export const subscriptionQueryKey = (userId, scope) => [
+  ...queryKeys.subscription.data.byOrganization(userId), scope ?? 'default',
+];
+
 /**
  * Format raw subscription data from API
  */
@@ -175,17 +186,12 @@ const fetchSubscription = async (userId, scope) => {
 export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
   const { pathname } = useLocation();
-  const scope = pathname.startsWith('/college-admin') ? 'college_admin'
-    : pathname.startsWith('/school-admin') ? 'school_admin'
-      : pathname.startsWith('/university-admin') ? 'university_admin'
-        : pathname.startsWith('/learner') ? 'learner'
-          : pathname.startsWith('/educator') ? 'educator'
-            : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
+  const scope = getSubscriptionScope(pathname);
   const queryClient = useQueryClient();
 
   // Check if the query can run
-  const isQueryEnabled = !!user;
-  const queryKey = user?.id ? [...queryKeys.subscription.data.byOrganization(user.id), scope ?? 'default'] : queryKeys.subscription.data.all;
+  const isQueryEnabled = !!user && options.enabled !== false;
+  const queryKey = user?.id ? subscriptionQueryKey(user.id, scope) : queryKeys.subscription.data.all;
 
   const query = useQuery({
     queryKey,
@@ -198,7 +204,7 @@ export const useSubscriptionQuery = (options = {}) => {
     // staleTime (2 min) — no more than one background re-check per 2 minutes.
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    retry: (failureCount, error) => {
+    retry: (failureCount) => {
       // ponytail: Only retry if no data exists (initial sync after login)
       // If we have data, don't retry - it's cached and fresh
       const cachedData = queryClient.getQueryData(queryKey);

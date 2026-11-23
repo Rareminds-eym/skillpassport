@@ -155,7 +155,8 @@ export const onRequest: PagesFunction = async (context) => {
     // Authenticated endpoints
     if (path === '/create-learner' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleCreateLearner(authContext.request, authContext.env);
+        const user = getContextUser(authContext);
+        return await handleCreateLearner(authContext.request, authContext.env, { id: user.id, roles: user.roles, org_id: user.org_id });
       })(context);
     }
     if (path === '/create-teacher' && request.method === 'POST') {
@@ -180,7 +181,7 @@ export const onRequest: PagesFunction = async (context) => {
     }
     if (path === '/update-learner-documents' && request.method === 'POST') {
       return withAuth(async (authContext: AuthenticatedContext) => {
-        return await handleUpdateLearnerDocuments(authContext.request, authContext.env);
+        return await handleUpdateLearnerDocuments(authContext.request, authContext.env, getContextUser(authContext));
       })(context);
     }
 

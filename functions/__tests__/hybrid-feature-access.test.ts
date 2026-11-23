@@ -1,3 +1,4 @@
+import { resolveAdmissionsScope } from '../lib/admissions-scope';
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { checkHybridFeatureAccess } from '../lib/hybrid-features';
@@ -145,5 +146,28 @@ describe('catalog synchronization', () => {
   });
   it('propagates refresh failures rather than reporting successful reconciliation', async () => {
     await expect(syncAllFeatureKeysCache({ rpc: vi.fn().mockResolvedValue({ error: { message: 'failed' } }) } as any, [])).rejects.toThrow('failed');
+  });
+});
+
+describe('admissions scope and grants', () => {
+  it('uses the verified member tenant rather than contact email', async () => {
+    expect(await resolveAdmissionsScope(database(), { id: 'member-admin', roles: ['college_admin'], org_id: 'org-1' })).toEqual({ type: 'college', organizationId: 'org-1' });
+  });
+  it('rejects another tenant and an unauthorised role', async () => {
+    await expect(resolveAdmissionsScope(database(), { id: 'member-admin', roles: ['college_admin'], org_id: 'org-1' }, 'other')).rejects.toThrow('access denied');
+    await expect(resolveAdmissionsScope(database(), { id: 'learner', roles: ['learner'], org_id: 'org-1' })).rejects.toThrow('enrollment');
+  });
+  it('permits scoped class choices for admissions without faculty or class-management grants', async () => {
+    const db = database({ features: ['admissions_data'], catalog: [{ key: 'admissions_data', role: 'college_admin', product_code: 'skillpassport', is_active: true }] });
+    expect(await requireAdminRequestFeature(db, request('college-admin/admissions', 'get-admission-classes'), admin)).toBeNull();
+    expect((await requireAdminRequestFeature(db, request('college-admin/classes', 'update-class'), admin))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database(), request('college-admin/admissions', 'get-admission-context'), admin))?.status).toBe(403);
+  });
+  it('uses the covered Hybrid contract when newer cancelled standard history is expired', async () => {
+    const rows = [
+      { id: 'z-hybrid', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'hybrid', status: 'active', subscription_start_date: '2026-01-01', subscription_end_date: '2099-01-01', features: [] },
+      { id: 'a-standard', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'starter', status: 'cancelled', subscription_start_date: '2026-03-01', subscription_end_date: '2026-04-01' },
+    ];
+    expect((await requireAdminRequestFeature(database({ rows }), request('college-admin/college-circulars', 'get-circulars'), admin))?.status).toBe(403);
   });
 });

@@ -1,27 +1,20 @@
 /** Explicit maintenance command; no deployment or automatic full-catalog rebuild.
+ * npm run index:job-matching -- --binding  (running multi-worker stack)
  * npm run index:job-matching -- --embedding-url http://127.0.0.1:9004
  * Uses service-only DB contracts and the authenticated embedding worker. */
 import { config } from 'dotenv';
+import { createJobIndexTransport } from './lib/job-index-transport.mjs';
 config({ path: '.dev.vars', quiet: true });
-const embeddingUrl = process.argv[process.argv.indexOf('--embedding-url') + 1];
-if (!process.argv.includes('--embedding-url') || !embeddingUrl)
-  throw new Error('--embedding-url is required');
+const binding = process.argv.includes('--binding');
+const embeddingUrl = process.argv.includes('--embedding-url') ? process.argv[process.argv.indexOf('--embedding-url') + 1] : undefined;
+if (!binding && !embeddingUrl || binding && embeddingUrl) throw new Error('Choose exactly one of --binding or --embedding-url');
 const model = process.env.MATCHING_EMBEDDING_MODEL;
 for (const key of [
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'EMBEDDING_API_KEY',
   'MATCHING_EMBEDDING_MODEL',
 ])
   if (!process.env[key]) throw new Error(`${key} is required`);
-const workerUrl = new URL('/embeddings/text', embeddingUrl);
-if (
-  workerUrl.protocol !== 'https:' &&
-  !['localhost', '127.0.0.1', '[::1]'].includes(workerUrl.hostname)
-)
-  throw new Error(
-    'The embedding worker must use HTTPS outside local development',
-  );
 const rpc = async (name, args) => {
   const r = await fetch(`${process.env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
     method: 'POST',
@@ -41,6 +34,7 @@ const rpc = async (name, args) => {
   }
   return r.json();
 };
+let transport;
 let total = 0;
 let nextStart = 0;
 const embed = async (job) => {
@@ -49,29 +43,13 @@ const embed = async (job) => {
   nextStart = Math.max(Date.now(), nextStart) + 600;
   if (wait) await new Promise((r) => setTimeout(r, wait));
   for (let attempt = 0; attempt < 4; attempt++) {
-    const r = await fetch(workerUrl, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.EMBEDDING_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ input: job.input_text }),
-      signal: AbortSignal.timeout(120000),
-    });
-    if (r.status === 429) {
-      await new Promise((done) =>
-        setTimeout(
-          done,
-          Math.min(
-            60000,
-            Math.max(1000, Number(r.headers.get('Retry-After') || '60') * 1000),
-          ),
-        ),
-      );
+    let output;
+    try { output = await transport.embed(job.input_text); }
+    catch (error) {
+      if (error.code !== 'RATE_LIMIT_EXCEEDED') throw error;
+      await new Promise(done => setTimeout(done, Math.min(60000, Math.max(1000, error.retryAfterSeconds * 1000))));
       continue;
     }
-    if (!r.ok) throw new Error(`Embedding worker failed (${r.status})`);
-    const output = await r.json();
     if (
       output.model !== model ||
       !Array.isArray(output.embedding) ||
@@ -92,6 +70,7 @@ const embed = async (job) => {
   throw new Error('Embedding worker remained rate-limited; rerun to resume');
 };
 try {
+  transport = await createJobIndexTransport({binding,embeddingUrl});
   for (;;) {
     const jobs = await rpc('get_job_matching_index_batch', {
       p_model: model,
@@ -117,4 +96,6 @@ try {
 } catch (e) {
   console.error(e.message);
   process.exitCode = 1;
+} finally {
+  await transport?.dispose();
 }

@@ -184,8 +184,8 @@ export interface SendMessageParams {
  * Optional metadata for messages
  */
 export interface MessageMetadata {
-    applicationId?: number;
-    opportunityId?: number;
+    applicationId?: string | number;
+    opportunityId?: string | number;
     classId?: number;
     attachments?: any[];
 }
@@ -205,7 +205,7 @@ export interface CreateConversationParams {
  */
 export interface ConversationMetadata {
     subject?: string;
-    applicationId?: number;
-    opportunityId?: number;
+    applicationId?: string | number;
+    opportunityId?: string | number;
     classId?: number;
 }

@@ -1,0 +1,14 @@
+export interface ImportOutcome { text: string; bloomLevel?: string; assessments: { assessmentType: string; weightage?: number }[] }
+export interface ImportUnit { name: string; code: string; description: string; credits: number; duration: number; order: number; outcomes: ImportOutcome[] }
+export interface ImportCourse { code: string; title: string; description: string; credits: number; units: ImportUnit[] }
+export interface ImportContext { departmentId: string; programId: string; semester: number; academicYear: string }
+export interface MappedCourse { id: string; title: string; code: string; description: string | null; ownership: 'institution' | 'rareminds'; program_id: string | null; semester: number | null; can_propose_edits: boolean; program_name?: string | null; program_code?: string | null; department_id?: string | null; department_name?: string | null; department_code?: string | null }
+export interface CourseUnit { id: string; name: string; code: string; description: string; order_index: number; credits?: number | null; estimated_duration?: number | null; duration_unit?: string | null }
+export interface CourseOutcome { id: string; unit_id: string; outcome_text: string; bloom_level?: string; assessment_mappings?: { assessmentType: string; weightage?: number }[] }
+export interface CourseCurriculum { id: string; academic_year: string; status: string; units: CourseUnit[]; outcomes: CourseOutcome[]; change_history?: { id: string; status: string; timestamp?: string; review_notes?: string; original_change?: { source?: string; requester_name?: string; requested_by?: string; change_type?: string; data?: { before?: Record<string,unknown>; after?: EditRequest['proposed_data'] } } }[]; pending_changes?: { id: string; entity_id: string; requested_by: string; change_type: string; status?: string; data?: { after?: { name?: string; outcome_text?: string; code?: string } } }[] }
+export interface CourseMappingAccess { id: string; faculty_access: 'read' | 'edit'; course_name: string; course_code: string; faculty_name: string; email: string; semester: number }
+export interface EditRequest { id: string; course_name: string; requester_email: string; entity_type: 'unit' | 'outcome'; before_data: Record<string,unknown>; proposed_data: { code?: string; name?: string; description?: string; outcomes?: (string | ImportOutcome)[]; outcome_text?: string; bloom_level?: string; assessment_mappings?: { assessmentType: string; weightage?: number }[] }; created_at: string }
+
+export interface ReviewDecision extends EditRequest { status: 'approved' | 'rejected'; curriculum_id: string; academic_year: string; reviewed_at?: string; review_notes?: string; reviewer_email?: string }
+
+export interface CurriculumHistoryRecord { id: string; academic_year: string; change_history?: CourseCurriculum['change_history']; course?: { course_name?: string } | { course_name?: string }[] }

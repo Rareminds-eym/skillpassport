@@ -329,6 +329,8 @@ export const ADMIN_FEATURE_POLICIES: Record<string, Record<string, readonly stri
     "mark-graduated": ["admissions_data"],
     "update-cgpa": ["admissions_data"],
     "get-admissions": ["admissions_data"],
+    "get-admission-context": ["admissions_data"],
+    "get-admission-classes": ["admissions_data"],
     "bulk-upload-csv": ["admissions_data"],
     "bulk-upload-status": ["admissions_data"],
     "bulk-upload-errors": ["admissions_data"],

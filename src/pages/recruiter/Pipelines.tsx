@@ -457,9 +457,7 @@ const PipelinesContent: React.FC<PipelinesProps> = ({ onViewProfile }) => {
         selectedJob={selectedJob}
         setSelectedJob={setSelectedJob}
         getTotalCandidates={getTotalCandidates}
-        onAddCandidates={() =>
-          toast("Add candidates modal will be available shortly")
-        }
+        onAddCandidates={() => handleAddFromTalentPool("sourced")}
         onExportPipeline={handleExportPipeline}
         onRefresh={() => {
           loadPipelineCandidates();

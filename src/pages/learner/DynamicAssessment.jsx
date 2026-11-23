@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -57,9 +57,9 @@ const DynamicAssessment = () => {
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [progressError, setProgressError] = useState(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [timeElapsed, setTimeElapsed] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(900); // 15 minutes default
   const [showResults, setShowResults] = useState(false);
   const [score, setScore] = useState(0);
@@ -136,47 +136,69 @@ const DynamicAssessment = () => {
     });
   }, [courseName, courseLevel, location.state]);
 
-  // Timer - countdown for timed assessments
+  // Stop the clock while a persistence failure needs the learner's attention.
   useEffect(() => {
-    if (!loading && !showResults && timeRemaining > 0) {
+    if (!loading && !showResults && !progressError && !isSaving && attemptId && timeRemaining > 0) {
       const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            // Time's up - auto submit
-            handleSubmit();
-            return 0;
-          }
-          return prev - 1;
-        });
+        if (timeRemaining <= 1) {
+          setTimeRemaining(0);
+          void handleSubmit(0);
+        } else {
+          setTimeRemaining(prev => prev - 1);
+        }
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [loading, showResults, timeRemaining]);
+  }, [loading, showResults, timeRemaining, progressError, isSaving, attemptId, assessment, answers, currentQuestionIndex]);
+
+  // Keep the interval stable while its callback reads the latest answer and clock.
+  const latestProgress = useRef(null);
+  useEffect(() => {
+    latestProgress.current = {
+      currentQuestionIndex,
+      currentAnswer: answers[assessment?.questions[currentQuestionIndex]?.id],
+      timeRemaining,
+    };
+  }, [currentQuestionIndex, answers, assessment, timeRemaining]);
 
   // Auto-save progress every 10 seconds
   useEffect(() => {
-    if (!loading && !showResults && attemptId && assessment) {
+    if (!loading && !showResults && !progressError && !isSaving && attemptId && assessment) {
       const autoSave = setInterval(() => {
-        const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+        const { currentAnswer, currentQuestionIndex: savedIndex, timeRemaining: remaining } = latestProgress.current;
         if (currentAnswer) {
           console.log('💾 Auto-saving progress...');
           updateAssessmentProgress(
             attemptId,
-            currentQuestionIndex,
+            savedIndex,
             currentAnswer,
-            timeRemaining
-          );
+            remaining
+          ).then(result => {
+            if (!result.success) setProgressError(result.error || 'Failed to save your answer.');
+          }).catch(err => setProgressError(err.message || 'Failed to save your answer.'));
         }
       }, 10000); // Every 10 seconds
 
       return () => clearInterval(autoSave);
     }
-  }, [loading, showResults, attemptId, currentQuestionIndex, answers, timeRemaining, assessment]);
+  }, [loading, showResults, attemptId, assessment, progressError, isSaving]);
 
   const loadAssessment = async () => {
     console.log('📥 DynamicAssessment: loadAssessment() called');
     setLoading(true);
     setError(null);
+    setProgressError(null);
+
+    const persistAttempt = async (questions) => {
+      if (!learnerData?.id) throw new Error('Your learner profile is not ready.');
+      const result = await createAssessmentAttempt({
+        learnerId: learnerData.id, courseName, courseId, assessmentLevel: courseLevel, questions,
+      });
+      if (!result.success || !result.data?.id) {
+        throw new Error(result.error || 'Failed to save assessment attempt.');
+      }
+      setAttemptId(result.data.id);
+    };
 
     try {
       // Determine which attempt to use: passed via state or loaded from database
@@ -262,24 +284,8 @@ const DynamicAssessment = () => {
         
         setAssessment(generatedAssessment);
         
-        // Create database attempt if user is logged in
-        if (learnerData?.id) {
-          const result = await createAssessmentAttempt({
-            learnerId: learnerData.id,
-            courseName: courseName,
-            courseId: courseId,
-            assessmentLevel: courseLevel,
-            questions: preGeneratedQuestions
-          });
-          
-          if (result.success) {
-            setAttemptId(result.data.id);
-            console.log('✅ Database attempt created:', result.data.id);
-          } else {
-            console.warn('⚠️ Could not create database attempt:', result.error);
-          }
-        }
-        
+        await persistAttempt(preGeneratedQuestions);
+
         setLoading(false);
         return;
       }
@@ -292,22 +298,8 @@ const DynamicAssessment = () => {
         console.log('📅 Cached on:', new Date(cached.cachedAt).toLocaleString());
         setAssessment(cached);
         
-        // Create database attempt if user is logged in
-        if (learnerData?.id) {
-          const result = await createAssessmentAttempt({
-            learnerId: learnerData.id,
-            courseName: courseName,
-            courseId: courseId,
-            assessmentLevel: courseLevel,
-            questions: cached.questions
-          });
-          
-          if (result.success) {
-            setAttemptId(result.data.id);
-            console.log('✅ Database attempt created:', result.data.id);
-          }
-        }
-        
+        await persistAttempt(cached.questions);
+
         setLoading(false);
         return;
       }
@@ -320,22 +312,8 @@ const DynamicAssessment = () => {
       setAssessment(generated);
       cacheAssessment(courseName, generated);
       
-      // Create database attempt if user is logged in
-      if (learnerData?.id) {
-        const result = await createAssessmentAttempt({
-          learnerId: learnerData.id,
-          courseName: courseName,
-          courseId: courseId,
-          assessmentLevel: courseLevel,
-          questions: generated.questions
-        });
-        
-        if (result.success) {
-          setAttemptId(result.data.id);
-          console.log('✅ Database attempt created:', result.data.id);
-        }
-      }
-      
+      await persistAttempt(generated.questions);
+
       setLoading(false);
     } catch (err) {
       console.error('❌ Error loading assessment:', err);
@@ -355,58 +333,25 @@ const DynamicAssessment = () => {
   };
 
   const handleNext = async () => {
-    if (currentQuestionIndex < assessment.questions.length - 1) {
-      // Save progress before moving to next question
-      if (attemptId) {
-        setIsSaving(true);
-        const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
-        if (currentAnswer) {
-          console.log('💾 Saving progress before moving to next question...', {
-            currentQuestionIndex,
-            nextQuestionIndex: currentQuestionIndex + 1,
-            answer: currentAnswer
-          });
-          
-          // Save the CURRENT question's answer with the NEXT question index
-          // So when user resumes, they start from the next question
-          await updateAssessmentProgress(
-            attemptId,
-            currentQuestionIndex, // Current question index (the one we just answered)
-            currentAnswer,
-            timeRemaining,
-            currentQuestionIndex + 1 // Next question index (where to resume)
-          );
-        }
-        setIsSaving(false);
-      }
-
+    if (isSaving) return;
+    if (currentQuestionIndex === assessment.questions.length - 1) {
+      await handleSubmit();
+      return;
+    }
+    setIsSaving(true);
+    setProgressError(null);
+    try {
+      const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+      const result = await updateAssessmentProgress(
+        attemptId, currentQuestionIndex, currentAnswer, timeRemaining, currentQuestionIndex + 1
+      );
+      if (!result.success) throw new Error(result.error || 'Failed to save your answer.');
       setCurrentQuestionIndex(prev => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      // Persist the final question's answer before submitting — without this,
-      // the backend's persisted learner_answers is missing the last answer,
-      // so its score (read back by My Learning) would differ from the score
-      // calculated here from in-memory answers.
-      if (attemptId) {
-        const finalAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
-        if (finalAnswer) {
-          setIsSaving(true);
-          const saveResult = await updateAssessmentProgress(
-            attemptId,
-            currentQuestionIndex,
-            finalAnswer,
-            timeRemaining,
-            currentQuestionIndex + 1
-          );
-          setIsSaving(false);
-
-          if (!saveResult.success) {
-            setError(saveResult.error || 'Failed to save your final answer. Please try again.');
-            return;
-          }
-        }
-      }
-      handleSubmit();
+    } catch (err) {
+      setProgressError(err.message || 'Failed to save your answer.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -417,48 +362,43 @@ const DynamicAssessment = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!assessment?.questions) {
-      setError('Assessment data is missing. Please reload the page.');
+  const handleSubmit = async (remaining = timeRemaining) => {
+    if (isSaving) return;
+    if (!assessment?.questions || !attemptId) {
+      setProgressError('A saved assessment attempt is required before submitting.');
       return;
     }
-
-    // Calculate score
-    let correctCount = 0;
-    assessment.questions.forEach(q => {
-      const userAnswer = answers[q.id];
-      if (userAnswer && userAnswer === q.correct_answer) {
-        correctCount++;
+    setIsSaving(true);
+    setProgressError(null);
+    try {
+      // Persist the current answer for both button and timed submission.
+      const currentAnswer = answers[assessment.questions[currentQuestionIndex]?.id];
+      if (currentAnswer !== undefined) {
+        const saved = await updateAssessmentProgress(
+          attemptId, currentQuestionIndex, currentAnswer, remaining, currentQuestionIndex
+        );
+        if (!saved.success) throw new Error(saved.error || 'Failed to save your final answer.');
       }
-    });
-
-    const percentage = Math.round((correctCount / assessment.questions.length) * 100);
-    setScore(percentage);
-
-    // Complete assessment in database
-    if (attemptId) {
-      const timeTaken = 900 - timeRemaining; // Calculate time taken
-      const result = await completeAssessment(attemptId, timeTaken);
-      
-      if (result.success) {
-        console.log('✅ Assessment completed in database');
-      } else {
-        console.error('❌ Failed to complete assessment:', result.error);
+      const result = await completeAssessment(attemptId, 900 - remaining);
+      if (!result.success) throw new Error('Failed to complete assessment.');
+      if (typeof result.score !== 'number' || !Number.isFinite(result.score) || result.score < 0 || result.score > 100) {
+        throw new Error('The saved assessment result did not include a valid score.');
       }
+      // Completion and scoring are authoritative on the server.
+      setScore(result.score);
+      const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (learnerData?.id && courseId && UUID_PATTERN.test(courseId)) {
+        const trainingUpdate = await updateTrainingAfterAssessment(learnerData.id, courseId, result.score, result.score >= 60);
+        if (!trainingUpdate.success) {
+          console.error('Failed to update training status after assessment:', trainingUpdate.error);
+        }
+      }
+      setShowResults(true);
+    } catch (err) {
+      setProgressError(err.message || 'Failed to complete assessment.');
+    } finally {
+      setIsSaving(false);
     }
-
-    // Update the linked training record (auto-approve on pass)
-    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (learnerData?.id && courseId && UUID_PATTERN.test(courseId)) {
-      const passed = percentage >= 60;
-      const trainingUpdate = await updateTrainingAfterAssessment(learnerData.id, courseId, percentage, passed);
-
-      if (!trainingUpdate.success) {
-        console.error('❌ Failed to update training status after assessment:', trainingUpdate.error);
-      }
-    }
-
-    setShowResults(true);
   };
 
   const formatTime = (seconds) => {
@@ -711,6 +651,12 @@ const DynamicAssessment = () => {
           </div>
         </div>
 
+        {progressError && (
+          <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+            {progressError} Your current answer remains on this page.
+          </div>
+        )}
+
         {/* Progress Bar */}
         <div className="mb-8">
           {/* Resume banner */}
@@ -847,7 +793,7 @@ const DynamicAssessment = () => {
         <div className="flex items-center justify-between">
           <Button
             onClick={handlePrevious}
-            disabled={currentQuestionIndex === 0}
+            disabled={currentQuestionIndex === 0 || isSaving}
             variant="outline"
             className="px-6"
           >
@@ -860,7 +806,7 @@ const DynamicAssessment = () => {
 
           <Button
             onClick={handleNext}
-            disabled={!isAnswered}
+            disabled={!isAnswered || isSaving}
             className="px-6 bg-blue-600 hover:bg-blue-700"
           >
             {currentQuestionIndex === assessment.questions.length - 1 ? 'Submit' : 'Next'}

@@ -1,6 +1,7 @@
 import { withAuth, getContextUser, getServiceClient } from '../../lib/auth';
 import { apiSuccess, apiError, apiDbError, apiNotFound } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../lib/course-catalog';
 
 function parseBody(request: Request): Promise<any> {
   return request.json().catch(() => ({}));
@@ -402,14 +403,15 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
   const courseMatch = path.match(/^\/list\/([^/]+)$/);
   if (courseMatch && method === 'GET') {
     const courseId = courseMatch[1];
-    const { data } = await supabase.from('courses').select('*').eq('course_id', courseId).is('deleted_at', null).maybeSingle();
+    const { data, error } = await supabase.from('courses').select(COURSE_CATALOG_SELECT).eq('course_id', courseId).is('deleted_at', null).maybeSingle();
+    if (error) return apiDbError(error, request);
     if (!data) return apiNotFound('Course not found', request);
-    return apiSuccess(data, request);
+    return apiSuccess(presentCatalogCourse(data), request);
   }
 
   // GET /api/courses/list
   if (path === '/list' && method === 'GET') {
-    let query = supabase.from('courses').select('*', { count: 'exact' }).is('deleted_at', null);
+    let query = supabase.from('courses').select(COURSE_CATALOG_SELECT, { count: 'exact' }).is('deleted_at', null);
 
     const statusFilter = url.searchParams.get('status');
     if (statusFilter) {
@@ -437,7 +439,7 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
 
     const { data, error, count } = await query;
     if (error) return apiDbError(error, request);
-    return apiSuccess({ courses: data || [], total: count || 0 }, request);
+    return apiSuccess({ courses: (data || []).map(presentCatalogCourse), total: count || 0 }, request);
   }
 
   // ─── RECOMMENDATIONS ──────────────────────────────────────────────

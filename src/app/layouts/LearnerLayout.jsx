@@ -33,6 +33,7 @@ const ROUTE_PATTERNS = {
 
 // Helper function to get active tab from pathname
 const getActiveTabFromPath = (pathname) => {
+  if (pathname === '/learner/my-class' || pathname.startsWith('/learner/my-class/')) return 'assignments';
   for (const [tab, patterns] of Object.entries(ROUTE_PATTERNS)) {
     const patternArray = Array.isArray(patterns) ? patterns : [patterns];
     if (patternArray.some(pattern => pathname.includes(pattern))) {

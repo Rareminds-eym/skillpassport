@@ -9,8 +9,8 @@ interface MessageModalProps {
   learnerId: string;
   recruiterId: string;
   learnerName: string;
-  applicationId?: number;
-  opportunityId?: number;
+  applicationId?: string | number;
+  opportunityId?: string | number;
   jobTitle?: string;
   currentUserId: string; // ID of the current user (whoever is logged in)
   currentUserType: 'learner' | 'recruiter'; // Type of current user

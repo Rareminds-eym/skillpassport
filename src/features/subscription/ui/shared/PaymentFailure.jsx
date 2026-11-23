@@ -18,7 +18,7 @@ import { useUserRole } from '@/shared/model/authStore';
 
 
 // Issue Card Component
-const IssueCard = ({ icon: Icon, title, description, index }) => (
+const IssueCard = ({ icon: Icon, title, description }) => (
   <div className="flex gap-4 p-4 bg-white rounded-xl border border-slate-100 hover:border-indigo-200 hover:shadow-sm transition-all">
     <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-indigo-100 to-violet-100 rounded-xl flex items-center justify-center">
       <Icon className="w-5 h-5 text-indigo-600" />
@@ -38,7 +38,7 @@ function PaymentFailure() {
   const [showSupportModal, setShowSupportModal] = useState(false);
 
   // ── Read exclusively from location.state (set by PaymentCompletion callbacks) ──
-  const stateData = location.state || {};
+  const stateData = useMemo(() => location.state || {}, [location.state]);
   
   const failureReason = useMemo(() => {
     return stateData.error_description || 'Payment could not be completed';
@@ -100,7 +100,11 @@ function PaymentFailure() {
       navigate('/subscription/payment', {
         state: {
           plan: planDetails,
-          learnerType: planDetails.learnerType || 'learner',
+          learnerType: stateData.learnerType,
+          isUpgrade: stateData.isUpgrade,
+          isRenewal: stateData.isRenewal,
+          isFreemium: stateData.isFreemium,
+          referralCode: stateData.referralCode,
           retryAttempt: retryAttempts + 1
         }
       });
@@ -197,7 +201,7 @@ function PaymentFailure() {
               </h3>
               <div className="grid gap-3">
                 {commonIssues.map((issue, index) => (
-                  <IssueCard key={index} {...issue} index={index} />
+                  <IssueCard key={index} {...issue} />
                 ))}
               </div>
             </div>

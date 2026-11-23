@@ -1,3 +1,5 @@
+import { useUser, useIsAuthenticated } from '@/shared/model/authStore';
+import { EducatorMappedCourses } from '@/features/college-course-workflow';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -15,10 +17,10 @@ import { SKILL_CATEGORIES, CLASSES } from '@/features/educator';
 import { CourseCard, CourseFilters, CreateCourseModal, CourseDetailDrawer } from '@/features/courses';
 
 import {
-  getCourses,
+  getAllCourses as getCourses,
   createCourse,
   updateCourse
-} from '@/features/college-admin';
+} from '@/features/educator/api/coursesService';
 import toast from 'react-hot-toast';
 import { apiPost } from '@/shared/api/apiClient';
 import { View } from 'lucide-react';
@@ -203,9 +205,16 @@ const Courses: React.FC = () => {
         logger.info('✅ Educator ID set:', user.id);
 
         // Use full_name from AuthContext if available
-        const fullName = user.full_name || user.email?.split('@')[0] || 'Educator';
+        const fullName = user.name || user.email?.split('@')[0] || 'Educator';
         setEducatorName(fullName);
         logger.info('✅ Educator name set:', fullName);
+
+        // College educators use their authenticated mappings, not the catalogue API.
+        if ([user.role, ...(user.roles || [])].some(role => ['college_educator','college_lecturer'].includes(role || ''))) {
+          setIsAffiliated(true);
+          setAffiliationInfo({ type: 'college', name: 'your college' });
+          return;
+        }
 
         // Check if educator is affiliated with any institution
         logger.info('📡 Checking educator affiliation...');
@@ -218,6 +227,8 @@ const Courses: React.FC = () => {
         } else {
           logger.info('✅ Educator is independent (not affiliated)');
         }
+
+        if (affiliation.info?.type === 'college') return;
 
         // Load all courses (not filtered by educator)
         logger.info('📡 Fetching all courses');
@@ -504,6 +515,10 @@ const Courses: React.FC = () => {
   /** ─────────────────────────────────────────────
    *  UI STATES
    * ───────────────────────────────────────────── */
+  if (affiliationInfo?.type === 'college') {
+    return <div className="p-4 sm:p-6 lg:p-8"><EducatorMappedCourses /></div>;
+  }
+
   if (loading && courses.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">

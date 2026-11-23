@@ -1,3 +1,4 @@
+import { CurriculumNotificationLink } from '@/features/notifications/ui/CurriculumNotificationLink';
 import React, { useRef, useEffect } from 'react'
 import {
     BellIcon,
@@ -17,6 +18,8 @@ import { useNavigate } from 'react-router-dom'
 type NotificationType =
     | 'learner_verification_required'
     | 'verification_pending_review'
+    | 'curriculum_change_approved'
+    | 'curriculum_change_rejected'
     | 'verification_approved'
     | 'verification_rejected'
     | 'assignment_submitted'
@@ -74,8 +77,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
             case 'learner_verification_required':
             case 'verification_pending_review':
                 return <ShieldCheckIcon className={`${base} text-amber-500`} />
+            case 'curriculum_change_approved':
             case 'verification_approved':
                 return <CheckCircleIcon className={`${base} text-green-500`} />
+            case 'curriculum_change_rejected':
             case 'verification_rejected':
                 return <ExclamationTriangleIcon className={`${base} text-red-500`} />
             case 'assignment_allocation_complete':
@@ -283,7 +288,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                                             >
                                                 {notification.title}
                                             </p>
-                                            <p className="text-xs text-gray-600 mt-0.5 line-clamp-2">
+                                            <p className={`text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words ${notification.type.startsWith('curriculum_change_') ? '' : 'line-clamp-2'}`}>
                                                 {notification.message}
                                             </p>
                                             {assignmentNotificationTarget(notification, window.location.pathname) && <button type="button" className="mt-1 rounded py-1 text-xs font-medium text-blue-600 hover:text-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600" onClick={() => {
@@ -295,7 +300,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ isOpen, onClose, 
                                                 onClose()
                                             }}>Open assignment</button>}
 
-                                            {/* Footer */}
+                                            <CurriculumNotificationLink notification={notification} markRead={markRead} onClose={onClose} />
+                                        {/* Footer */}
                                             <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/50">
                                                 <span className="text-[11px] text-gray-400">
                                                     {formatTime(notification.created_at)}

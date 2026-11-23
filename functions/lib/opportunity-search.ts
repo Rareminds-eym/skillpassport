@@ -16,6 +16,39 @@ export function opportunitySearchPredicate(search: string) {
     .join(',');
 }
 
+/**
+ * Expand each selected experience-level label into every synonym variant found
+ * in the DB so that filter UI labels stay user-friendly regardless of how the
+ * data was originally entered.
+ *
+ * Known DB variants (discovered from live data):
+ *   "Entry Level" / "Entry"  →  entry
+ *   "Junior"                 →  junior  (legacy; maps to entry-level in UI)
+ *   "Mid Level"  / "Mid"     →  mid
+ *   "Senior Level"/ "Senior" →  senior
+ *   "Lead"                   →  lead
+ *   "Executive"              →  executive
+ */
+export function experienceLevelVariants(value: string): string[] {
+  const aliases: Record<string, string[]> = {
+    entry:     ['Entry', 'Entry Level', 'entry', 'entry level', 'Entry-Level'],
+    junior:    ['Junior', 'junior', 'JUNIOR'],
+    mid:       ['Mid', 'Mid Level', 'mid', 'mid level', 'Mid-Level'],
+    senior:    ['Senior', 'Senior Level', 'senior', 'senior level', 'Senior-Level'],
+    lead:      ['Lead', 'lead', 'LEAD'],
+    executive: ['Executive', 'executive', 'EXECUTIVE'],
+  };
+  return [
+    ...new Set(
+      value
+        .split(',')
+        .flatMap(
+          (item) => aliases[item.toLowerCase().replace(/[\s-]/g, '')] || [item],
+        ),
+    ),
+  ];
+}
+
 export function workModeVariants(value: string): string[] {
   const aliases: Record<string, string[]> = {
     onsite: [

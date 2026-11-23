@@ -20,6 +20,7 @@ interface LearnerRow {
   age?: number
   date_of_birth?: string
   contact_number?: string
+  contactNumber?: string | null
   alternate_number?: string
   district_name?: string
   university?: string
@@ -188,12 +189,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
   // Use direct fields first, then fallback to profile
   const name = row.name || profile.name || 'Unknown'
   const email = row.email || profile.email
-  const rawDial = row.contact_dial_code || profile.contact_number_dial_code ? String(row.contact_dial_code || profile.contact_number_dial_code).replace(/\.0$/, '') : ''
-  // Remove any existing + from dial code to avoid double ++
-  const dial = rawDial.replace(/^\+/, '')
-  const phoneNum = row.contact_number || profile.contact_number ? String(row.contact_number || profile.contact_number).replace(/\.0$/, '') : ''
-  const altNum = row.alternate_number || profile.alternate_number ? String(row.alternate_number || profile.alternate_number).replace(/\.0$/, '') : ''
-  const phone = phoneNum || altNum ? `${dial ? '+' + dial + ' ' : ''}${phoneNum || altNum}` : undefined
+  const phone = typeof row.contactNumber === 'string' ? row.contactNumber.trim() || undefined : undefined
 
   // Use direct fields for college and department
   const college = row.college_school_name || row.university || profile.college_school_name || profile.university
@@ -273,7 +269,7 @@ function mapToUICandidate(row: LearnerRow): UICandidate {
     email,
     phone,
     contact_number: row.contact_number,
-    contactNumber: row.contact_number,
+    contactNumber: phone,
     college,
     dept,
     class: classValue,
@@ -348,10 +344,11 @@ interface UseLearnersOptions {
   searchTerm?: string
   page?: number
   pageSize?: number
+  loadAll?: boolean
 }
 
 export function useAdminLearners(options: UseLearnersOptions = {}) {
-  const { searchTerm = '', page = 1, pageSize = 500 } = options
+  const { searchTerm = '', page = 1, pageSize = 500, loadAll = false } = options
   const [data, setData] = useState<UICandidate[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
@@ -363,11 +360,11 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
       setLoading(true)
       setError(null)
       try {
-        let schoolId: string | null = null;
-        let collegeId: string | null = null;
+        let schoolId: string | undefined;
+        let collegeId: string | undefined;
         let userRole: string | null = null;
         let userId: string | null = null;
-        let universityId: string | null = null;
+        let universityId: string | undefined;
 
         const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
         if (storedUser) {
@@ -441,18 +438,43 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
         }
 
         let result;
-        try {
-          result = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learners-admin',
-            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: false,
-          });
-        } catch {
-          result = await apiPost('/learner-profile/actions', {
-            action: 'fetch-learners-admin',
-            schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: true,
-          });
+        if (loadAll) {
+          const count = countRes?.data?.count;
+          if (!Number.isSafeInteger(count) || count < 0) throw new Error('Learner count unavailable');
+          const rows: LearnerRow[] = [];
+          const batchSize = 500;
+          const seenIds = new Set<string>();
+          for (let batchPage = 1; batchPage <= Math.ceil(count / batchSize); batchPage++) {
+            if (!isMounted) return;
+            const batch = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin', schoolId, collegeId, universityId, searchTerm,
+              page: batchPage, pageSize: batchSize, useSimple: false,
+            });
+            const expectedRows = Math.min(batchSize, count - rows.length);
+            if (!Array.isArray(batch.data) || batch.data.length !== expectedRows) {
+              throw new Error('Learner list changed while loading. Please reload.');
+            }
+            for (const row of batch.data as LearnerRow[]) {
+              if (!row.id || seenIds.has(row.id)) throw new Error('Learner list changed while loading. Please reload.');
+              seenIds.add(row.id);
+            }
+            rows.push(...batch.data);
+          }
+          result = {data: rows};
+        } else {
+          try {
+            result = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin',
+              schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: false,
+            });
+          } catch {
+            result = await apiPost('/learner-profile/actions', {
+              action: 'fetch-learners-admin',
+              schoolId, collegeId, universityId, searchTerm, page, pageSize, useSimple: true,
+            });
+          }
         }
-        
+
         if (!isMounted) return;
         
         // Log sample data to verify related tables are loaded
@@ -473,6 +495,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
           errorMessage = `Database error: ${e.message}`;
         }
         
+        if (loadAll) setData([]);
         setError(errorMessage);
       } finally {
         if (isMounted) setLoading(false);
@@ -482,7 +505,7 @@ export function useAdminLearners(options: UseLearnersOptions = {}) {
     return () => {
       isMounted = false
     }
-  }, [searchTerm, page, pageSize])
+  }, [searchTerm, page, pageSize, loadAll])
 
   const stats = useMemo(() => ({ 
     count: data.length,

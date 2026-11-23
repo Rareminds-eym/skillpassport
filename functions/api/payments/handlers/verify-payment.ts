@@ -1,4 +1,4 @@
-import { isSalesOnlyPlan, assertPlanPurchaseScope, subscriptionForUpgrade, catalogPlanErrorResponse } from '../lib/salesPlan';
+import { requireSelfServePlan, assertPlanPurchaseScope, catalogPlanErrorResponse } from '../lib/salesPlan';
 import { completePlanSelection } from '../../../shared/lib/org-subscription';
 /**
  * Verify Payment Handler
@@ -20,8 +20,9 @@ import { sendEmailSafe } from '../../../lib/email-service';
 import { createLogger } from '../../../lib/logger';
 import { apiError, apiSuccess } from '../../../lib/response';
 import {
-  ssoCreateSubscription,
-  ssoRecordTransaction,
+  ssoFulfillSubscriptionPayment,
+  ssoGetSubscriptionPaymentFulfillment,
+  type SsoEnv,
   ssoSyncSubscription,
   ssoUpdateSubscriptionField,
   ssoUpdateTransaction,
@@ -47,12 +48,6 @@ const RECEIPT_CONFIG = {
   USER_ID_PREFIX_LENGTH: 8,
   PAYMENT_ID_SANITIZE_REGEX: /[^a-zA-Z0-9_-]/g,
 };
-
-// RPC calls throw errors of unknown shape; some carry an HTTP-like numeric
-// `status` (e.g. 409 on a duplicate-key race). This narrows without `any`.
-function hasNumericStatus(error: unknown): error is Record<string, unknown> & { status: number } {
-  return typeof error === 'object' && error !== null && typeof (error as Record<string, unknown>).status === 'number';
-}
 
 // plans_cache.pricing_matrix is a JSONB column with no DB-level shape
 // constraint; this validates the real structure at runtime instead of
@@ -120,7 +115,7 @@ async function isCollegeLearnerPromoStarterPlan(
 
 export async function handleVerifyPayment(context: AuthenticatedContext): Promise<Response> {
   const user = getContextUser(context);
-  const env = context.env as unknown as PaymentWorkerEnv & { SSO_SERVICE: Fetcher };
+  const env = context.env as unknown as PaymentWorkerEnv & SsoEnv & { SSO_SERVICE: Fetcher };
 
   // Ensure user.email exists before proceeding
   if (!user.email) {
@@ -194,24 +189,42 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
 
     const supabase = getServiceClient(env as { SUPABASE_URL: string; SUPABASE_SERVICE_ROLE_KEY: string });
 
-    // Step 2.5: Validate plan exists via plans_cache (local shadow of auth DB)
-    const { data: validPlan, error: planError } = await supabase
-      .from('plans_cache')
-      .select('id, plan_code, name, is_active, pricing_matrix, base_features, entity_config, business_type, applicable_entities')
-      .eq('id', plan.id)
-      .eq('is_active', true)
-      .maybeSingle();
-
-    if (planError || !validPlan) {
-      logger.error('Invalid or inactive plan', planError instanceof Error ? planError : new Error('Plan not found'));
-      return apiError(400, 'VALIDATION_ERROR', 'Selected plan is not valid or inactive', context.request);
+    const order = await worker.getOrder(razorpayOrderId);
+    const notes = order.notes;
+    if (order.id !== razorpayOrderId || order.amount !== payment.amount || order.currency !== payment.currency
+      || payment.currency !== 'INR' || !notes || notes.type !== 'subscription' || notes.user_id !== user.id
+      || notes.plan_id !== plan.id || typeof notes.org_id !== 'string'
+      || (notes.org_id !== '' && notes.org_id !== user.org_id)) {
+      return apiError(400, 'PAYMENT_BINDING_MISMATCH', 'The payment does not match this buyer, plan, or organization.', context.request);
     }
-
-    if (isSalesOnlyPlan(validPlan)) {
-      return apiError(400, 'CONTACT_SALES_REQUIRED', 'This plan requires an agreed sales proposal before activation.', context.request);
+    // A fulfilled payment is historical fact, independent of today's price,
+    // cached coverage, or a later upgrade of the same subscription row.
+    const fulfilled = await ssoGetSubscriptionPaymentFulfillment(env, {
+      user_id: user.id, plan_id: notes.plan_id, organization_id: notes.org_id || undefined,
+      razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
+      amount: payment.amount / 100, currency: payment.currency,
+    });
+    if (fulfilled) {
+      await syncUserShadow(supabase, user.id, userEmail);
+      await syncSubscriptionCache(supabase, fulfilled.subscription);
+      if (fulfilled.subscription.razorpay_payment_id === razorpayPaymentId) {
+        const { allocateInitialPlanCredits } = await import('../../../shared/lib/entitlement-service');
+        const allocation = await allocateInitialPlanCredits(supabase, notes.org_id || user.id,
+          String(fulfilled.subscription.plan_id), !!notes.org_id,
+          'Initial plan allocation on verified payment', razorpayPaymentId);
+        if (!allocation.success) throw new Error('Unable to complete subscription credit allocation');
+        await completePlanSelection(supabase, user.id, String(fulfilled.subscription.plan_id));
+      }
+      return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true,
+        subscription: fulfilled.subscription, is_upgrade: fulfilled.is_upgrade,
+        receipt_url: fulfilled.receipt_url, email_sent: false }, context.request);
     }
-
+    const validPlan = await requireSelfServePlan(supabase, { plan_id: plan.id });
     const purchaseScope = await assertPlanPurchaseScope(supabase, validPlan, user);
+    if (notes.org_id !== (purchaseScope.organizationId || '')
+      || notes.organization_type !== (purchaseScope.organizationType || '')) {
+      return apiError(400, 'PAYMENT_BINDING_MISMATCH', 'The payment does not match this purchase scope.', context.request);
+    }
 
     // Step 2.5: Validate currency (SECURITY: prevent multi-currency fraud)
     if (payment.currency !== 'INR') {
@@ -232,7 +245,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     const clientPrice = plan.price as number;
     let planPrice: number | undefined;
     let detectedBillingCycle: 'yearly' | 'monthly' | undefined;
-    const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, userEmail, validPlan, plan.referralCode);
+    const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, userEmail, validPlan, notes.referral_code);
 
     // CRITICAL: Search for ANY matching price in the pricing matrix
     // Plans may have duration label that doesn't match actual billing cycle
@@ -301,295 +314,30 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       return apiError(400, 'VALIDATION_ERROR', `Amount mismatch: captured ${payment.amount} paise, expected ${expectedPaise}`, context.request);
     }
 
-    // Calculate subscription dates using DETECTED billing cycle, not duration field
-    // (duration field may be incorrect/misleading)
-    const now = new Date();
-    const endDate = new Date(now);
-    const durationMonths = detectedBillingCycle === 'yearly' ? 12 : 1;
-    endDate.setMonth(endDate.getMonth() + durationMonths);
-
-    // Check for existing active subscription via shadow table
-    const existingCache = await subscriptionForUpgrade(supabase, user.id, validPlan, purchaseScope.organizationId);
-
-    let subscription: Record<string, unknown>;
-    let isUpgrade = false;
-    // Populated by both the new-subscription and upgrade paths below (each
-    // fetches it once it's committed to proceeding), then reused as-is for
-    // the receipt; the receipt step only re-fetches if neither path set it.
-    let learnerName: string | null | undefined;
-
-    if (existingCache) {
-      // Upgrade flow — update existing subscription in auth DB
-      isUpgrade = true;
-      logger.info('Upgrading existing subscription', { subscriptionId: existingCache.id });
-
-      // Validate upgrade direction via current plan amount
-      const currentPrice = existingCache.plan_amount;
-
-      const { data: currentPlan } = await supabase
-        .from('plans_cache')
-        .select('plan_code')
-        .eq('id', existingCache.plan_id)
-        .single();
-
-      if (currentPlan) {
-        if (currentPrice == null || !Number.isFinite(Number(currentPrice)) || typeof planPrice !== 'number') {
-          logger.warn('Cannot compare plan pricing', { currentPrice, planPrice });
-          return apiError(400, 'VALIDATION_ERROR', 'Cannot determine plan pricing. Please contact support.', context.request);
+    const { data: learner } = await supabase.from('learners').select('name').eq('user_id', user.id).maybeSingle();
+    const learnerName: string | null = learner?.name ?? null;
+    const config = validPlan.entity_config;
+    let seatCount = 1;
+    if (config && typeof config === 'object') {
+      for (const value of Object.values(config)) {
+        if (value && typeof value === 'object' && 'max_users' in value
+          && Number.isSafeInteger(Number(value.max_users)) && Number(value.max_users) > 0) {
+          seatCount = Number(value.max_users); break;
         }
-
-        if (planPrice <= Number(currentPrice)) {
-          logger.warn('Downgrade blocked', {
-            currentPlan: currentPlan.plan_code,
-            currentPrice,
-            newPrice: planPrice,
-          });
-          return apiError(400, 'VALIDATION_ERROR', 'Cannot downgrade or lateral move. Please contact support for plan changes.', context.request);
-        }
-      }
-
-      try {
-        subscription = await ssoUpdateSubscriptionField(env, existingCache.id, {
-          plan_id: plan.id,
-          plan_code: validPlan.plan_code,
-          plan_type: plan.name,
-          plan_amount: planPrice,
-          billing_cycle: plan.duration,
-          razorpay_order_id: razorpayOrderId,
-          razorpay_payment_id: razorpayPaymentId,
-          subscription_start_date: now.toISOString(),
-          subscription_end_date: endDate.toISOString(),
-          auto_renew: true,
-          status: 'active',
-          // DO NOT set receipt_url here - will be set after successful upload
-        });
-
-        // learners.name is the source of truth for the receipt's display name;
-        // fetched here (mirroring the new-subscription path below) so both
-        // branches initialize learnerName before receipt generation.
-        const { data: learnerForUpgrade } = await supabase
-          .from('learners')
-          .select('name')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        learnerName = learnerForUpgrade?.name;
-      } catch (upgradeError: unknown) {
-        const upgradeErrorMessage = upgradeError instanceof Error ? upgradeError.message : String(upgradeError);
-        const upgradeErrorStatus = hasNumericStatus(upgradeError) ? upgradeError.status : undefined;
-
-        if (upgradeErrorMessage.includes('duplicate key') || upgradeErrorMessage.includes('23505') || upgradeErrorStatus === 409) {
-          logger.info('Subscription already updated by webhook (duplicate caught)', { 
-            subscriptionId: existingCache.id,
-            userId: user.id,
-            razorpayPaymentId,
-            razorpayOrderId
-          });
-
-          try {
-            // user.email (AuthUser) is always a non-empty string, so this
-            // fallback can never resolve to undefined.
-            const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
-            await syncUserShadow(supabase, user.id, bodyEmail || user.email);
-            const syncData = await ssoSyncSubscription(env, user.id);
-            if (syncData.subscription) {
-              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-            }
-          } catch (syncError) {
-            logger.error('Shadow sync failed during upgrade duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
-          }
-
-    await completePlanSelection(supabase, user.id, validPlan.id);
-    return apiSuccess({
-      payment_verified: true,
-            subscription_upgraded: true,
-            already_fulfilled: true,
-            ...verifyResult,
-          }, context.request);
-        }
-
-        logger.error('Subscription upgrade failed', upgradeError instanceof Error ? upgradeError : new Error(upgradeErrorMessage), {
-          userId: user.id,
-          subscriptionId: existingCache.id,
-          targetPlanId: plan.id,
-          razorpayPaymentId,
-          razorpayOrderId
-        });
-
-        // Record failed upgrade as an event in auth DB
-        try {
-          await ssoRecordTransaction(env, {
-            user_id: user.id,
-            razorpay_order_id: razorpayOrderId,
-            razorpay_payment_id: razorpayPaymentId,
-            razorpay_signature: razorpaySignature,
-            amount: planPrice,
-            status: 'failed',
-            transaction_type: 'upgrade',
-            payment_method: payment.method,
-            failure_reason: upgradeErrorMessage,
-            metadata: {
-              original_subscription_id: existingCache.id,
-              original_plan_id: existingCache.plan_id,
-              target_plan_id: plan.id,
-              error: upgradeErrorMessage,
-            },
-          });
-        } catch (logError) {
-          logger.error('Failed to log upgrade failure', logError instanceof Error ? logError : new Error(String(logError)));
-        }
-
-        return apiError(503, 'UPGRADE_FAILED', 'Payment was captured, but activation is pending. Please retry or contact support.', context.request);
-      }
-    } else {
-      // New subscription — create in auth DB
-      const planCode = validPlan.plan_code;
-      const isRecruiterPlan = planCode?.includes('recruiter') || planCode?.includes('recruitment');
-
-      logger.info('Creating new subscription', {
-        userId: user.id,
-        planId: plan.id,
-        planCode,
-        isRecruiterPlan,
-        razorpayPaymentId,
-        razorpayOrderId
-      });
-
-      // learners.name is the source of truth for the subscription's full_name
-      // (subscriptions.full_name is used for Sales Dashboard name search, so it
-      // must hold the real name, not the email).
-      const { data: learnerForSubscription } = await supabase
-        .from('learners')
-        .select('name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      learnerName = learnerForSubscription?.name;
-
-      let seatCount = typeof body.seat_count === 'number' ? body.seat_count : 1;
-      if (validPlan?.entity_config) {
-        try {
-          const config = typeof validPlan.entity_config === 'string' ? JSON.parse(validPlan.entity_config) : validPlan.entity_config;
-          for (const k in config) {
-            if (config[k]?.max_users) {
-              seatCount = Number(config[k].max_users);
-              break;
-            }
-          }
-        } catch (err) {
-          logger.warn('Error parsing entity_config', {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-
-      try {
-        subscription = await ssoCreateSubscription(env, {
-          user_id: user.id,
-          organization_id: purchaseScope.organizationId,
-          organization_type: purchaseScope.organizationType,
-          is_organization_subscription: validPlan.business_type === 'b2b',
-          plan_id: plan.id as string,
-          plan_code: validPlan.plan_code,
-          plan_type: plan.name as string,
-          plan_amount: planPrice,
-          billing_cycle: detectedBillingCycle,
-          features: validPlan.base_features || [],
-          full_name: learnerForSubscription?.name || user.email || '',
-          email: user.email || '',
-          razorpay_order_id: body.razorpay_order_id as string,
-          razorpay_payment_id: body.razorpay_payment_id as string,
-          is_recruiter_subscription: isRecruiterPlan,
-          is_b2b: isRecruiterPlan,
-          seat_count: seatCount,
-        });
-      } catch (createError: unknown) {
-        const createErrorMessage = createError instanceof Error ? createError.message : String(createError);
-        const createErrorStatus = hasNumericStatus(createError) ? createError.status : undefined;
-
-        // Handle race condition: Webhook or other synchronous flow already created the subscription
-        if (createErrorMessage.includes('duplicate key') || createErrorMessage.includes('23505') || createErrorStatus === 409) {
-          logger.info('Subscription already created by webhook (duplicate caught)', {
-            userId: user.id,
-            planId: plan.id,
-            razorpayPaymentId,
-            razorpayOrderId
-          });
-
-          try {
-            // user.email (AuthUser) is always a non-empty string, so this
-            // fallback can never resolve to undefined.
-            const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
-            await syncUserShadow(supabase, user.id, bodyEmail || user.email);
-            const syncData = await ssoSyncSubscription(env, user.id);
-            if (syncData.subscription) {
-              await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-            }
-          } catch (syncError) {
-            logger.error('Shadow sync failed during duplicate handling', syncError instanceof Error ? syncError : new Error(String(syncError)));
-          }
-
-          await completePlanSelection(supabase, user.id, validPlan.id);
-          return apiSuccess({
-            payment_verified: true,
-            subscription_created: true,
-            already_fulfilled: true,
-            ...verifyResult,
-          }, context.request);
-        }
-
-        logger.error('Subscription creation failed', createError instanceof Error ? createError : new Error(createErrorMessage), {
-          userId: user.id,
-          planId: plan.id,
-          razorpayPaymentId,
-          razorpayOrderId
-        });
-
-        return apiError(503, 'SUBSCRIPTION_CREATE_FAILED', 'Payment was captured, but activation is pending. Please retry or contact support.', context.request);
       }
     }
-
-    // Step 3: Record payment transaction in auth DB
-    let transactionId: string | undefined;
-    try {
-      const txResult = await ssoRecordTransaction(env, {
-        subscription_id: subscription.id as string,
-        user_id: user.id,
-        razorpay_payment_id: razorpayPaymentId,
-        razorpay_order_id: razorpayOrderId,
-        razorpay_signature: razorpaySignature,
-        amount: planPrice,
-        currency: 'INR',
-        status: 'completed',
-        transaction_type: isUpgrade ? 'upgrade' : 'subscription',
-        payment_method: payment.method,
-        // DO NOT set receipt_url here - will be set after successful upload
-        metadata: {
-          plan: {
-            id: plan.id,
-            code: validPlan.plan_code,
-            name: plan.name,
-            billing_cycle: detectedBillingCycle,
-          },
-        },
-      });
-      transactionId = typeof txResult?.id === 'string' ? txResult.id : undefined;
-    } catch (txError: unknown) {
-      const txErrorMessage = txError instanceof Error ? txError.message : String(txError);
-      const isTxErrorStatus409 = hasNumericStatus(txError) && txError.status === 409;
-
-      if (txErrorMessage.includes('duplicate key') || txErrorMessage.includes('23505') || isTxErrorStatus409) {
-        logger.info('Transaction already recorded (duplicate caught)', {
-          userId: user.id,
-          razorpayPaymentId,
-          razorpayOrderId
-        });
-      } else {
-        logger.error('Transaction recording failed (non-critical)', txError instanceof Error ? txError : new Error(txErrorMessage), {
-          userId: user.id,
-          razorpayPaymentId,
-          razorpayOrderId
-        });
-      }
-    }
+    if (!detectedBillingCycle) throw new Error('Payment billing cycle was not determined');
+    const fulfillment = await ssoFulfillSubscriptionPayment(env, {
+      user_id: user.id, plan_id: validPlan.id,
+      organization_id: purchaseScope.organizationId, organization_type: purchaseScope.organizationType,
+      razorpay_order_id: razorpayOrderId, razorpay_payment_id: razorpayPaymentId,
+      razorpay_signature: razorpaySignature, amount: planPrice, currency: payment.currency,
+      billing_cycle: detectedBillingCycle, payment_method: payment.method,
+      full_name: learnerName || userEmail, email: userEmail, seat_count: seatCount,
+    });
+    const subscription = fulfillment.subscription;
+    const isUpgrade = fulfillment.is_upgrade;
+    const transactionId = fulfillment.transaction_id;
 
     // Step 3.5: Sync shadow table in app DB
     try {
@@ -599,14 +347,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       const bodyEmail = typeof body.email === 'string' ? body.email : undefined;
       await syncUserShadow(supabase, user.id, bodyEmail || user.email);
 
-      const syncData = await ssoSyncSubscription(env, user.id);
-      if (syncData.subscription) {
-        await syncSubscriptionCache(supabase, syncData.subscription, syncData.plan);
-      }
+      await syncSubscriptionCache(supabase, subscription, validPlan);
 
       if (validPlan?.id) {
         const { allocateInitialPlanCredits } = await import('../../../shared/lib/entitlement-service');
-        const orgId = user.org_id;
+        const orgId = purchaseScope.organizationId;
         await allocateInitialPlanCredits(
           supabase,
           orgId || user.id,
@@ -639,15 +384,11 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
     }
     const contactPhone = userRecordForContact?.phone ?? undefined;
 
-    // Reuse the learners.name lookup done above on the new-subscription path;
-    // the upgrade path never fetched it, so fetch it here instead.
-    if (learnerName === undefined) {
-      const { data: learner } = await supabase
-        .from('learners')
-        .select('name')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      learnerName = learner?.name;
+    if (fulfillment.already_fulfilled) {
+      if (subscription.razorpay_payment_id === razorpayPaymentId) await completePlanSelection(supabase, user.id, validPlan.id);
+      return apiSuccess({ ...verifyResult, subscription_created: true, already_fulfilled: true,
+        is_upgrade: isUpgrade, subscription, receipt_url: fulfillment.receipt_url,
+        email_sent: false }, context.request);
     }
 
     // Step 4: Generate and upload receipt PDF asynchronously, then update databases
@@ -723,13 +464,7 @@ export async function handleVerifyPayment(context: AuthenticatedContext): Promis
       subscription_created: true,
       receipt_status: 'generating', // Indicate receipt is being generated in background
       is_upgrade: isUpgrade,
-      subscription: {
-        id: subscription.id,
-        status: subscription.status,
-        plan_name: subscription.plan_type,
-        start_date: subscription.subscription_start_date,
-        end_date: subscription.subscription_end_date,
-      },
+      subscription,
     }, context.request);
   } catch (error) {
     logger.error('Payment verification failed', error instanceof Error ? error : new Error(String(error)));

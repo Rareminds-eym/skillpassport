@@ -25,6 +25,7 @@ export const useAIJobMatching = (learnerProfile: any, enabled = true, topN = 3) 
     readiness: envelope?.readiness || null,
     state: envelope?.state || null,
     envelope,
+    indexingInBackground: Boolean(query.pollingExhausted && envelope?.state === 'index_building' && envelope.indexing),
     refreshMatches: query.refresh,
   };
 };

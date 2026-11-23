@@ -36,6 +36,8 @@ export type NotificationType =
 export type Notification = {
   id: string;
   recipient_id: string;
+  curriculum_change_id?: string | null;
+  action_url?: string | null;
   opportunity_id?: string | null;
   learning_requirements_version?: number | null;
   metadata?: { course_id?: string; assignment_id?: string; allocation_id?: string; submission_id?: string; result_id?: string } | null;

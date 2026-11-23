@@ -346,6 +346,8 @@ const DepartmentManagement: FC = () => {
     queryKey: ['college-faculty', collegeId],
     queryFn: () => departmentService.getCollegeFaculty(collegeId!),
     enabled: !!collegeId,
+    // Faculty are added on the Faculty Management page, which doesn't update this cache, so refetch on every visit (RQD-265).
+    refetchOnMount: 'always',
   });
 
   const [filters, setFilters] = useState({ 

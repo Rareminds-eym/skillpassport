@@ -24,5 +24,13 @@ export const onRequestPost = withAuth(async context => {
     p_actor:user.id,p_action:operation.action,p_payload:operation.payload,
   });
   if(error){const failure=teachingFailure(error);return apiError(failure.status,failure.code,failure.message,context.request);}
+  if (operation.action === 'college_sessions' && Array.isArray(data) && data.length) {
+    // Enrich only the session rows returned by the authorized RPC.
+    const programIds = [...new Set(data.map(row => row.program_id).filter(Boolean))];
+    const programs = await db.from('programs').select('id,specializations').in('id', programIds);
+    if (programs.error) return apiError(503,'PROGRAMS_UNAVAILABLE','Session specializations could not be loaded',context.request);
+    const specializations = new Map((programs.data || []).map(program => [program.id, program.specializations || []]));
+    return apiSuccess(data.map(row => ({ ...row, specializations: specializations.get(row.program_id) || [] })),context.request);
+  }
   return apiSuccess(data,context.request);
 });

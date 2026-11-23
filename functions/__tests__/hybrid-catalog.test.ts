@@ -13,6 +13,7 @@ vi.mock('../lib/sso-client', () => ({
   ssoCreateFreemiumSubscription: mocks.freemium, ssoSyncSubscription: vi.fn(),
   ssoCreateSubscription: mocks.createSubscription, ssoUpdateSubscriptionField: mocks.updateSubscription,
   ssoRecordTransaction: vi.fn(), ssoUpdateTransaction: vi.fn(), ssoRecordAddonPurchase: vi.fn(), ssoRecordBundlePurchase: vi.fn(),
+  ssoGetSubscriptionPaymentFulfillment: vi.fn(async () => null), ssoFulfillSubscriptionPayment: vi.fn(),
 }));
 vi.mock('../lib/sync-shadow', () => ({ syncSubscriptionCache: vi.fn(), syncUserShadow: vi.fn() }));
 
@@ -97,6 +98,9 @@ describe('Sales-only checkout enforcement', () => {
     mocks.worker.mockReturnValue({
       verifyPaymentSignature: vi.fn(async () => ({ success: true })),
       getPayment: vi.fn(async () => ({ status: 'captured', order_id: 'order-1', amount: 99900, currency: 'INR' })),
+      getOrder: vi.fn(async () => ({ id: 'order-1', amount: 99900, currency: 'INR', notes: {
+        user_id: 'admin-1', plan_id: rawPlan.id, org_id: 'org-1', organization_type: 'school', type: 'subscription',
+      } })),
     });
     const response = await handleVerifyPayment({ request: new Request('https://example.test/api/payments/verify-payment', {
       method: 'POST', body: JSON.stringify({ razorpay_order_id: 'order-1', razorpay_payment_id: 'payment-1', razorpay_signature: 'signature-1',

@@ -64,9 +64,8 @@ const formatDate = (dateString) => {
  * Calculate progress percentage based on actual answered questions
  */
 const calculateProgress = (answeredCount, totalQuestions) => {
-  // Use provided totalQuestions; fallback to 50 if not available
-  const total = totalQuestions || 50;
-  const progressPercentage = Math.min(100, Math.round((answeredCount / total) * 100));
+  if (!Number.isFinite(totalQuestions) || totalQuestions <= 0) return null;
+  const progressPercentage = Math.min(100, Math.round((answeredCount / totalQuestions) * 100));
 
   return progressPercentage;
 };
@@ -76,6 +75,7 @@ const calculateProgress = (answeredCount, totalQuestions) => {
  */
 export const ResumePromptScreen = ({
   pendingAttempt,
+  totalQuestions,
   onResume,
   onStartNew,
   isLoading = false,
@@ -114,7 +114,7 @@ export const ResumePromptScreen = ({
   // Calculate progress
   const progress = isAdaptiveTest
     ? calculateProgress(answeredCount, 50)  // Adaptive tests have 50 questions
-    : calculateProgress(answeredCount, null);
+    : calculateProgress(answeredCount, totalQuestions);
 
   const startedAt = formatDate(pendingAttempt.started_at);
 
@@ -157,14 +157,16 @@ export const ResumePromptScreen = ({
               <div className="pt-2">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs text-gray-500">Progress</span>
-                  <span className="text-xs font-medium text-indigo-600">{progress}%</span>
+                  <span className="text-xs font-medium text-indigo-600">
+                    {progress === null ? 'Total question count unavailable' : `${progress}%`}
+                  </span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                {progress !== null && <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-blue-600 rounded-full"
                     style={{ width: `${progress}%` }}
                   />
-                </div>
+                </div>}
               </div>
             </div>
           </div>

@@ -203,7 +203,9 @@ export const CollegeGradingModal: React.FC<CollegeGradingModalProps> = ({
       const isExternalUrl = (url: string): boolean => {
         try {
           const parsedUrl = new URL(url);
-          return !url.includes('.r2.dev') && 
+          return !url.includes('.r2.dev') &&
+                 !url.includes('storage-sp.rareminds.in') &&
+                 !url.includes('rareminds.in') &&
                  !url.includes('localhost') && 
                  (parsedUrl.hostname !== window.location.hostname);
         } catch {

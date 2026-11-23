@@ -49,6 +49,8 @@ export const handleDocumentAccess: PagesFunction = async (context) => {
           parsedFileUrl.hostname !== '127.0.0.1' &&
           !parsedFileUrl.hostname.includes('cloudflare') &&
           !parsedFileUrl.hostname.includes('r2.dev') &&
+          !parsedFileUrl.hostname.includes('storage-sp.rareminds.in') &&
+          !parsedFileUrl.hostname.includes('rareminds.in') &&
           parsedFileUrl.protocol.startsWith('http');
         
         if (isExternalUrl) {
