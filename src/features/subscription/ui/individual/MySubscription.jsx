@@ -21,8 +21,12 @@ import {
   TrendingUp,
   X as XIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/DialogNew';
+import { formatManagementPrice, managementBillingLabel, managementPaymentLabel, handleTabKeyDown } from '../../lib/subscriptionPresentation';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useLearnerDataByEmail } from '@/entities/learner';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
@@ -76,7 +80,7 @@ function getSettingsPathFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
-  return '/learner/settings'; // fallback
+  return null;
 }
 
 /**
@@ -103,7 +107,7 @@ function getUserTypeFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  return 'learner'; // fallback
+  return null;
 }
 
 
@@ -121,10 +125,11 @@ function MySubscription() {
   const management = useSubscriptionManagement();
   const { subscriptionData, loading: subscriptionLoading, refreshSubscription, modern, owner, error: subscriptionError } = management;
 
-  // Get settings, dashboard paths, and user type from current URL (more reliable than role)
-  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
-  const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
-  const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+  // Role-prefixed routes retain their context; shared routes use the canonical role router.
+  const routePath = location.pathname.startsWith('/subscription/') ? getRouteForRole(role) : location.pathname;
+  const settingsPath = useMemo(() => getSettingsPathFromUrl(routePath), [routePath]);
+  const dashboardPath = location.pathname.startsWith('/subscription/') ? getRouteForRole(role) : getDashboardPathFromUrl(location.pathname);
+  const userType = useMemo(() => getUserTypeFromUrl(routePath), [routePath]);
 
   const isOrganizationLearner = Boolean(subscriptionData?.isOrganizationLicense);
 
@@ -149,9 +154,6 @@ function MySubscription() {
   const dashboardAvailable = modern ? ['full', 'restricted', 'read_only'].includes(ownerAccess) : management.hasAccess;
   const renewalNotApplicable = subscriptionData?.billingCycle === 'free' || (modern && owner.status === 'ready' && owner.current?.state.validity === 'perpetual');
   const legacyActionsReady = !modern && owner.status === 'ready';
-  const [billingHistory, setBillingHistory] = useState([]);
-  const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
-  const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
 
   const selectSubscription = id => {
     setShowCancelModal(false);
@@ -175,6 +177,7 @@ function MySubscription() {
   );
 
   const handleUpgradePlan = () => {
+    if (!userType) return;
     navigate(`/subscription/plans?type=${encodeURIComponent(userType)}&mode=upgrade&subscriptionId=${encodeURIComponent(subscriptionData.id)}`);
   };
 
@@ -378,6 +381,8 @@ function MySubscription() {
             ? invoiceData.razorpay_payment_id.trim()
             : '';
 
+        if (invoiceData && !invoicePaymentId) throw new Error('This transaction has no receipt reference.');
+
         // If invoice data is passed (from billing history), use that
         if (invoicePaymentId) {
           paymentId = invoicePaymentId;
@@ -526,78 +531,60 @@ function MySubscription() {
   const getSettingsUrl = useCallback(() => settingsPath, [settingsPath]);
 
   // Fetch billing history from database (with caching)
-  const fetchBillingHistory = useCallback(async (force = false) => {
-    if (!user) return;
-    if (billingHistoryFetched && !force) return; // Skip if already fetched
-
-    setLoadingBillingHistory(true);
-    try {
+  const { data: billingHistory = [], isFetching: loadingBillingHistory, isSuccess: billingHistoryFetched,
+    error: billingHistoryError, refetch: fetchBillingHistory } = useQuery({
+    queryKey: ['subscription-billing-history', user?.id],
+    enabled: Boolean(user?.id && showBillingHistory),
+    retry: false,
+    queryFn: async () => {
       const result = await getUserPayments();
+      if (!result.success || !Array.isArray(result.data)) throw new Error(result.error || 'Unable to load billing history.');
+      const history = result.data
+        .map(tx => {
+          const meta = tx.metadata || {};
+          const plan = meta.plan || {};
+          const planName = plan.name ?? '';
+          const billingCycle = plan.billing_cycle ?? '';
+          const description = planName
+            ? (billingCycle ? `${planName} — ${billingCycle}` : planName)
+            : (() => {
+                const typeMap = {
+                  upgrade: 'Plan Upgrade',
+                  subscription: 'Subscription',
+                  addon: 'Add-on Purchase',
+                  bulk_purchase: 'Bulk Purchase',
+                  refund: 'Refund',
+                };
+                const mappedType = typeMap[tx.transaction_type?.toLowerCase()];
+                if (!mappedType && tx.transaction_type) {
+                  logger.warn('Unmapped transaction type displayed as raw value', { type: tx.transaction_type });
+                }
+                  const rawType = typeof tx.transaction_type === 'string'
+                    ? tx.transaction_type.slice(0, 50)
+                    : null;
+                  return mappedType || rawType || 'Purchase';
+              })();
+          const statusMap = {
+            completed: 'paid',
+            failed: 'failed',
+            refunded: 'refunded',
+            pending: 'pending',
+          };
+          return {
+            id: tx.id,
+            date: tx.created_at,
+            amount: tx.amount,
+            status: statusMap[tx.status?.toLowerCase()] || tx.status || 'pending',
+            description,
+            planName,
+            billingCycle,
+            razorpay_payment_id: tx.razorpay_payment_id,
+          };
+        });
 
-      if (result.success && result.data) {
-        const history = result.data
-          .map(tx => {
-            const meta = tx.metadata || {};
-            const plan = meta.plan || {};
-            const planName = plan.name ?? '';
-            const billingCycle = plan.billing_cycle ?? '';
-            const description = planName
-              ? (billingCycle ? `${planName} — ${billingCycle}` : planName)
-              : (() => {
-                  const typeMap = {
-                    upgrade: 'Plan Upgrade',
-                    subscription: 'Subscription',
-                    addon: 'Add-on Purchase',
-                    bulk_purchase: 'Bulk Purchase',
-                    refund: 'Refund',
-                  };
-                  const mappedType = typeMap[tx.transaction_type?.toLowerCase()];
-                  if (!mappedType && tx.transaction_type) {
-                    logger.warn('Unmapped transaction type displayed as raw value', { type: tx.transaction_type });
-                  }
-                    const rawType = typeof tx.transaction_type === 'string'
-                      ? tx.transaction_type.slice(0, 50)
-                      : null;
-                    return mappedType || rawType || 'Purchase';
-                })();
-            const statusMap = {
-              completed: 'paid',
-              failed: 'failed',
-              refunded: 'refunded',
-              pending: 'pending',
-            };
-            return {
-              id: tx.id,
-              date: tx.created_at,
-              amount: tx.amount,
-              status: statusMap[tx.status?.toLowerCase()] || tx.status || 'pending',
-              description,
-              planName,
-              billingCycle,
-              razorpay_payment_id: tx.razorpay_payment_id,
-            };
-          });
-
-        setBillingHistory(history);
-        setBillingHistoryFetched(true);
-      }
-    } catch (error) {
-      logger.error('Error fetching billing history', error);
-    } finally {
-      setLoadingBillingHistory(false);
-    }
-  }, [user, billingHistoryFetched]);
-
-  // Prefetch billing history in background after page loads
-  useEffect(() => {
-    if (user && !billingHistoryFetched && !loadingBillingHistory) {
-      // Wait 1 second after page load to prefetch billing history
-      const timer = setTimeout(() => {
-        fetchBillingHistory();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user, billingHistoryFetched, loadingBillingHistory, fetchBillingHistory]);
+      return history;
+    },
+  });
 
   // Display the purchased terms, including plans retired from the current catalog.
   const currentPlan = useMemo(() => subscriptionData ? ({
@@ -626,7 +613,7 @@ function MySubscription() {
   // Fetch dynamic usage statistics
   const usagePlan = useMemo(() => currentPlan ? ({ ...currentPlan, features: currentPlan.features.map(feature =>
     typeof feature === 'string' ? feature : feature?.name || feature?.feature_key || '') }) : null, [currentPlan]);
-  const { usageStats, loading: usageLoading, error: usageError } = useUsageStatistics(usagePlan);
+  const { usageStats, loading: usageLoading, error: usageError } = useUsageStatistics(usagePlan, { enabled: legacyActionsReady && Boolean(usagePlan) });
 
   // Skeleton loader component - Editorial luxury style
   const SkeletonLoader = () => (
@@ -669,7 +656,7 @@ function MySubscription() {
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
               type="button"
-              onClick={() => navigate(getSettingsUrl())}
+              disabled={!settingsPath} onClick={() => navigate(getSettingsUrl())}
               className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors group font-medium"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -760,7 +747,7 @@ function MySubscription() {
           {/* Back to Settings Button */}
           <button
             type="button"
-            onClick={() => navigate(getSettingsUrl())}
+            disabled={!settingsPath} onClick={() => navigate(getSettingsUrl())}
             className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6 transition-colors group font-medium"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -798,9 +785,10 @@ function MySubscription() {
           </div>
 
           {/* Tab Navigation - Editorial Style */}
-          <div className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
+          <div role="tablist" aria-label="Subscription management" className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
               type="button"
+              role="tab" id="management-subscription-tab" aria-selected={activeTab === 'subscription'} aria-controls="management-panel" tabIndex={activeTab === 'subscription' ? 0 : -1} onKeyDown={handleTabKeyDown}
               onClick={() => setActiveTab('subscription')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'subscription'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -812,6 +800,7 @@ function MySubscription() {
             </button>
             <button
               type="button"
+              role="tab" id="management-addons-tab" aria-selected={activeTab === 'addons'} aria-controls="management-panel" tabIndex={activeTab === 'addons' ? 0 : -1} onKeyDown={handleTabKeyDown}
               onClick={() => setActiveTab('addons')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'addons'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -825,7 +814,7 @@ function MySubscription() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div id="management-panel" role="tabpanel" aria-labelledby={`management-${activeTab}-tab`} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <SubscriptionSelector management={management} onSelect={selectSubscription} disabled={isCancelling || isPausing} />
         {management.historyError && <p role="alert" className="mb-4 text-sm text-red-700">Additional purchases could not be loaded. <button onClick={refreshSubscription} className="underline">Try again</button></p>}
         {/* Add-Ons Tab Content */}
@@ -867,7 +856,7 @@ function MySubscription() {
                   </p>
                   <button
                     type="button"
-                    onClick={handleRenewSubscription}
+                    onClick={isPaused && legacyActionsReady ? handleResumeSubscription : handleRenewSubscription}
                     className={`mt-4 px-6 py-3 rounded-2xl text-sm font-semibold transition-all inline-flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 ${isPaused
                       ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white hover:from-amber-700 hover:to-amber-800'
                       : isExpired
@@ -875,7 +864,7 @@ function MySubscription() {
                         : 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
                       }`}
                   >
-                    {isPaused ? 'Resume Subscription' : 'Renew Now'}
+                    {isPaused ? (legacyActionsReady ? 'Resume Subscription' : 'View renewal options') : 'Renew Now'}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -959,10 +948,10 @@ function MySubscription() {
                         </h2>
                         <div className="flex items-baseline gap-1">
                           <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                            {subscriptionData?.planPrice != null ? `₹${subscriptionData.planPrice}` : 'Price unavailable'}
+                            {formatManagementPrice(subscriptionData?.planPrice)}
                           </span>
                           <span className="text-sm text-slate-600 font-light">
-                            {currentPlan?.priceLabel || '/person'}
+                            {managementBillingLabel(subscriptionData.billingCycle)}
                           </span>
                         </div>
                       </div>
@@ -1102,8 +1091,8 @@ function MySubscription() {
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Auto Renewal</dt>
-                        <dd className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
-                          <div className="flex items-center gap-3">
+                        <dd className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+                          <div className="flex min-w-0 flex-wrap items-center gap-3">
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${autoRenewEnabled
                               ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
                               : 'bg-slate-200 text-slate-700'
@@ -1133,7 +1122,8 @@ function MySubscription() {
                 <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
                   <button
                     type="button"
-                    onClick={() => setShowBillingHistory(!showBillingHistory)}
+                    aria-expanded={showBillingHistory} aria-controls="billing-history-content"
+                    onClick={() => setShowBillingHistory(value => !value)}
                     onMouseEnter={() => {
                       // Prefetch on hover for instant display
                       if (!billingHistoryFetched && !loadingBillingHistory) {
@@ -1155,11 +1145,13 @@ function MySubscription() {
                     )}
                   </button>
                   {showBillingHistory && (
-                    <div className="px-6 py-4">
+                    <div id="billing-history-content" className="px-6 py-4">
                       {loadingBillingHistory ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
                         </div>
+                      ) : billingHistoryError ? (
+                        <div role="alert"><p>Unable to load billing history.</p><button type="button" onClick={() => void fetchBillingHistory()} className="mt-2 underline">Retry billing history</button></div>
                       ) : billingHistory.length === 0 ? (
                         <div className="text-center py-8">
                           <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
@@ -1176,7 +1168,7 @@ function MySubscription() {
                                 <p className="text-xs text-slate-500 mt-0.5">{formatDate(invoice.date)}</p>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-slate-900">₹{invoice.amount}</span>
+                                <span className="text-sm font-semibold text-slate-900">{formatManagementPrice(invoice.amount)}</span>
                                 <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusBadgeConfig(invoice.status).badgeClass}`}>
                                   <Circle className={`w-1.5 h-1.5 ${getStatusBadgeConfig(invoice.status).iconClass}`} />
                                   {getStatusBadgeConfig(invoice.status).label}
@@ -1185,7 +1177,9 @@ function MySubscription() {
                                   type="button"
                                   onClick={() => handleDownloadInvoice(invoice)}
                                   className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
-                                  title="Download Invoice"
+                                  title={invoice.razorpay_payment_id ? 'Download Invoice' : 'Receipt unavailable for this transaction'}
+                                  aria-label={`Download invoice for ${invoice.description}`}
+                                  disabled={isDownloadingInvoice || !invoice.razorpay_payment_id}
                                 >
                                   <Download className="w-4 h-4 text-slate-600" />
                                 </button>
@@ -1223,7 +1217,7 @@ function MySubscription() {
 
                     {!isCancelled && <button
                       type="button"
-                      onClick={handleUpgradePlan}
+                      disabled={!userType} onClick={handleUpgradePlan}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl text-sm font-semibold hover:from-amber-600 hover:to-amber-700 transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
                       <span className="flex items-center gap-2">
@@ -1312,7 +1306,7 @@ function MySubscription() {
                             }`}>
                             <Circle className={`w-1.5 h-1.5 ${subscriptionData.paymentStatus === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
                               }`} />
-                            {subscriptionData.paymentStatus === 'success' ? 'Paid' : 'Pending'}
+                            {managementPaymentLabel(subscriptionData.paymentStatus, subscriptionData.billingCycle, subscriptionData.planPrice)}
                           </span>
                         </dd>
                       </div>
@@ -1320,10 +1314,10 @@ function MySubscription() {
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Plan Price</dt>
                         <dd className="flex items-baseline gap-1">
                           <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                            {subscriptionData.planPrice != null ? `₹${subscriptionData.planPrice}` : 'Price unavailable'}
+                            {formatManagementPrice(subscriptionData.planPrice)}
                           </span>
                           <span className="text-xs text-slate-600 font-medium">
-                            {currentPlan?.priceLabel || '/person'}
+                            {managementBillingLabel(subscriptionData.billingCycle)}
                           </span>
                         </dd>
                       </div>
@@ -1331,7 +1325,7 @@ function MySubscription() {
                         <button
                           type="button"
                           onClick={() => handleDownloadInvoice(null)}
-                          disabled={isDownloadingInvoice}
+                          disabled={isDownloadingInvoice || !(subscriptionData.receiptUrl || subscriptionData.razorpayPaymentId || subscriptionData.razorpayOrderId || subscriptionData.razorpaySubscriptionId)}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                         >
                           {isDownloadingInvoice ? (
@@ -1383,14 +1377,14 @@ function MySubscription() {
 
       {/* Cancel Confirmation Modal - Editorial Luxury */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+          <DialogContent aria-describedby={undefined} className="!block !max-w-lg !overflow-y-auto !rounded-3xl border-2 border-slate-200 p-8 shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Cancel Subscription?</h3>
+                <DialogTitle asChild><h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Cancel Subscription?</h3></DialogTitle>
                 <p className="text-sm text-slate-600 font-light leading-relaxed">
                   You'll keep access until {subscriptionData?.endDate ? formatDate(subscriptionData.endDate) : 'the end of your billing period'}.
                 </p>
@@ -1442,34 +1436,12 @@ function MySubscription() {
               </div>
             )}
 
-            {/* Retention Offers */}
-            {showRetentionOffer && (
-              <div className="mb-6 p-5 bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl shadow-lg">
-                <h4 className="text-lg font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                  {cancelReason === 'Too expensive' ? '💰 Special Offer: 30% Off' : '⏸️ Try Pausing Instead'}
-                </h4>
-                <p className="text-sm text-slate-600 mb-4 font-light leading-relaxed">
-                  {cancelReason === 'Too expensive'
-                    ? 'We\'d hate to see you go! How about 30% off for the next 3 months?'
-                    : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (cancelReason === 'Too expensive') {
-                      alert('Discount offer applied! Redirecting to payment...');
-                      setShowCancelModal(false);
-                    } else {
-                      setShowPauseModal(true);
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all shadow-lg hover:scale-105"
-                >
-                  {cancelReason === 'Too expensive' ? 'Claim 30% Discount' : 'Pause Subscription'}
-                </button>
+            {showRetentionOffer && cancelReason === 'Not using enough' && (
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p className="mb-3 text-sm text-slate-700">You can pause instead of cancelling.</p>
+                <button type="button" onClick={() => { setShowCancelModal(false); setShowPauseModal(true); }} className="rounded-xl bg-amber-700 px-4 py-3 text-sm font-semibold text-white">Pause Subscription</button>
               </div>
             )}
-
             <div className="flex gap-3">
               <button
                 type="button"
@@ -1500,20 +1472,20 @@ function MySubscription() {
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Pause Subscription Modal - Editorial Luxury */}
       {showPauseModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-md w-full p-8 shadow-2xl">
+        <Dialog open={showPauseModal} onOpenChange={setShowPauseModal}>
+          <DialogContent aria-describedby={undefined} className="!block !max-w-md !overflow-y-auto !rounded-3xl border-2 border-slate-200 p-8 shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Clock className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Pause Subscription</h3>
+                <DialogTitle asChild><h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Pause Subscription</h3></DialogTitle>
                 <p className="text-sm text-slate-600 font-light leading-relaxed">
                   Take a break without losing your data. Your subscription will automatically resume.
                 </p>
@@ -1566,8 +1538,8 @@ function MySubscription() {
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

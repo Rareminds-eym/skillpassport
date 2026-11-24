@@ -35,10 +35,11 @@ export default function SubscriptionOwnerActions({ owner, onRefresh }) {
 }
 
 export function SubscriptionOwnerUsage({ owner }) {
+  const [activityOpen, setActivityOpen] = useState(false);
   if (owner.status !== 'ready') return <p>{owner.status === 'error' ? 'Usage is temporarily unavailable.' : 'Loading usage…'}</p>;
   if (!owner.current) return null;
   const { current } = owner;
   return <div className={styles.controls}>{current.pools.length ? current.pools.map(pool => <CreditPool key={pool.key} current={current} pool={pool} />) : <p>No credit pools are included with this plan.</p>}
-    <details><summary>Subscription activity</summary><SubscriptionActivity current={current} /></details>
+    <details onToggle={event => setActivityOpen(event.currentTarget.open)}><summary>Subscription activity</summary>{activityOpen && <SubscriptionActivity current={current} />}</details>
   </div>;
 }

@@ -59,6 +59,50 @@ export function formatPrice(amount: number, precision: number, currency: string)
   return `${currency === 'INR' ? '₹' : `${currency} `}${grouped}${fractional}`;
 }
 
+/** Legacy management amounts are major-unit INR amounts, unlike catalog minor units. */
+export function formatManagementPrice(amount: unknown) {
+  if (amount === null || amount === undefined || amount === '') return 'Not available';
+  const value = Number(amount);
+  return Number.isFinite(value) && value >= 0 ? formatPrice(Math.round(value * 100), 2, 'INR') : 'Not available';
+}
+
+export function managementBillingLabel(cycle: unknown) {
+  if (cycle === 'free') return 'No recurring billing';
+  if (cycle === 'annual' || cycle === 'yearly') return '/year';
+  if (cycle === 'monthly') return '/month';
+  return 'Billing period unavailable';
+}
+
+export function monthlyPlanCost(amount: unknown, cycle: unknown): number | null {
+  if (amount === null || amount === undefined || amount === '') return null;
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value < 0) return null;
+  if (cycle === 'free') return value === 0 ? 0 : null;
+  if (cycle === 'monthly') return value;
+  if (cycle === 'annual' || cycle === 'yearly') return value / 12;
+  return null;
+}
+
+export function addOnCostSummary(entitlements: readonly { status: string; price_at_purchase?: unknown; billing_period?: unknown }[]) {
+  let monthly = 0;
+  for (const entitlement of entitlements) {
+    if (!['active', 'grace_period'].includes(entitlement.status)) continue;
+    const value = monthlyPlanCost(entitlement.price_at_purchase, entitlement.billing_period);
+    if (value === null) return { monthly: null, annual: null };
+    monthly += value;
+  }
+  return { monthly: Math.round(monthly * 100) / 100, annual: Math.round(monthly * 12 * 100) / 100 };
+}
+
+export function managementPaymentLabel(status: unknown, cycle: unknown, amount: unknown) {
+  if (cycle === 'free' && amount !== null && amount !== undefined && amount !== '' && Number(amount) === 0) return 'No payment required';
+  if (status === 'success' || status === 'paid' || status === 'completed') return 'Paid';
+  if (status === 'pending') return 'Pending';
+  if (status === 'failed') return 'Failed';
+  if (status === 'refunded') return 'Refunded';
+  return 'Not available';
+}
+
 /** Native buttons retain click behavior; arrow keys implement the horizontal tabs pattern. */
 export function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
   const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];

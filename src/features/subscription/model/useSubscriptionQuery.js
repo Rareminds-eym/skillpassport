@@ -53,7 +53,7 @@ export const formatSubscriptionData = (data) => {
     // Keep both subscription presentations explicit when the source omits renewal.
     reportedAutoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
     nextBillingDate: data.subscription_end_date,
-    paymentStatus: data.status === 'active' ? 'success' : 'pending',
+    paymentStatus: data.payment_status ?? null,
     planName,
     planPrice: data.plan_amount,
     fullName: data.full_name,

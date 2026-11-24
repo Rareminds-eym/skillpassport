@@ -742,21 +742,12 @@ describe('owner-issued customer checkout', () => {
     expect(route).toHaveTextContent(dashboard); expect(route).toHaveAttribute('data-from-payment', 'true');
     expect(sessionStorage.getItem(key)).toBeNull();
   });
-  it('checks an interrupted unpaid checkout and resumes the same order without creating another', async () => {
+  it('automatically verifies and releases an interrupted unpaid checkout upon dismissal', async () => {
     fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'unpaid' }));
     payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
     render(<SubscriptionWorkspace view="catalog" />); await requestPurchase();
-    const saved = JSON.parse(sessionStorage.getItem(key)!);
-    fireEvent.click(await screen.findByRole('button', { name: 'Check payment status' }));
-    await screen.findByRole('button', { name: 'Resume payment' });
-    expect(payMock).toHaveBeenCalledTimes(1);
-    payMock.mockResolvedValueOnce({ razorpay_order_id: 'order_synthetic', razorpay_payment_id: paymentId, razorpay_signature: 'synthetic' });
-    fireEvent.click(screen.getByRole('button', { name: 'Resume payment' }));
-    await screen.findByText(/Payment confirmed/);
-    expect(payMock).toHaveBeenCalledTimes(2);
-    expect(payMock.mock.calls[1][0].id).toBe(saved.order.order.id);
-    expect(commerceMutations().map(([, init]) => JSON.parse(String(init.body)).request.kind)).toEqual(['quote', 'order', 'settle']);
-    expect(sessionStorage.getItem(key)).toBeNull();
+    await waitFor(() => expect(sessionStorage.getItem(key)).toBeNull());
+    expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
   });
   it.each(['blocked'] as const)('keeps %s orders locked without reopening checkout', async checkoutStatus => {
     fetchMock.mockImplementation(commerceRouter({ checkoutStatus })); payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
@@ -768,7 +759,7 @@ describe('owner-issued customer checkout', () => {
   });
   async function expiredCheckout() {
     fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'expired' }));
-    payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
+    payMock.mockRejectedValueOnce(new Error('Checkout interrupted'));
     render(<SubscriptionWorkspace view="catalog" />); await requestPurchase();
     fireEvent.click(await screen.findByRole('button', { name: 'Check payment status' }));
     await screen.findByRole('button', { name: 'Start again' });
@@ -818,7 +809,7 @@ describe('owner-issued customer checkout', () => {
     expect(sessionStorage.getItem(key)).toBe(saved);
   });
   it('preserves a previously reserved reconciliation identity when resuming an unpaid order', async () => {
-    fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'unpaid' })); payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
+    fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'unpaid' })); payMock.mockRejectedValueOnce(new Error('Checkout interrupted'));
     const first = render(<SubscriptionWorkspace view="catalog" />); await requestPurchase(); await screen.findByRole('alert');
     const journal = JSON.parse(sessionStorage.getItem(key)!); const q = journal.quote;
     journal.settlementRequest = commerceSettlementRequest.parse({ kind: 'settle', subscriptionId: q.subscriptionId, subject: q.subject, expectedVersion: q.stateVersion, expectedRevisionId: q.expectedRevisionId, quoteId: q.id, reconcile: true });
@@ -830,7 +821,7 @@ describe('owner-issued customer checkout', () => {
     expect(sent.operationId).toBe(journal.settlementOperationId); expect(sent.request).toEqual(journal.settlementRequest);
   });
   it('rechecks before resuming and does not open checkout if payment arrived in the meantime', async () => {
-    fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'unpaid' })); payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
+    fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'unpaid' })); payMock.mockRejectedValueOnce(new Error('Checkout interrupted'));
     render(<SubscriptionWorkspace view="catalog" />); await requestPurchase();
     fireEvent.click(await screen.findByRole('button', { name: 'Check payment status' })); await screen.findByRole('button', { name: 'Resume payment' });
     const previous = fetchMock.getMockImplementation()!;
@@ -1043,7 +1034,7 @@ describe('owner-issued customer checkout', () => {
     expect(screen.queryByRole('button', { name: 'Continue to payment' })).not.toBeInTheDocument();
     expect(payMock).not.toHaveBeenCalled();
   });
-  it.each(['dismissed', 'aborted'])('retains the exact journal after checkout %s and blocks another payment after remount', async failure => {
+  it.each(['failed', 'aborted'])('retains the exact journal after checkout %s and blocks another payment after remount', async failure => {
     fetchMock.mockImplementation(commerceRouter()); payMock.mockRejectedValue(new Error(`Checkout ${failure}`));
     const first = render(<SubscriptionWorkspace view="catalog" />); await requestPurchase();
     expect(await screen.findByRole('alert')).toHaveTextContent(failure);
