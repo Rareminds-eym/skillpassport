@@ -1,3 +1,4 @@
+import { promoPaymentRequired } from './promo-access';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type SubscriptionScope = 'learner' | 'educator' | 'recruiter' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -64,6 +65,9 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     checked(supabase.from('organizations').select('id, organization_type, name, email, phone').eq('admin_id', userId)),
   ]);
   if (!profile) throw new Error('Application profile is still being synchronized');
+  let promoRequirement: Promise<boolean> | undefined;
+  const requiresPromoPayment = () => promoRequirement ??= promoPaymentRequired(supabase, userId, { role: scope, metadata: profile.metadata });
+  const purchased = (sub: Subscription) => Number(sub.plan_amount) > 0 || Boolean(sub.razorpay_payment_id);
   const seatSubscriptionIds = !organizationDashboard
     ? (seats ?? []).filter(seat => seat.status === 'active' && (!seat.expires_at || Date.parse(seat.expires_at) > Date.now())).map(seat => seat.organization_subscription_id).filter(Boolean)
     : [];
@@ -102,13 +106,14 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   // after cancellation/expiry. Organization/seat coverage keeps its existing policy.
   const canEvaluate = (sub: Subscription) => isSubscriptionCurrent(sub) || Boolean(options && sub.plan_revision_id);
   const authorize = (sub: EntitlementResult) => options ? options.authorizeRead(sub) : Promise.resolve(sub);
-  for (const sub of candidates) {
+  for (const sub of [...candidates].sort((left, right) => Number(purchased(right)) - Number(purchased(left)))) {
     const plan = plans.find(plan => plan.id === sub.plan_id);
     if (!plan || !isSubscriptionCurrent(sub) || (sub.product_id && plan.product_id && sub.product_id !== plan.product_id)) continue;
     const org = organizations.find(org => org.id === sub.organization_id);
     if (!sub.is_organization_subscription || !org) continue;
     const entity = org.organization_type === 'company' ? 'recruitment' : org.organization_type || expectedEntity;
     if (!entity || (expectedEntity && entity !== expectedEntity) || !plan.applicable_entities.some(value => value === entity || value === 'all')) continue;
+    if (!purchased(sub) && await requiresPromoPayment()) continue;
     if (organizationDashboard) {
       if (plan.business_type === 'b2b') return format(sub, plan, org);
       continue; // Bulk learner seats do not unlock the purchaser's admin dashboard.
@@ -120,7 +125,6 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   }
   if (organizationDashboard) return null;
   // A newer automatic free entry must not hide an existing paid purchase.
-  const purchased = (sub: Subscription) => Number(sub.plan_amount) > 0 || Boolean(sub.razorpay_payment_id);
   const retainedOnly = (sub: Subscription) => !isSubscriptionCurrent(sub);
   const personalCandidates = [...own].sort((left, right) => Number(retainedOnly(left)) - Number(retainedOnly(right))
     || Number(purchased(right)) - Number(purchased(left)));
@@ -133,6 +137,7 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     const applicable = plan?.plan_family === 'individual'
       || plan?.applicable_entities.some(entity => entity === 'all' || organizations.some(org => org.organization_type === entity));
     if (plan?.business_type === 'b2c' && applicable && !sub.is_organization_subscription && canEvaluate(sub) && (!sub.product_id || !plan.product_id || sub.product_id === plan.product_id)) {
+      if (!purchased(sub) && await requiresPromoPayment()) continue;
       const granted = await authorize(format(sub, plan));
       if (granted) return granted;
     }

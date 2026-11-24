@@ -17,18 +17,39 @@ import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow'
 import { apiSuccess, apiError } from '../../../lib/response';
 import { requireSelfServePlan, assertPlanPurchaseScope, subscriptionForUpgrade, catalogPlanErrorResponse } from '../lib/salesPlan';
 import { completePlanSelection, isSubscriptionCurrent } from '../../../shared/lib/org-subscription';
+import { getAcceptedOfferSnapshot, isDidacAllowedPlan, isSupportedPromoRole, resolveDidacTargetPlanCode } from '../lib/promoCode';
 
 const logger = createLogger('payments:create-order');
-const COLLEGE_LEARNER_PROMO_CODE = 'RAREMINDS2026';
-const COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON = 501;
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES = ['skill_starter'];
-const COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES = ['skill starter'];
-const COLLEGE_LEARNER_DISABLED_PLAN_CODES = ['discover', 'career_builder', 'career_accelerator'];
 
-const normalizePromoCode = (code: unknown): string =>
-  String(code || '').trim().toUpperCase();
+// A role's own business-type family — mirrors the original learner/b2c-only
+// scoping (a promo redemption never restricts or discounts a plan outside
+// the redeeming role's own business-type catalog).
+const DIDAC_BUSINESS_TYPE_BY_ROLE: Record<string, 'b2c' | 'b2b'> = {
+  learner: 'b2c',
+  college_admin: 'b2b',
+  school_admin: 'b2b',
+};
 
-async function isCollegeLearnerRestrictedPlan(
+async function getUserRoleAndReferralCode(
+  supabase: ReturnType<typeof getServiceClient>,
+  userId: string,
+  userEmail: string | undefined,
+): Promise<{ role: string | null; metadata: Record<string, unknown> }> {
+  let userQuery = supabase.from('users').select('role, metadata');
+  userQuery = userEmail ? userQuery.eq('email', userEmail) : userQuery.eq('id', userId);
+  const { data: userRow } = await userQuery.maybeSingle();
+  return {
+    role: (userRow?.role as string | null) ?? null,
+    metadata: (userRow?.metadata || {}) as Record<string, unknown>,
+  };
+}
+
+// DIDAC 2026 (R16/R17): both checks below are gated on an already-COMMITTED,
+// explicitly-accepted redemption — getAcceptedOfferSnapshot() is read-only
+// and never commits one itself (see functions/api/payments/lib/promoCode.ts).
+// Covers all three supported roles (learner, college_admin, school_admin),
+// not just learner.
+async function isDidacRestrictedPlan(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
   userEmail: string | undefined,
@@ -36,70 +57,51 @@ async function isCollegeLearnerRestrictedPlan(
 ): Promise<boolean> {
   if (!planId) return false;
 
-  let userQuery = supabase
-    .from('users')
-    .select('role, metadata');
-
-  if (userEmail) {
-    userQuery = userQuery.eq('email', userEmail);
-  } else {
-    userQuery = userQuery.eq('id', userId);
-  }
-
-  const [{ data: userRow }, { data: planRow }] = await Promise.all([
-    userQuery.maybeSingle(),
+  const [{ role, metadata }, { data: planRow }] = await Promise.all([
+    getUserRoleAndReferralCode(supabase, userId, userEmail),
     supabase
       .from('plans_cache')
-      .select('plan_code, business_type')
+      .select('plan_code, name, business_type')
       .eq('id', planId)
       .eq('is_active', true)
       .maybeSingle(),
   ]);
 
-  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(metadata.referralCode || metadata.referral_code);
-  const planCode = String(planRow?.plan_code || '').toLowerCase();
-
-  return (
-    userRow?.role === 'learner' &&
-    planRow?.business_type === 'b2c' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    COLLEGE_LEARNER_DISABLED_PLAN_CODES.includes(planCode)
-  );
+  if (!isSupportedPromoRole(role) || !planRow || planRow.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role]) {
+    return false;
+  }
+  const referralCode = metadata.referralCode ?? metadata.referral_code;
+  // The code's own eligible plan (its target_plan_code override, or the role default) is never
+  // "restricted" — it's the plan the redemption makes available, not one it disables.
+  const targetPlanCode = await resolveDidacTargetPlanCode(supabase, role, referralCode);
+  if (isDidacAllowedPlan(role, planRow as { plan_code?: unknown; name?: unknown }, targetPlanCode)) {
+    return false;
+  }
+  const redemption = await getAcceptedOfferSnapshot(supabase, userId, role, referralCode);
+  return redemption !== null;
 }
 
-async function isCollegeLearnerPromoStarterPlan(
+async function isDidacPromoAllowedPlan(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
   userEmail: string | undefined,
   plan: { plan_code?: string | null; name?: string | null; business_type?: string | null },
   requestReferralCode?: unknown,
-): Promise<boolean> {
-  let userQuery = supabase
-    .from('users')
-    .select('role, metadata');
+): Promise<{ allowed: boolean; priceAdjustment: number }> {
+  const { role, metadata } = await getUserRoleAndReferralCode(supabase, userId, userEmail);
+  const referralCode = requestReferralCode ?? metadata.referralCode ?? metadata.referral_code;
 
-  if (userEmail) {
-    userQuery = userQuery.eq('email', userEmail);
-  } else {
-    userQuery = userQuery.eq('id', userId);
+  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role]) {
+    return { allowed: false, priceAdjustment: 0 };
   }
-
-  const { data: userRow } = await userQuery.maybeSingle();
-  const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
-  const referralCode = normalizePromoCode(requestReferralCode || metadata.referralCode || metadata.referral_code);
-  const planCode = String(plan.plan_code || '').toLowerCase();
-  const planName = String(plan.name || '').trim().toLowerCase();
-
-  return (
-    userRow?.role === 'learner' &&
-    plan.business_type === 'b2c' &&
-    referralCode === COLLEGE_LEARNER_PROMO_CODE &&
-    (
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_CODES.includes(planCode) ||
-      COLLEGE_LEARNER_PROMO_STARTER_PLAN_NAMES.includes(planName)
-    )
-  );
+  const targetPlanCode = await resolveDidacTargetPlanCode(supabase, role, referralCode);
+  if (!isDidacAllowedPlan(role, plan, targetPlanCode)) {
+    return { allowed: false, priceAdjustment: 0 };
+  }
+  const redemption = await getAcceptedOfferSnapshot(supabase, userId, role, referralCode);
+  return redemption
+    ? { allowed: true, priceAdjustment: redemption.priceAdjustment }
+    : { allowed: false, priceAdjustment: 0 };
 }
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -132,6 +134,9 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     const supabase = getServiceClient(env);
     const catalogPlan = await requireSelfServePlan(supabase, { plan_id: body.planId });
     const scope = await assertPlanPurchaseScope(supabase, catalogPlan, user);
+    if (await isDidacRestrictedPlan(supabase, user.id, user.email, catalogPlan.id)) {
+      return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
+    }
     if (body.amount === 0) {
       const config = catalogPlan.entity_config?.[scope.organizationType || 'all'] || catalogPlan.entity_config?.all || {};
       const pricing = catalogPlan.pricing_matrix?.[scope.organizationType || 'all'] || catalogPlan.pricing_matrix?.all;
@@ -207,10 +212,6 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
     // Validate amount against DB plan price (industrial-grade: never trust client)
     if (body.planId) {
       const supabase = getServiceClient(env);
-      if (await isCollegeLearnerRestrictedPlan(supabase, user.id, user.email, body.planId)) {
-        return apiError(403, 'PLAN_NOT_AVAILABLE', 'This plan is not available for this referral code.', context.request);
-      }
-
       // The catalog stage above already resolved planId by id OR plan_code —
       // reuse that resolution here instead of re-querying by id only, which
       // 404'd for code-addressed paid plans.
@@ -230,14 +231,15 @@ export async function handleCreateOrder(context: AuthenticatedContext): Promise<
       const pricingMatrix = dbPlan.pricing_matrix as Record<string, any>;
       const clientAmount = body.amount as number;
       let isValidPrice = false;
-      const allowPromoStarterAmount = await isCollegeLearnerPromoStarterPlan(supabase, user.id, user.email, dbPlan, body.referralCode);
+      const { allowed: allowPromoStarterAmount, priceAdjustment } =
+        await isDidacPromoAllowedPlan(supabase, user.id, user.email, dbPlan, body.referralCode);
 
       if (pricingMatrix) {
         for (const key in pricingMatrix) {
           const price = pricingMatrix[key]?.yearly;
           if (typeof price === 'number') {
             const expectedPaise = Math.round(price * 100);
-            const promoExpectedPaise = Math.round((price + COLLEGE_LEARNER_PROMO_STARTER_AMOUNT_ADDON) * 100);
+            const promoExpectedPaise = Math.round((price + priceAdjustment) * 100);
             if (clientAmount === expectedPaise || (allowPromoStarterAmount && clientAmount === promoExpectedPaise)) {
               isValidPrice = true;
               break;

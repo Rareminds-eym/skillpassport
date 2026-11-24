@@ -1,3 +1,6 @@
+import { promoPaymentRequired } from '../../shared/lib/promo-access';
+import { readApplicationPlanProjection } from '../../lib/subscriptions/publication';
+import { readCurrentSubscriptionOwner } from '../../lib/subscriptions/current-subscription';
 import { z } from 'zod';
 import { readDraftRequest, DraftRequestError } from '../../lib/subscriptions/authoring';
 import { applicationFeatureDefinition, catalogInventoryDatabase, readApplicationFeatureInventory } from '../../lib/subscriptions/catalog-inventory';
@@ -60,6 +63,14 @@ export const onRequestPost = subscriptionConsumerEndpoint('POST', async context 
       || replay.scope.recipient.id !== value.data.recipientId || replay.scope.poolKey !== value.data.poolKey) throw new Error('Credit replay scope differs');
     const existing = await readSubscriptionCreditConsumption(database, replay.operationId, replay.scope, context.actorId, replay.actionKey);
     if (existing) return Response.json(existing, { headers: subscriptionResponseHeaders });
+  }
+  if (value.data.kind === 'consume' && await promoPaymentRequired(database, context.actorId)) {
+    const current = await readCurrentSubscriptionOwner(database, context, value.data.subscriptionId);
+    const stored = await readApplicationPlanProjection(database, current.state.planId, current.state.revisionId, context.productId);
+    if (stored.projection.bundle.draft.purchaseMode === 'free') {
+      return Response.json({ error: 'Complete your promotional plan payment to continue.', code: 'PROMO_PAYMENT_REQUIRED' },
+        { status: 402, headers: subscriptionResponseHeaders });
+    }
   }
   const raw = await context.env.SSO_SERVICE!.prepareSubscriptionCreditExecution(context.token, context.productId, value.data, features);
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);

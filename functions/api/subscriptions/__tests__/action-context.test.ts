@@ -83,3 +83,19 @@ describe('canonical action HTTP transport with real grant evaluation', () => {
     expect(io.projection).toHaveBeenCalledTimes(1);
   });
 });
+
+
+describe('promo required payment at the action RPC boundary', () => {
+  it.each(['learner', 'college_admin', 'school_admin'])('does not authorize free feature actions for %s with an applied promo', async role => {
+    const stored = projection(); Object.assign(stored.projection.bundle.draft, { purchaseMode: 'free' });
+    io.projection.mockResolvedValue(stored);
+    io.database.mockReturnValue({ from(table: string) {
+      const data = table === 'users' ? { role, metadata: { referralCode: 'TEST' } }
+        : table === 'promo_codes' ? { id: 'promo', active: true, overall_max_uses: 100, starts_at: '1970-01-01', expires_at: '2099-01-01', role_quotas: { [role]: 100 } } : null;
+      const q = { select: () => q, eq: () => q, not: () => q, limit: () => q, maybeSingle: async () => ({ data, error: null }), then: (resolve: (value: unknown) => unknown) => Promise.resolve({ count: 0, data: null, error: null }).then(resolve) }; return q;
+    } });
+    const result = await run();
+    expect(result.status).toBe(402);
+    expect(await result.json()).toMatchObject({ error: expect.anything() });
+  });
+});

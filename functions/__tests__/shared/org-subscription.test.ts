@@ -2,6 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { promoPaymentRequired } from '../../shared/lib/promo-access';
 import { completePlanSelection, isSubscriptionCurrent, resolveUserEntitlement, subscriptionScope } from '../../shared/lib/org-subscription';
 
 type Row = Record<string, any>;
@@ -24,10 +25,11 @@ function client(failingTable?: string): SupabaseClient {
     from(table: string) {
       let rows = [...(tables[table] ?? [])];
       let update: Row | undefined;
-      const result = () => ({ data: rows, error: table === failingTable ? { message: 'database unavailable' } : null });
+      const result = () => ({ data: rows, count: rows.length, error: table === failingTable ? { message: 'database unavailable' } : null });
       const query: any = {
         select: (columns: string) => { if (columns !== '*') columns.split(',').forEach(column => validateColumn(table, column.trim())); return query; },
         eq: (key: string, value: unknown) => { validateColumn(table, key); rows = rows.filter(row => row[key] === value); return query; },
+        not: (key: string, _operator: string, value: unknown) => { rows = rows.filter(row => row[key] !== value && row[key] !== undefined); return query; },
         in: (key: string, values: unknown[]) => { rows = rows.filter(row => values.includes(row[key])); return query; },
         order: () => query,
         limit: (count: number) => { rows = rows.slice(0, count); return query; },
@@ -330,4 +332,85 @@ it.each(['inactive', 'suspended', 'expired'])('does not restore removed organiza
   tables.learners = [{ user_id: 'user', college_id: 'org', is_deleted: false }];
   expect(await resolve(['learner'])).toBeNull();
   expect(await resolve(['college_admin'])).toBeNull();
+});
+
+
+describe('promo checkout cannot be bypassed with free access', () => {
+  function promoAccount(role: string) {
+    tables.users[0].metadata = { referralCode: 'TESTCODE' };
+    tables.promo_codes = [{ id: 'promo', code: 'TESTCODE', active: true, overall_max_uses: 100, starts_at: '2020-01-01', expires_at: '2099-01-01', role_quotas: { [role]: 100 } }];
+    tables.promo_redemptions = [];
+    if (role === 'learner') {
+      tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
+      tables.subscription_cache = [{ ...personal, plan_amount: 0, billing_cycle: 'free', subscription_end_date: null }];
+    } else {
+      const entity = role.split('_')[0];
+      tables.organizations[0].organization_type = entity;
+      tables.plans_cache = [{ ...orgPlan, applicable_entities: [entity] }];
+      tables.subscription_cache = [{ ...coverage, plan_amount: 0, billing_cycle: 'free', subscription_end_date: null }];
+    }
+  }
+  it.each(['learner', 'college_admin', 'school_admin'])('blocks the %s free plan before and after locking a promo', async role => {
+    promoAccount(role);
+    expect(await resolve([role])).toBeNull();
+    tables.promo_redemptions = [{ promo_code_id: 'promo', user_id: 'user', role, accepted_plan_id: 'paid' }];
+    expect(await resolve([role])).toBeNull();
+  });
+  it.each(['learner', 'college_admin', 'school_admin'])('allows %s after paid coverage is synchronized', async role => {
+    promoAccount(role); tables.subscription_cache[0].plan_amount = 100;
+    expect(await resolve([role])).not.toBeNull();
+  });
+  it.each(['learner', 'college_admin', 'school_admin'])('preserves ordinary free access for %s without a promo', async role => {
+    promoAccount(role); tables.users[0].metadata = {};
+    expect(await resolve([role])).not.toBeNull();
+  });
+  it.each(['learner', 'college_admin', 'school_admin'])('does not block %s for a never-accepted expired code', async role => {
+    promoAccount(role); tables.promo_codes[0].expires_at = '2020-01-02';
+    expect(await resolve([role])).not.toBeNull();
+  });
+  it('retains the paid requirement for an accepted code after campaign expiry', async () => {
+    promoAccount('learner'); tables.promo_codes[0].expires_at = '2020-01-02';
+    tables.promo_redemptions = [{ promo_code_id: 'promo', user_id: 'user', role: 'learner', accepted_plan_id: 'paid' }];
+    expect(await resolve()).toBeNull();
+  });
+  it('fails closed when promo storage is unavailable', async () => {
+    promoAccount('learner');
+    await expect(resolveUserEntitlement(client('promo_codes'), 'user', { roles: ['learner'] })).rejects.toThrow('Unable to verify promo');
+  });
+});
+
+
+it.each(['learner', 'school_admin', 'college_admin'])('checks normalized code and role ownership without mutating promo records for %s', async role => {
+  tables.users[0] = { id: 'user', role, metadata: { referralCode: '  mixedcode  ' } };
+  tables.promo_codes = [{ id: 'promo', code: 'MIXEDCODE', active: true, overall_max_uses: 100, starts_at: '2020-01-01', expires_at: '2099-01-01', role_quotas: { [role]: 1 } }];
+  tables.promo_redemptions = [];
+  const before = JSON.stringify(tables);
+  expect(await promoPaymentRequired(client(), 'user')).toBe(true);
+  expect(JSON.stringify(tables)).toBe(before);
+  tables.promo_codes[0].role_quotas = { recruiter: 10 };
+  expect(await promoPaymentRequired(client(), 'user')).toBe(false);
+});
+
+
+it.each(['learner', 'school_admin', 'college_admin'])('cannot bypass an accepted %s promotion by changing the signup code', async role => {
+  tables.users[0] = { id: 'user', role, metadata: { referralCode: 'OTHER-CODE' } };
+  tables.promo_redemptions = [{ user_id: 'user', role, accepted_plan_id: 'paid', promo_code_id: 'old-campaign' }];
+  expect(await promoPaymentRequired(client(), 'user')).toBe(true);
+  tables.users[0].metadata = {};
+  expect(await promoPaymentRequired(client(), 'user')).toBe(true);
+});
+
+
+it.each(['learner', 'school_admin', 'college_admin'])('does not apply an exhausted promo to a new %s account', async role => {
+  tables.users[0] = { id: 'user', role, metadata: { referralCode: 'FULL' } };
+  tables.promo_codes = [{ id: 'full', code: 'FULL', active: true, starts_at: '2020-01-01', expires_at: '2099-01-01', overall_max_uses: 1, role_quotas: { [role]: 1 } }];
+  tables.promo_redemptions = [{ user_id: 'someone-else', role, promo_code_id: 'full', accepted_plan_id: 'paid' }];
+  expect(await promoPaymentRequired(client(), 'user')).toBe(false);
+});
+
+
+it('does not make existing paid access depend on campaign storage availability', async () => {
+  tables.users[0].metadata = { referralCode: 'STORED' };
+  tables.plans_cache = [personalPlan]; tables.subscription_cache = [{ ...personal, plan_amount: 100 }];
+  await expect(resolveUserEntitlement(client('promo_codes'), 'user', { roles: ['learner'] })).resolves.toMatchObject({ id: personal.id });
 });

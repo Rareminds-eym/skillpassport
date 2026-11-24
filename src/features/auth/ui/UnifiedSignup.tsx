@@ -962,6 +962,22 @@ const UnifiedSignup = () => {
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
       } else {
+        // Institutional admin roles (school, college, university) register free-entry intents
+        // that activate upon email verification. Unverified admins route to /verify-email,
+        // not consumer self-serve plans purchase.
+        const isInstitutionalAdmin = ['school_admin', 'college_admin', 'university_admin'].includes(state.selectedRole || '');
+        if (isInstitutionalAdmin) {
+          navigate('/verify-email', {
+            replace: true,
+            state: {
+              email: state.email,
+              userId: ssoUserId,
+              message: 'Account created successfully! Please verify your email to activate your account.'
+            }
+          });
+          return;
+        }
+
         // A plan chosen before signup is preselected in the published catalog by its revision only;
         // the owner quote, not a client-carried plan object, sets the price.
         // Redirect to subscription plans page to choose a plan
@@ -969,6 +985,13 @@ const UnifiedSignup = () => {
         const coverage = await getActiveSubscription();
         // On verification failure the protected route shows Retry; never delete a completed account.
         if (!coverage.success || coverage.data) {
+          // This branch bypasses the referralCode-bearing navigate() below, so when a
+          // referral code is present, stash it for SubscriptionProtectedRoute's own
+          // subscription-required fallback redirect (the next hop after this one) to
+          // pick up — otherwise it's silently dropped for every role.
+          if (normalizedReferralCode) {
+            sessionStorage.setItem('pending_referral_code', normalizedReferralCode);
+          }
           const { getRouteForRole } = await import('@/features/auth/lib/roleBasedRouter');
           navigate(getRouteForRole(state.selectedRole === 'recruiter_admin' ? 'recruiter' : state.selectedRole!), { replace: true });
           return;
