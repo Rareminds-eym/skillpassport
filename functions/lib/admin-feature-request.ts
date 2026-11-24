@@ -75,7 +75,7 @@ export function resolveAdminFeaturePolicy(
 
 export async function requireAdminRequestFeature(
   supabase: SupabaseClient, request: Request,
-  user: { sub: string; org_id?: string; roles?: readonly string[] },
+  user: { sub: string; org_id?: string; roles?: readonly string[] }, hybridPlanId: string | undefined,
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if (!/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(url.pathname)) return null;
@@ -103,16 +103,18 @@ export async function requireAdminRequestFeature(
   }
   const policy = resolveAdminFeaturePolicy(url.pathname, body.action, body, type);
   if (policy === null) return null;
+  let subscription;
   try {
-    const subscription = await resolveUserEntitlement(supabase, user.sub, {
+    subscription = await resolveUserEntitlement(supabase, user.sub, {
       roles: user.roles, org_id: user.org_id, scope: `${type}_admin` as SubscriptionScope,
     });
     if (!subscription) return apiError(403, 'SUBSCRIPTION_REQUIRED', 'An applicable organization subscription is required.', request);
   } catch {
     return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Unable to verify organization coverage. Please retry.', request);
   }
+  if (!subscription.plan_code) return apiError(503, 'SUBSCRIPTION_UNAVAILABLE', 'Organization plan could not be verified. Please retry.', request);
   for (const keys of policy) {
-    const denied = await requireHybridFeature(supabase, request, type, keys, user.sub, user.org_id);
+    const denied = await requireHybridFeature(supabase, request, type, hybridPlanId, keys, user.sub, user.org_id, { plan_id: subscription.plan_id ?? null, features: subscription.features });
     if (denied) return denied;
   }
   return null;

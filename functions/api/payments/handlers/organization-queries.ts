@@ -1,5 +1,5 @@
 import { getContextUser } from '../../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import { authorizeSeatOrganization, type SeatRequestContext as AuthenticatedContext } from '../../../lib/seat-access';
 import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 
@@ -16,17 +16,8 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
 
     // Guard: Require authorization for any org-scoped action
     if (orgId && (action === 'getOrganizationSubscription' || action === 'getOrganizationMembers')) {
-      const { data: membership } = await supabase
-        .from('license_assignments')
-        .select('id, role')
-        .eq('user_id', user.id)
-        .eq('organization_id', orgId)
-        .limit(1)
-        .maybeSingle();
-
-      if (!membership || (membership.role !== 'admin' && membership.role !== 'owner')) {
-        return apiError(403, 'FORBIDDEN', 'Not authorized for this organization', context.request);
-      }
+      const denied = await authorizeSeatOrganization(supabase, user.id, orgId, context.request, true);
+      if (denied) return denied;
     }
 
     if (action === 'getOrganizationSubscription' && orgId) {
@@ -54,10 +45,11 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
     }
 
     if (action === 'getOrganizationMembers' && orgId) {
-      const { data, error } = await supabase
-        .from('license_assignments')
-        .select(`*, users_shadow (id, email)`)
-        .eq('organization_id', orgId)
+      const { data: subscriptions, error: subscriptionError } = await supabase.from('subscription_cache').select('id').eq('organization_id', orgId);
+      if (subscriptionError) throw subscriptionError;
+      if (!subscriptions?.length) return apiSuccess([], context.request);
+      const { data, error } = await supabase.from('license_assignments')
+        .select('*, users_shadow:users (id, email)').in('organization_subscription_id', subscriptions.map(sub => sub.id))
         .order('assigned_at', { ascending: false });
 
       if (error) throw error;
@@ -76,11 +68,11 @@ export async function handleOrganizationQueries(context: AuthenticatedContext): 
 
       // Look up subscription details from cache
       let shaped = data;
-      if (data?.subscription_id) {
+      if (data?.organization_subscription_id) {
         const { data: subCache } = await supabase
           .from('subscription_cache')
           .select('id, status, subscription_start_date, subscription_end_date, plan_code, plan_name')
-          .eq('id', data.subscription_id)
+          .eq('id', data.organization_subscription_id)
           .maybeSingle();
 
         if (subCache) {

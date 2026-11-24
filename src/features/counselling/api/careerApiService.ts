@@ -72,47 +72,35 @@ export async function sendCareerChatMessage(
 
     const decoder = new TextDecoder();
     let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (line.trim() === '') continue; // Skip empty lines
-
-        if (line.startsWith('event: ')) {
-          continue; // Process next line for data
-        }
-
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6));
-
-            // Handle different event types based on data structure
-            if (data.content) {
-              onToken?.(data.content);
-            } else if (data.error) {
-              onError?.(new Error(typeof data.error === 'string' ? data.error : data.error.type || data.error.message || 'Unknown error'));
-            } else if (data.done || data.conversationId || data.messageId || data.intent) {
-              onDone?.(data);
-            }
-          } catch (parseError) {
-            logger.warn('Failed to parse career chat SSE data', {
-              error: parseError instanceof Error ? parseError.message : String(parseError)
-            });
-          }
-        }
+    let completed = false;
+    const consumeLine = (line: string) => {
+      if (completed || !line.startsWith('data: ')) return;
+      const data = JSON.parse(line.slice(6));
+      if (data.error) throw new Error(typeof data.error === 'string' ? data.error : data.error.type || data.error.message || 'Chat request failed');
+      if (typeof data.content === 'string') onToken?.(data.content);
+      if (data.done === true) {
+        completed = true;
+        onDone?.(data);
       }
+    };
+    try {
+      while (!completed) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) consumeLine(line.trimEnd());
+      }
+      buffer += decoder.decode();
+      if (!completed && buffer.trim()) consumeLine(buffer.trimEnd());
+      if (!completed) throw new Error('The response was interrupted before it could be saved. Please try again.');
+    } finally {
+      await reader.cancel().catch(() => undefined);
+      reader.releaseLock();
     }
   } catch (error) {
-    if ((error as Error).name === 'AbortError') {
-      return;
-    }
-    onError?.(error as Error);
+    onError?.(error instanceof Error ? error : new Error('Chat request failed'));
   }
 }
 

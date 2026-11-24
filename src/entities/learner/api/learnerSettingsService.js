@@ -6,7 +6,7 @@
  */
 
 import { PASSWORD_MIN } from '@/shared/constants';
-import { apiPost } from '@/shared/api/apiClient';
+import { apiPost, apiPut } from '@/shared/api/apiClient';
 import { SETTINGS_ERROR_CODES } from '@/shared/lib/settingsErrorHandler';
 
 /**
@@ -148,6 +148,26 @@ export const getlearnerSettingsByEmail = async (email) => {
  * @param {Object} updates - Data to update
  * @returns {Promise<Object>} Updated learner data
  */
+export const updatelearnerInstitutionSettings = async (email, updates) => {
+  try {
+    // This owner-only endpoint derives the target from the verified session.
+    // Do not forward unrelated personal drafts or client-selected learner IDs.
+    const fields = ['schoolId', 'schoolClassId', 'collegeId', 'universityId',
+      'universityCollegeId', 'programId', 'programSectionId', 'grade',
+      'gradeStartDate', 'semester', 'section', 'university', 'college',
+      'school_name', 'branch', 'courseName', 'specialization'];
+    const payload = Object.fromEntries(fields.filter(key => updates[key] !== undefined)
+      .map(key => [key, updates[key]]));
+    const result = await apiPut('/learners/profile', payload);
+    if (!result?.success || !result.learner) {
+      return { success: false, error: 'Failed to update institution details' };
+    }
+    return await getlearnerSettingsByEmail(email);
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
 export const updatelearnerSettings = async (email, updates) => {
   try {
     const learnerResult = await apiPost('/learner-profile/actions', {

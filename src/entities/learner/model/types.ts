@@ -1,3 +1,5 @@
+import type { Learner as SharedLearner } from '@/shared/types/learner';
+
 export interface EducationData {
   degree: string; // required: true
   university: string; // required: true
@@ -56,6 +58,7 @@ export interface CertificateData {
 }
 
 export interface SkillData {
+  id?: string;
   name: string; // required: true
   type?: 'technical' | 'soft';
   level?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
@@ -275,6 +278,7 @@ export interface ProjectRecord {
 }
 
 export interface CertificateRecord {
+  training_id?: string;
   id: string;
   learner_id: string;
   title: string;
@@ -433,6 +437,11 @@ export interface ProfileObject {
 
 // Update interfaces that support both frontend (camelCase) and database (snake_case) field names
 export interface EducationUpdateData {
+  qualification?: string;
+  approval_status?: string;
+  enabled?: boolean;
+
+  id?: string;
 
   degree?: string;
   university?: string;
@@ -445,6 +454,7 @@ export interface EducationUpdateData {
 }
 
 export interface TrainingUpdateDataFull {
+  id?: string;
 
   title?: string;
   course?: string;
@@ -463,11 +473,17 @@ export interface TrainingUpdateDataFull {
   hours_spent?: number;
   description?: string;
   status?: string;
-  skills?: SkillData[];
-  skillsList?: SkillData[];
+  skills?: (SkillData | string)[];
+  skillsList?: (SkillData | string)[];
 }
 
 export interface ExperienceUpdateData {
+  duration?: string;
+  verified?: boolean;
+  approval_status?: string;
+  enabled?: boolean;
+
+  id?: string;
 
   role?: string;
   organization?: string;
@@ -477,6 +493,7 @@ export interface ExperienceUpdateData {
 }
 
 export interface ProjectUpdateData {
+  id?: string;
 
   title?: string;
   description?: string;
@@ -505,6 +522,12 @@ export interface ProjectUpdateData {
 }
 
 export interface CertificateUpdateData {
+  documentLink?: string;
+  status?: string;
+  approval_status?: string;
+  enabled?: boolean;
+
+  id?: string;
  
   title?: string;
   issuer?: string;
@@ -523,6 +546,12 @@ export interface CertificateUpdateData {
 }
 
 export interface SkillUpdateData {
+  proficiency_level?: string;
+  verified?: boolean;
+  approval_status?: string;
+  enabled?: boolean;
+
+  id?: string;
 
   name?: string;
   type?: 'technical' | 'soft';
@@ -540,4 +569,50 @@ export interface LearnerApiResponse {
   success?: boolean;
   error?: string | null;
   [key: string]: unknown;
+}
+
+/** Read contract of /learners/by-email, including its related profile records. */
+export interface LearnerDetailRecord extends Omit<SharedLearner, 'projects' | 'certificates'> {
+  contact_dial_code?: number;
+  dateOfBirth?: string;
+  course_name?: string;
+  class_year?: string;
+  imported_at?: string;
+  program_id?: string;
+  university_college_id?: string;
+  university_colleges?: Record<string, unknown> | null;
+  state_name?: string;
+  resumeUrl?: string;
+  profilePicture?: string;
+  gap_in_studies?: boolean;
+  gap_years?: number;
+  gap_reason?: string;
+  work_experience?: string;
+  aadhar_number?: string;
+  backlogs_history?: string;
+  current_backlogs?: number;
+  education?: EducationRecord[];
+  trainings?: TrainingRecord[];
+  experience?: ExperienceRecord[];
+  projects?: ProjectRecord[];
+  certificates?: CertificateRecord[];
+  skills?: SkillRecord[];
+  skill_passports?: Partial<SkillPassport>;
+  users?: { role?: string } | null;
+  privacySettings?: Record<string, unknown>;
+}
+
+export interface LearnerProfileInput extends Partial<Omit<LearnerDetailRecord, 'college'>> {
+  department?: string | null;
+  phone?: string;
+  alternatePhone?: string;
+  contact_number_dial_code?: number;
+  district?: string | null;
+  college?: string | null;
+  registrationNumber?: string | null;
+  classYear?: string;
+  course?: string;
+  training?: TrainingData[];
+  technicalSkills?: SkillRecord[];
+  softSkills?: SkillRecord[];
 }

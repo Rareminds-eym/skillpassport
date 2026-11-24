@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Award, BookOpen, CheckCircle, Clock, Loader2, Lock, Play, RotateCcw, Users, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/shared/model/authStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
@@ -8,6 +8,10 @@ import { PLAN_IDS, PLAN_HIERARCHY_LEVELS } from '@/shared/config/subscriptionPla
 
 const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentProgress, isRecordingInterest = false, readOnly=false }) => {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showAllSkills, setShowAllSkills] = useState(false);
+  useEffect(() => {
+    setShowAllSkills(false);
+  }, [course?.course_id, course?.id, isOpen]);
   const navigate = useNavigate();
   const user = useUser();
   const { subscriptionData } = useSubscriptionQuery({enabled:!readOnly});
@@ -128,7 +132,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
           className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
         >
           {/* Header with Thumbnail */}
-          <div className="relative h-64 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
+          <div className="relative h-36 sm:h-44 shrink-0 bg-gradient-to-br from-indigo-500 to-purple-600 overflow-hidden">
             {(course.thumbnail?.startsWith('http') || course.thumbnail?.startsWith('data:')) ? (
               <img
                 src={course.thumbnail}
@@ -194,10 +198,10 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
           )}
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-5 sm:p-6">
             {/* Course Title and Code */}
             <div className="mb-6">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">{course.title}</h2>
+              <h2 className="text-2xl font-bold leading-tight text-gray-900 mb-2 break-words">{course.title}</h2>
               <p className="text-sm text-gray-500">Course Code: {course.code}</p>
             </div>
 
@@ -221,7 +225,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <BookOpen className="w-5 h-5 text-indigo-600" />
                 <div>
                   <p className="text-xs text-gray-500">Modules</p>
-                  <p className="text-sm font-medium">{course.modules?.length || 0}</p>
+                  <p className="text-sm font-medium">{course.modules?.length || 'Coming soon'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 text-gray-600">
@@ -236,7 +240,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
             {/* Description */}
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">About This Course</h3>
-              <p className="text-gray-600 leading-relaxed">{course.description}</p>
+              <p className="text-sm text-gray-600 leading-relaxed">{course.description}</p>
             </div>
 
             {/* Instructor */}
@@ -260,38 +264,50 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Skills You'll Learn</h3>
                 <div className="flex flex-wrap gap-2">
-                  {course.skills_covered.map((skill, index) => (
+                  {(showAllSkills ? course.skills_covered : course.skills_covered.slice(0, 6)).map((skill, index) => (
                     <span
                       key={index}
-                      className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-200"
+                      className="max-w-full break-words px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-sm font-medium border border-indigo-200"
                     >
                       {skill}
                     </span>
                   ))}
                 </div>
+                {course.skills_covered.length > 6 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllSkills(previous => !previous)}
+                    aria-expanded={showAllSkills}
+                    className="mt-3 inline-flex min-h-11 items-center text-sm font-medium text-indigo-600 hover:text-indigo-700 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                  >
+                    {showAllSkills ? 'Show fewer skills' : `Show all ${course.skills_covered.length} skills`}
+                  </button>
+                )}
               </div>
             )}
 
             {/* Course Modules/Structure */}
-            {course.modules && course.modules.length > 0 && (
+            {course.modules && course.modules.length > 0 ? (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">Course Content</h3>
                 <div className="space-y-3">
                   {course.modules.map((module, index) => (
-                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">
+                    <div key={module.module_id || index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1 sm:gap-4 mb-2">
+                        <h4 className="text-base font-semibold leading-snug text-gray-900 min-w-0 break-words">
                           Module {index + 1}: {module.title}
                         </h4>
-                        <span className="text-xs text-gray-500">
-                          {module.lessons?.length || 0} lessons
+                        <span className="text-xs text-gray-500 shrink-0 sm:pt-0.5">
+                          {module.lessons?.length
+                            ? `${module.lessons.length} ${module.lessons.length === 1 ? 'lesson' : 'lessons'}`
+                            : 'Lessons coming soon'}
                         </span>
                       </div>
                       {module.lessons && module.lessons.length > 0 && (
-                        <ul className="space-y-1 ml-4">
+                        <ul className="space-y-2 mt-3">
                           {module.lessons.map((lesson, lessonIndex) => (
-                            <li key={lessonIndex} className="flex items-center gap-2 text-sm text-gray-600">
-                              <CheckCircle className="w-4 h-4 text-gray-400" />
+                            <li key={lessonIndex} className="flex items-start gap-2 text-sm leading-relaxed text-gray-600">
+                              <BookOpen className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
                               {lesson.title || lesson}
                             </li>
                           ))}
@@ -301,6 +317,11 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                   ))}
                 </div>
               </div>
+            ) : (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">Course Content</h3>
+                <p className="text-sm text-gray-500">Course content coming soon.</p>
+              </div>
             )}
 
             {/* Target Outcomes */}
@@ -309,7 +330,7 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">What You'll Achieve</h3>
                 <ul className="space-y-2">
                   {course.target_outcomes.map((outcome, index) => (
-                    <li key={index} className="flex items-start gap-2 text-gray-600">
+                    <li key={index} className="flex items-start gap-2 text-sm leading-relaxed text-gray-600">
                       <CheckCircle className="w-5 h-5 text-emerald-500 mt-0.5 flex-shrink-0" />
                       <span>{outcome}</span>
                     </li>
@@ -320,8 +341,8 @@ const CourseDetailModal = ({ course, isOpen, onClose, onStartCourse, enrollmentP
           </div>
 
           {/* Footer with Action Button */}
-          <div className="border-t border-gray-200 p-6 bg-gray-50">
-            <div className="flex items-center justify-between">
+          <div className="shrink-0 border-t border-gray-200 px-5 py-4 sm:px-6 bg-gray-50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <p className="text-sm text-gray-600">
                   {isCompleted

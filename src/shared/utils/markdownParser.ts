@@ -3,6 +3,8 @@
  * Provides a unified parsing interface for DOCX and PDF exports
  */
 
+import { stripWorksheetMarkers } from './worksheetPresentation';
+
 export type ParsedLine =
   | { type: 'blank' }
   | { type: 'separator' }
@@ -18,7 +20,7 @@ export type ParsedLine =
  * Parse markdown content into structured line objects
  */
 export function parseMarkdownLines(content: string): ParsedLine[] {
-  const lines = content.split('\n');
+  const lines = stripWorksheetMarkers(content).split('\n');
   const parsed: ParsedLine[] = [];
 
   for (const line of lines) {

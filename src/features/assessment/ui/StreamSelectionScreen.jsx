@@ -97,15 +97,15 @@ export const StreamSelectionScreen = ({
   isLoading = false,
   learnerProgram = null,
 }) => {
-  // Use different streams based on grade level
-  // For after10, higher_secondary (11th/12th), and after12: use AFTER10_STREAMS_BY_CATEGORY (PCMB, PCMS, PCM, PCB, etc.)
-  // For college: use STREAMS_BY_CATEGORY (B.Sc, B.Tech, MBBS, BBA, etc.)
-  const streamsConfig = (gradeLevel === 'after10' || gradeLevel === 'higher_secondary' || gradeLevel === 'after12') 
-    ? AFTER10_STREAMS_BY_CATEGORY 
+  // School streams and post-school programs have distinct canonical catalog IDs.
+  const streamsConfig = gradeLevel === 'after10' || gradeLevel === 'higher_secondary'
+    ? AFTER10_STREAMS_BY_CATEGORY
     : STREAMS_BY_CATEGORY;
-  
-  // Get streams for selected category (handle null/undefined)
-  const streams = selectedCategory ? (streamsConfig[selectedCategory] || []) : [];
+
+  const categoryStreams = selectedCategory ? (streamsConfig[selectedCategory] || []) : [];
+  const streams = gradeLevel === 'after10'
+    ? categoryStreams.map(stream => ({ ...stream, id: `${stream.id}_after10` }))
+    : categoryStreams;
   const categoryLabel = getCategoryLabel(selectedCategory);
 
   // Check if a stream matches learner's program (for recommendations)

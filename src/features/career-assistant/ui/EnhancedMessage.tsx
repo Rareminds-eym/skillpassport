@@ -1,12 +1,10 @@
-import React, { useState, memo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import * as Dialog from '@radix-ui/react-dialog';
+import React, { useState, useRef, memo } from 'react';
+import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { useNavigate } from 'react-router-dom';
 import { X, Star } from 'lucide-react';
-import { getLogger } from '@/shared/config/logging';
-
-const logger = getLogger('enhanced-message');
 import { InteractiveCardRenderer } from './InteractiveCards';
 import { VisualizationContainer } from './Visualizations';
 import { formatMessageTime } from '@/features/career-assistant';
@@ -32,6 +30,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = memo(({
   onSendQuery
 }) => {
   const navigate = useNavigate();
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleAction = (button: ActionButton) => {
     switch (button.action.type) {
@@ -45,10 +44,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = memo(({
         window.open(button.action.value, '_blank', 'noopener,noreferrer');
         break;
       case 'function':
-        logger.info('Interactive function action triggered', {
-          actionValue: button.action.value,
-          hasData: !!button.action.data
-        });
+        setActionError('This action is not available.');
         break;
     }
   };
@@ -64,6 +60,7 @@ export const EnhancedMessage: React.FC<EnhancedMessageProps> = memo(({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="max-w-[90%] rounded-2xl px-6 py-4 bg-gray-100 text-gray-900"
       >
+        {actionError && <p role="alert" className="text-sm text-red-700">{actionError}</p>}
         {response.message && (
           <div className="prose prose-sm max-w-none mb-4">
             <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{response.message}</ReactMarkdown>
@@ -199,7 +196,7 @@ interface SimpleMessageProps {
   timestamp: string;
   isUser?: boolean;
   messageId?: string;
-  onFeedback?: (messageId: string, thumbsUp: boolean, rating?: number, feedback?: string) => void;
+  onFeedback?: (messageId: string, thumbsUp: boolean, rating?: number, feedback?: string) => Promise<boolean>;
   feedbackData?: FeedbackData | null;
   feedbackLoading?: boolean;
 }
@@ -227,31 +224,24 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
   const savedRating = feedbackData?.rating ?? null;
   const savedFeedback = feedbackData?.feedback ?? null;
 
-  const handleThumbsUp = () => {
-    if (messageId && onFeedback) {
-      onFeedback(messageId, true);
-    }
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const feedbackOpener = useRef<HTMLButtonElement>(null);
+  const save = async (positive: boolean, includeDetails = false) => {
+    if (!messageId || !onFeedback || saving) return;
+    setSaving(true); setFeedbackError(null);
+    try {
+      const saved = await onFeedback(messageId, positive, includeDetails ? rating || undefined : undefined,
+        includeDetails ? feedbackText || undefined : undefined);
+      if (!saved) { setFeedbackError('Feedback could not be saved. Please try again.'); return; }
+      setShowFeedbackModal(false); setRating(0); setFeedbackText('');
+    } catch { setFeedbackError('Feedback could not be saved. Please try again.'); }
+    finally { setSaving(false); }
   };
-
-  const handleThumbsDown = () => {
-    setShowFeedbackModal(true);
-  };
-
-  const handleSubmitFeedback = () => {
-    if (messageId && onFeedback) {
-      onFeedback(messageId, false, rating || undefined, feedbackText || undefined);
-    }
-    setShowFeedbackModal(false);
-    setRating(0);
-    setFeedbackText('');
-  };
-
-  const handleSkipFeedback = () => {
-    if (messageId && onFeedback) {
-      onFeedback(messageId, false);
-    }
-    setShowFeedbackModal(false);
-  };
+  const handleThumbsUp = () => void save(true);
+  const handleThumbsDown = () => { setFeedbackError(null); setShowFeedbackModal(true); };
+  const handleSubmitFeedback = () => void save(false, true);
+  const handleSkipFeedback = () => void save(false);
 
   return (
     <>
@@ -271,15 +261,8 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
               <ReactMarkdown
                 rehypePlugins={[rehypeSanitize]}
                 components={{
-                  code({ inline, className, children, ...props }: any) {
-                    return !inline ? (
-                      <pre className="bg-gray-800 text-gray-100 rounded-lg p-4 overflow-x-auto my-3">
-                        <code className={className} {...props}>{children}</code>
-                      </pre>
-                    ) : (
-                      <code className="bg-gray-200 text-gray-800 px-1.5 py-0.5 rounded text-sm" {...props}>{children}</code>
-                    );
-                  },
+                  pre({ children }) { return <pre className="bg-gray-800 text-gray-100 rounded-lg p-4 overflow-x-auto my-3">{children}</pre>; },
+                  code({ className, children }) { return <code className={className}>{children}</code>; },
                   ul({ children }) {
                     return <ul className="list-disc pl-4 space-y-1 my-2">{children}</ul>;
                   },
@@ -350,8 +333,9 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
                 ) : (
                   <>
                     <button
+                      aria-pressed={feedbackState === true}
                       onClick={handleThumbsUp}
-                      disabled={feedbackLoading}
+                      disabled={feedbackLoading || saving}
                       className={`p-1.5 rounded-lg transition-all ${feedbackState === true
                           ? 'bg-green-100 text-green-600'
                           : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
@@ -363,8 +347,10 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
                       </svg>
                     </button>
                     <button
+                      ref={feedbackOpener}
+                      aria-pressed={feedbackState === false}
                       onClick={handleThumbsDown}
-                      disabled={feedbackLoading}
+                      disabled={feedbackLoading || saving}
                       className={`p-1.5 rounded-lg transition-all ${feedbackState === false
                           ? 'bg-red-100 text-red-600'
                           : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
@@ -411,25 +397,15 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
       </motion.div>
 
       {/* Feedback Modal */}
-      <AnimatePresence>
-        {showFeedbackModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowFeedbackModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-xl"
-            >
+      {!showFeedbackModal && feedbackError && <p role="alert" className="text-sm text-red-700">{feedbackError}</p>}
+      <Dialog.Root open={showFeedbackModal} onOpenChange={setShowFeedbackModal}>
+        <Dialog.Portal><Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content onCloseAutoFocus={event => { event.preventDefault(); feedbackOpener.current?.focus(); }} className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl p-6 max-w-md w-[calc(100%-2rem)] shadow-xl">
+            <Dialog.Description className="sr-only">Rate this response and optionally tell us what to improve.</Dialog.Description>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Help us improve</h3>
+                <Dialog.Title className="text-lg font-semibold text-gray-900">Help us improve</Dialog.Title>
                 <button
+                  aria-label="Close feedback"
                   onClick={() => setShowFeedbackModal(false)}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                 >
@@ -444,6 +420,7 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
+                      aria-label={`${star} stars`} aria-pressed={rating === star} disabled={saving}
                       onClick={() => setRating(star)}
                       onMouseEnter={() => setHoveredStar(star)}
                       onMouseLeave={() => setHoveredStar(0)}
@@ -464,6 +441,7 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
               <div className="mb-4">
                 <p className="text-sm text-gray-600 mb-2">What could be improved? (optional)</p>
                 <textarea
+                  aria-label="What could be improved?" disabled={saving}
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Tell us what went wrong or how we can do better..."
@@ -472,25 +450,27 @@ export const SimpleMessage: React.FC<SimpleMessageProps> = memo(({
                 />
               </div>
 
+              {feedbackError && <p role="alert" className="text-sm text-red-700 mb-3">{feedbackError}</p>}
               {/* Action Buttons */}
               <div className="flex gap-3">
                 <button
+                  disabled={saving}
                   onClick={handleSkipFeedback}
                   className="flex-1 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                 >
                   Skip
                 </button>
                 <button
+                  disabled={saving}
                   onClick={handleSubmitFeedback}
                   className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Submit Feedback
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 });

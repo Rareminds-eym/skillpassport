@@ -100,7 +100,12 @@ export const useLearnerDataByEmail = (email?: string, _fallbackToMock = true) =>
     };
 
     fetchData();
-    return () => { sequence.current++; };
+    const onSettingsUpdated = () => { void refresh(); };
+    window.addEventListener('learner_settings_updated', onSettingsUpdated);
+    return () => {
+      sequence.current++;
+      window.removeEventListener('learner_settings_updated', onSettingsUpdated);
+    };
   }, [email]);
 
   const refresh = async () => {
@@ -119,11 +124,15 @@ export const useLearnerDataByEmail = (email?: string, _fallbackToMock = true) =>
       setError(null);
     } else {
       logger.error('Error loading data', new Error(result.error || 'Unknown error'), { email });
+      setlearnerData(null);
       setError(result.error);
     }
 
     } catch {
-      if (ticket === sequence.current && identity.current === email) setError('Unable to refresh learner profile');
+      if (ticket === sequence.current && identity.current === email) {
+        setlearnerData(null);
+        setError('Unable to refresh learner profile');
+      }
     } finally {
       if (ticket === sequence.current && identity.current === email) setLoading(false);
     }

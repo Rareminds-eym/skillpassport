@@ -320,6 +320,9 @@ async function loadAISections(supabase: any, streamId?: string | null, gradeLeve
       questions: [] // Empty - will be generated when user reaches this stage
     });
 
+    // The after10 generation contract provides aptitude without stream knowledge.
+    if (gradeLevel === 'after10') return sections;
+
     // === ALWAYS ADD KNOWLEDGE SECTION (questions generated on-demand) ===
     logger.info('[loadAISections] Adding Stream Knowledge section placeholder', { streamId, gradeLevel });
     

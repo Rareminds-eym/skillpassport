@@ -86,7 +86,7 @@ export function ApplicationsDialog({ requisition, canManage, onClose }: { requis
     return <div className="flex items-center gap-2">
       <ActionIcon label={`View ${nameOf(app)}`} tooltip="View candidate details" icon={EyeIcon} onClick={() => setSelectedId(app.id)} />
       <ActionIcon label="Update status" tooltip={!canManage || !transitions.length ? unavailable : 'Update application status'} icon={PencilSquareIcon} disabled={!canManage || !transitions.length} onClick={() => setEditor({ id: app.id, reject: false })} />
-      <ActionIcon label="Add to shortlist" tooltip={!canManage ? unavailable : !(app.learner_id || app.learners?.id) ? 'Candidate profile is unavailable' : 'Add candidate to shortlist'} icon={UserPlusIcon} disabled={!canManage || !(app.learner_id || app.learners?.id)} onClick={() => setShortlistId(app.id)} />
+      <ActionIcon label="Add to shortlist" tooltip={app.application_status === 'rejected' ? 'Reopen this application for review before shortlisting' : !canManage ? unavailable : !(app.learner_id || app.learners?.id) ? 'Candidate profile is unavailable' : 'Add candidate to shortlist'} icon={UserPlusIcon} disabled={!canManage || app.application_status === 'rejected' || !(app.learner_id || app.learners?.id)} onClick={() => setShortlistId(app.id)} />
       <ActionIcon label={app.application_status === 'rejected' ? 'Rejected' : 'Reject'} tooltip={app.application_status === 'rejected' ? 'Already rejected. Use Update status to reopen for review.' : !canManage || !transitions.includes('rejected') ? unavailable : 'Reject application'} icon={XCircleIcon} danger disabled={!canManage || !transitions.includes('rejected')} onClick={() => setEditor({ id: app.id, reject: true })} />
     </div>;
   };
@@ -180,7 +180,7 @@ function ShortlistDialog({ app, onClose }: { app: ApplicationRecord; onClose: ()
     event.preventDefault(); if (lock.current || !selected) return;
     lock.current = true; setBusy(true); setError('');
     try {
-      const result = await apiPost<{ data: { data?: { id: string } | null; error?: { message: string } } }>('/opportunities', { action: 'add-candidate-to-shortlist', shortlist_id: selected, learner_id: app.learner_id || app.learners?.id });
+      const result = await apiPost<{ data: { data?: { id: string } | null; error?: { message: string } } }>('/opportunities', { action: 'add-application-to-shortlist', application_id: app.id, shortlist_id: selected, learner_id: app.learner_id || app.learners?.id });
       if (result.data?.error) throw new Error(result.data.error.message);
       if (!result.data?.data?.id) throw new Error('The shortlist update was not confirmed. Please refresh before retrying.');
       toast.success('Candidate added to shortlist'); onClose();

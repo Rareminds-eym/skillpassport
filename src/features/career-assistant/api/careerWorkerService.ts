@@ -3,7 +3,7 @@
  * Calls the Cloudflare Worker for career AI processing
  */
 
-import { careerApiService } from '@/features/counselling';
+import { sendCareerChatMessage, healthCheck } from '@/features/counselling/api/careerApiService';
 import { useAuthStore } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
 
@@ -44,38 +44,24 @@ export async function streamCareerChat(
       return { success: false, error: 'Please log in to use Career AI' };
     }
 
-    let result: CareerChatResult = { success: true };
+    let result: CareerChatResult = { success: false, error: 'The response did not include a completion confirmation.' };
 
-    await new Promise<void>((resolve) => {
-      careerApiService.sendCareerChatMessage(
-        { conversationId: conversationId || undefined, message, selectedChips },
-        (content) => onChunk(content),
-        (data) => {
-          const response = data as any;
-          if (response.conversationId) result.conversationId = response.conversationId;
-          if (response.messageId) result.messageId = response.messageId;
-          if (response.intent) result.intent = response.intent;
-          if (response.intentConfidence) result.intentConfidence = response.intentConfidence;
-          if (response.phase) result.phase = response.phase;
-          if (response.error) {
-            result.success = false;
-            result.error = response.error;
-          }
-          resolve();
-        },
-        (error) => {
-          logger.error('Career AI service request failed', error as Error);
-          result.success = false;
-          result.error = error.message;
-          resolve();
-        },
-        abortSignal
-      );
-    });
+    await sendCareerChatMessage(
+      { conversationId: conversationId || undefined, message, selectedChips },
+      onChunk,
+      (data) => {
+        const response = data as CareerChatResult;
+        result = { ...response, success: true };
+      },
+      (error) => { result = { success: false, error: error.message }; },
+      abortSignal
+    );
+    if (abortSignal?.aborted) throw new DOMException('Request aborted', 'AbortError');
 
     return result;
 
   } catch (error: any) {
+    if (abortSignal?.aborted) throw new DOMException('Request aborted', 'AbortError');
     logger.error('Career AI stream processing failed', error as Error);
     return {
       success: false,
@@ -89,7 +75,7 @@ export async function streamCareerChat(
  */
 export async function checkWorkerHealth(): Promise<boolean> {
   try {
-    await careerApiService.healthCheck();
+    await healthCheck();
     return true;
   } catch {
     return false;

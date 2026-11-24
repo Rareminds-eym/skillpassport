@@ -12,13 +12,13 @@ import {
   DocumentChartBarIcon,
   FolderIcon,
   HomeIcon,
-  LockClosedIcon,
   PencilSquareIcon,
   PhotoIcon,
   SparklesIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
-import React, { useState } from "react";
+import * as React from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 
@@ -27,7 +27,7 @@ function classNames(...classes: string[]) {
 }
 
 interface SidebarProps {
-  setActiveTab: (tab: string) => void;
+  setActiveTab: (tab: string) => void; // eslint-disable-line no-unused-vars
   showMobileMenu: boolean;
   onMobileMenuClose?: () => void;
 }
@@ -73,9 +73,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     ]},
     {title:"Learning & Evaluation",key:"learning",items:[
       {name:"Assignments",path:"/educator/college-assignments",icon:AcademicCapIcon},
-      {name:"Mentor Notes",path:"/educator/mentor-notes",icon:PencilSquareIcon,disabled:true},
-      {name:"My Mentees",path:"/educator/my-mentees",icon:UserGroupIcon,disabled:true},
-      {name:"Verification",path:"/educator/activities",icon:CheckCircleIcon,disabled:true},
+      {name:"Mentor Notes",path:"/educator/mentor-notes",icon:PencilSquareIcon},
+      {name:"My Mentees",path:"/educator/my-mentees",icon:UserGroupIcon},
+      {name:"Verification",path:"/educator/activities",icon:CheckCircleIcon},
     ]},
   ] : isRaremindsEducator ? [] : [
     {
@@ -85,10 +85,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         { name: "Learners", path: "/educator/learners", icon: UserGroupIcon },
         // Show different navigation based on educator type
         ...(educatorType === 'college' 
-          ? [{ name: "Program Sections", path: "/educator/programs", icon: AcademicCapIcon, disabled: true }]
+          ? [{ name: "Program Sections", path: "/educator/programs", icon: AcademicCapIcon }]
           : [{ name: "Classes", path: "/educator/classes", icon: AcademicCapIcon }]
         ),
-        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon, disabled: true },
+        { name: "TimeTable", path: "/educator/my-timetable", icon: AcademicCapIcon },
         { name: "Mark Attendance", path: "/educator/mark-attendance", icon: ClipboardDocumentCheckIcon },
         { name: "Assessment Results", path: "/educator/assessment-results", icon: ClipboardDocumentListIcon },
         // { name: "Courses", path: "/educator/courses", icon: BookOpenIcon },
@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           name: "My Mentees",
           path: "/educator/my-mentees",
           icon: UserGroupIcon,
-          disabled: true,
+
         },
         {
           name: "Verification",
@@ -136,13 +136,13 @@ const Sidebar: React.FC<SidebarProps> = ({
           name: "Clubs & Compitetion",
           path: "/educator/clubs",
           icon: ClipboardDocumentListIcon,
-          disabled: true,
+
         },
         {
           name: "badges",
           path: "/educator/badges",
           icon: PencilSquareIcon,
-          disabled: true,
+
         },
       ],
     },
@@ -290,12 +290,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       type="button"
                       key={item.name}
-                      onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
-                      disabled={(item as any).disabled}
+                      onClick={() => handleNavigation(item.name, item.path)}
                       className={classNames(
-                        (item as any).disabled
-                          ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
-                          : isActive
+                        isActive
                           ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
                           : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                         "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
@@ -303,18 +300,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <item.icon
                         className={classNames(
-                          (item as any).disabled
-                            ? "text-gray-400"
-                            : isActive
+                          isActive
                             ? "text-indigo-600"
                             : "text-gray-400 group-hover:text-indigo-500",
                           "h-5 w-5 flex-shrink-0"
                         )}
                       />
                       <span className="flex-1 text-left">{item.name}</span>
-                      {(item as any).disabled && (
-                        <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      )}
                     </button>
                   );
                 })}
@@ -331,12 +323,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 key={item.name}
-                onClick={() => !(item as any).disabled && handleNavigation(item.name, item.path)}
-                disabled={(item as any).disabled}
+                onClick={() => handleNavigation(item.name, item.path)}
                 className={classNames(
-                  (item as any).disabled
-                    ? "text-gray-400 bg-gray-50 cursor-not-allowed opacity-60"
-                    : isActive
+                  isActive
                     ? "bg-indigo-50 text-indigo-600 border-l-2 border-indigo-500"
                     : "text-gray-600 hover:bg-gray-50 hover:text-indigo-600",
                   "group w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all duration-200"
@@ -344,18 +333,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <item.icon
                   className={classNames(
-                    (item as any).disabled
-                      ? "text-gray-400"
-                      : isActive
+                    isActive
                       ? "text-indigo-600"
                       : "text-gray-400 group-hover:text-indigo-500",
                     "h-5 w-5 flex-shrink-0"
                   )}
                 />
                 <span className="flex-1 text-left">{item.name}</span>
-                {(item as any).disabled && (
-                  <LockClosedIcon className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                )}
               </button>
             );
           })}

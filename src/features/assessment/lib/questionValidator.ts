@@ -22,7 +22,7 @@ export interface QuestionBatchValidationResult {
  * @param questionType - 'aptitude' or 'knowledge'
  * @returns { isValid, errors }
  */
-export function validateQuestion(question: any, questionType: string): QuestionValidationResult {
+export function validateQuestion(question: any, questionType: string, { requireCorrectAnswer = true } = {}): QuestionValidationResult {
   const errors: string[] = [];
   const autoFixes: string[] = [];
 
@@ -51,10 +51,22 @@ export function validateQuestion(question: any, questionType: string): QuestionV
     autoFixes.push(`Question text is short (${questionText.length} chars) but acceptable`);
   }
 
+  // Server-generated MCQs may use letter-keyed options. Preserve their order
+  // when converting to the array consumed by the assessment UI.
+  if (question.options && typeof question.options === 'object' && !Array.isArray(question.options)) {
+    const keys = ['A', 'B', 'C', 'D'].filter(key => Object.prototype.hasOwnProperty.call(question.options, key));
+    if (keys.length === Object.keys(question.options).length) {
+      question.options = keys.map(key => question.options[key]);
+    }
+  }
+
   // Check options
   if (!question.options || !Array.isArray(question.options)) {
     errors.push('Missing or invalid options array');
   } else {
+    if (question.options.some((option: unknown) => typeof option !== 'string' || !option.trim())) {
+      errors.push('Missing or invalid option text');
+    }
     // Clerical questions have 2 options (Same/Different), all others have 4
     // Check by category/subtype OR by detecting Same/Different options
     const hasSameDifferentOptions = question.options.length === 2 &&
@@ -80,9 +92,9 @@ export function validateQuestion(question: any, questionType: string): QuestionV
 
   // Check correct answer
   let correctAnswer = question.correct || question.correct_answer;
-  if (!correctAnswer) {
+  if (requireCorrectAnswer && !correctAnswer) {
     errors.push('Missing correct answer');
-  } else {
+  } else if (requireCorrectAnswer) {
     // Check if this is a clerical question (2 options: Same/Different)
     // Check by category/subtype OR by detecting Same/Different options
     const hasSameDifferentOptions = question.options && question.options.length === 2 &&
@@ -210,14 +222,15 @@ export function validateQuestion(question: any, questionType: string): QuestionV
 export function validateQuestionBatch(
   questions: any[],
   questionType: string,
-  expectedCount: number
+  expectedCount: number,
+  options: { requireCorrectAnswer?: boolean } = {}
 ): QuestionBatchValidationResult {
   const valid: any[] = [];
   const invalid: Array<{ question: any; errors: string[] }> = [];
   let autoFixedCount = 0;
 
   questions.forEach((q: any, idx: number) => {
-    const validation = validateQuestion(q, questionType);
+    const validation = validateQuestion(q, questionType, options);
     if (validation.isValid) {
       valid.push(q);
       if (validation.autoFixed) {

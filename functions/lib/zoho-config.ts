@@ -2,7 +2,8 @@
 export const ZOHO_PROJECTION_DEFAULTS = Object.freeze({ dependencyTimeoutMs: 5000, maxRequestBytes: 4096 });
 const disabled=Object.freeze({emailPolicy:'forbidden' as const,requiresApproval:true as const,projectionDelivery: false});
 export const ZOHO_PROFILES=Object.freeze({
-  production:disabled,dev:disabled,qa:disabled,preview:disabled,'local-review':disabled,blocked:disabled,
+  production:disabled,dev:disabled,preview:disabled,'local-review':disabled,blocked:disabled,
+  qa:Object.freeze({...disabled,projectionDelivery: true}),
   local:Object.freeze({...disabled,projectionDelivery: true}),
 });
 export function readZohoProjectionConfig(env: {ENVIRONMENT?: unknown;SUPABASE_URL?: unknown;VITE_SUPABASE_URL?: unknown}) {

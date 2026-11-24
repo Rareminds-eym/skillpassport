@@ -1,6 +1,6 @@
 /**
  * useUsageStatistics Hook
- * 
+ *
  * Custom hook to fetch and manage usage statistics for subscription features
  */
 
@@ -15,7 +15,7 @@ const logger = getLogger('usage-statistics');
  * @param {Object} planData - Current subscription plan data
  * @returns {Object} - Usage statistics state and methods
  */
-export const useUsageStatistics = (planData) => {
+export const useUsageStatistics = (planData, { enabled = true } = {}) => {
   const [usageStats, setUsageStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,7 @@ export const useUsageStatistics = (planData) => {
    * Fetch usage statistics
    */
   const fetchUsageStats = useCallback(async () => {
+    if (!enabled) return;
     setLoading(true);
     setError(null);
 
@@ -59,19 +60,21 @@ export const useUsageStatistics = (planData) => {
     } finally {
       setLoading(false);
     }
-  }, [planData]);
+  }, [planData, enabled]);
 
   /**
    * Refresh usage statistics
    */
   const refreshUsageStats = useCallback(() => {
-    fetchUsageStats();
-  }, [fetchUsageStats]);
+    if (enabled) void fetchUsageStats();
+    else setLoading(false);
+  }, [fetchUsageStats, enabled]);
 
   // Fetch on mount and when plan changes
   useEffect(() => {
-    fetchUsageStats();
-  }, [fetchUsageStats]);
+    if (enabled) void fetchUsageStats();
+    else setLoading(false);
+  }, [fetchUsageStats, enabled]);
 
   return {
     usageStats,

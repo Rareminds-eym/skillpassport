@@ -14,27 +14,46 @@ import { useUser } from '@/shared/model/authStore';
 const STALE_TIME = 2 * 60 * 1000; // 2 minutes
 const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
+export const getSubscriptionScope = (pathname) => pathname.startsWith('/college-admin') ? 'college_admin'
+  : pathname.startsWith('/school-admin') ? 'school_admin'
+    : pathname.startsWith('/university-admin') ? 'university_admin'
+      : pathname.startsWith('/learner') ? 'learner'
+        : pathname.startsWith('/educator') ? 'educator'
+          : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
+
+export const subscriptionQueryKey = (userId, scope) => [
+  ...queryKeys.subscription.data.byOrganization(userId), scope ?? 'default',
+];
+
 /**
  * Format raw subscription data from API
  */
-const formatSubscriptionData = (data) => {
+export const formatSubscriptionData = (data) => {
   if (!data) return null;
 
   // The database `subscription_plans` is the source of truth for the plan code and name.
   // Fallback to legacy `plan_type` text on the `subscriptions` table only if join data is missing.
-  const planId = data.subscription_plans?.plan_code || data.plan_type || data.plan_code;
-  const planName = data.subscription_plans?.name || data.plan_type;
+  const planId = data.subscription_plans?.plan_code || data.plan_code || data.plan_type;
+  const planName = data.subscription_plans?.name || data.plan_name || data.plan_type;
 
   return {
+    planId: data.plan_id,
+    productId: data.product_id,
+    revisionId: data.plan_revision_id ?? null,
+    lifecycleState: data.lifecycle_state ?? null,
+    lifecycleAccess: data.lifecycle_access ?? null,
+    isOrganizationSubscription: data.is_organization_subscription === true,
     id: data.id, // Subscription ID for cancellation
     plan: planId,
     status: data.status,
     startDate: data.subscription_start_date,
     endDate: data.subscription_end_date,
     features: data.features || [], // Features will be fetched from plans API
-    autoRenew: data.auto_renew !== false,
+    autoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
+    // Keep both subscription presentations explicit when the source omits renewal.
+    reportedAutoRenew: typeof data.auto_renew === 'boolean' ? data.auto_renew : null,
     nextBillingDate: data.subscription_end_date,
-    paymentStatus: data.status === 'active' ? 'success' : 'pending',
+    paymentStatus: data.payment_status ?? null,
     planName,
     planPrice: data.plan_amount,
     fullName: data.full_name,
@@ -67,7 +86,7 @@ const formatSubscriptionData = (data) => {
  * Compute access state from subscription data
  * Determines whether the user has platform access, why, and any warnings.
  */
-const computeAccessState = (sub) => {
+export const computeAccessState = (sub) => {
   if (!sub) {
     return {
       hasAccess: false,
@@ -82,6 +101,18 @@ const computeAccessState = (sub) => {
   const status = sub.status;
   const now = Date.now();
   const end = sub.endDate ? Date.parse(sub.endDate) : null;
+  if (sub.lifecycleAccess !== null && sub.lifecycleAccess !== undefined) {
+    const hasAccess = ['full', 'restricted', 'read_only'].includes(sub.lifecycleAccess)
+      && (!sub.startDate || Date.parse(sub.startDate) <= now)
+      && (!sub.licenseAssignmentId || end === null || end > now);
+    const limited = hasAccess && sub.lifecycleAccess !== 'full';
+    return { hasAccess, accessReason: hasAccess ? sub.lifecycleAccess : 'no_subscription',
+      showWarning: limited, warningType: limited ? sub.lifecycleAccess : null,
+      warningMessage: !limited ? null : sub.lifecycleAccess === 'read_only'
+        ? `${sub.status === 'cancelled' ? 'Your subscription is cancelled. ' : ''}You have read-only subscription access. New subscription activities are unavailable.`
+        : 'Your subscription access is restricted. Some subscription activities are unavailable.',
+      daysUntilExpiry: null };
+  }
   if ((sub.startDate && !(Date.parse(sub.startDate) <= now)) ||
       (end !== null && !(end + (status === 'grace_period' ? 7 * 86400000 : 0) > now))) {
     return { hasAccess: false, accessReason: 'expired', showWarning: false, daysUntilExpiry: 0 };
@@ -170,22 +201,16 @@ const fetchSubscription = async (userId, scope) => {
 
 /**
  * Main hook for subscription data with React Query
- * @returns {Object} Subscription query result
  */
 export const useSubscriptionQuery = (options = {}) => {
   const user = useUser();
   const { pathname } = useLocation();
-  const scope = pathname.startsWith('/college-admin') ? 'college_admin'
-    : pathname.startsWith('/school-admin') ? 'school_admin'
-      : pathname.startsWith('/university-admin') ? 'university_admin'
-        : pathname.startsWith('/learner') ? 'learner'
-          : pathname.startsWith('/educator') ? 'educator'
-            : pathname.startsWith('/recruitment') ? 'recruiter' : undefined;
+  const scope = getSubscriptionScope(pathname);
   const queryClient = useQueryClient();
 
   // Check if the query can run
-  const isQueryEnabled = !!user;
-  const queryKey = user?.id ? [...queryKeys.subscription.data.byOrganization(user.id), scope ?? 'default'] : queryKeys.subscription.data.all;
+  const isQueryEnabled = !!user && options.enabled !== false;
+  const queryKey = user?.id ? subscriptionQueryKey(user.id, scope) : queryKeys.subscription.data.all;
 
   const query = useQuery({
     queryKey,
@@ -198,7 +223,7 @@ export const useSubscriptionQuery = (options = {}) => {
     // staleTime (2 min) — no more than one background re-check per 2 minutes.
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    retry: (failureCount, error) => {
+    retry: (failureCount) => {
       // ponytail: Only retry if no data exists (initial sync after login)
       // If we have data, don't retry - it's cached and fresh
       const cachedData = queryClient.getQueryData(queryKey);
@@ -265,15 +290,7 @@ export const useSubscriptionQuery = (options = {}) => {
   );
 
   // Check if subscription has valid access (active, paused, or cancelled but not expired)
-  const hasValidSubscriptionAccess = useMemo(() => {
-    if (!query.data) return false;
-    const status = query.data.status;
-    if (status === 'active' || status === 'paused') return true;
-    if (status === 'cancelled' && query.data.endDate) {
-      return new Date(query.data.endDate) >= new Date();
-    }
-    return false;
-  }, [query.data]);
+  const hasValidSubscriptionAccess = accessState.hasAccess;
 
   const hasActiveOrPausedSubscription = useMemo(
     () => query.data && isActiveOrPaused(query.data.status),

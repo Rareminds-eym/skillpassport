@@ -7,9 +7,8 @@
 
 import { CreditCard, LayoutDashboard, Mail, Settings, Users } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
-import HybridPlanCard from './HybridPlanCard';
-import { useSubscriptionPlansData } from '../../model/useSubscriptionPlansData';
-import { isHybridPlan } from '../../lib/hybridPlan';
+import HybridPlanCard, { type HybridCatalogTerms } from './HybridPlanCard';
+import { usePublishedCatalog } from '../../model/useSubscriptionExecution';
 import BillingDashboard from './BillingDashboard';
 import InvitationManager from './InvitationManager';
 import LicensePoolManager from './LicensePoolManager';
@@ -142,8 +141,10 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
   } = props;
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const { plans: catalogPlans } = useSubscriptionPlansData({ businessType: 'b2b', entityType: organizationType, roleType: 'admin' });
-  const hybridPlan = catalogPlans?.find(plan => isHybridPlan(plan) && plan.contactSales);
+  // Sales-led published offers with owner card copy (e.g. Hybrid), already filtered to this organization's audience.
+  const [catalog] = usePublishedCatalog();
+  const salesOffers = catalog.status === 'ready'
+    ? catalog.data.plans.filter((plan): plan is HybridCatalogTerms => plan.purchaseMode === 'contact_sales' && plan.presentation.copy !== null) : [];
 
   const totalSeats = subscriptions
     .filter((s) => s.status === 'active' || s.status === 'grace_period')
@@ -175,7 +176,7 @@ function OrganizationSubscriptionDashboard(props: OrganizationSubscriptionDashbo
               onBrowsePlans={onBrowsePlans}
               isLoading={isLoading}
             />
-            {hybridPlan && <HybridPlanCard plan={hybridPlan} compact organizationName={organizationName} contactEmail={organizationDetails?.email} contactPhone={organizationDetails?.phone} />}
+            {salesOffers.map(plan => <HybridPlanCard key={plan.revisionId} plan={plan} compact organizationName={organizationName} contactEmail={organizationDetails?.email} contactPhone={organizationDetails?.phone} />)}
           </div>
         );
       case 'pools':

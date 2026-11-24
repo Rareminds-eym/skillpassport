@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAssistantVisibility } from '@/shared/model/assistantVisibility';
 
 const FloatingEducatorAIButton: React.FC = () => {
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
   const [isPulsing, setIsPulsing] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const facilitatorOpen = useAssistantVisibility(state => state.facilitatorOpen);
   const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -16,7 +18,7 @@ const FloatingEducatorAIButton: React.FC = () => {
   }, []);
 
   // Don't show on the AI Copilot page itself
-  if (location.pathname === '/educator/ai-copilot') {
+  if (facilitatorOpen || location.pathname === '/educator/ai-copilot') {
     return null;
   }
 

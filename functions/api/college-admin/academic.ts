@@ -29,6 +29,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const { action, ...params } = body;
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'Missing action parameter', context.request);
 
+  if (!action.startsWith('get-') && !action.startsWith('is-') && !action.startsWith('validate-')) {
+    const { data: actor, error: actorError } = await supabase.from('users').select('role,isActive').eq('id', user.id).maybeSingle();
+    const jwtIsCollegeAdmin = Array.isArray(user.roles) && user.roles.includes('college_admin');
+    if (actorError || !actor?.isActive || (actor.role !== 'college_admin' && !jwtIsCollegeAdmin)) {
+      return apiError(403, 'FORBIDDEN', 'Only a college administrator can change course mappings.', context.request);
+    }
+  }
+
   const startTime = Date.now();
 
   try {
@@ -444,7 +452,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: educatorUsers } = await supabase
           .from('users')
           .select('id, firstName, lastName, email')
-          .eq('role', 'college_educator');
+          .eq('role', 'college_educator')
+          .eq('organizationId', collegeId);
 
         const facultyMap = new Map<string, any>();
 
@@ -459,6 +468,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 id: lec.user_id,
                 name,
                 email: lec.email || '',
+                department: lec.department || '',
                 maxWorkload: 18,
                 currentWorkload: 0,
               });

@@ -1,9 +1,12 @@
+import { ApplicationResumeError, validateApplicationResume } from '../../lib/application-resume';
+import { wakeJobIndex } from '../../lib/wake-job-index';
+import { requireSubscriptionAccess, readRecruiterContactPermissions, recruiterCandidateView, readRecruiterInterviewViews } from '../../shared/lib/subscription-access';
+import type { PagesEnv, AuthenticatedPagesContext as AuthenticatedContext } from '../../lib/types';
 import { paginationParams, integerParam, readPage } from '../../lib/opportunity-pagination';
-import { opportunitySearchPredicate, workModeVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
+import { opportunitySearchPredicate, workModeVariants, experienceLevelVariants, skillsPredicate, parseSalaryBound } from '../../lib/opportunity-search';
 /**
  * Opportunities API — list with filters (ORG-SCOPED)
  */
-type AuthenticatedContext = Parameters<PagesFunction>[0];
 import { getContextUser, withAuth } from '../../lib/auth';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 import { verifyOrgAccess, PERMISSIONS } from '../../lib/permissions';
@@ -283,6 +286,27 @@ async function loadGatedShortlist(
   return { id: rawId, row, error: null };
 }
 
+async function recruiterProfiles(context: AuthenticatedContext, database: ReturnType<typeof getServiceClient>, rows: readonly Record<string, unknown>[]) {
+  const user = getContextUser(context), organizationId = await getActiveOrgId(database, user);
+  if (!organizationId) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+  const access = await verifyOrgAccess(database, user.id, organizationId, PERMISSIONS.VIEW_CANDIDATES);
+  if (!access.allowed) return apiError(403, 'FORBIDDEN', 'Candidate viewing permission is required', context.request);
+  const permissions = await readRecruiterContactPermissions({ env: context.env as PagesEnv, request: context.request,
+    actorId: user.id, organizationId, database }, rows, 'profile');
+  if (permissions instanceof Response) return permissions;
+  return rows.flatMap(row => {
+    const permission = permissions.get(String(row.id));
+    return permission?.visible ? [recruiterCandidateView(row, permission)] : [];
+  });
+}
+async function recruiterInterviewProfiles(context: AuthenticatedContext, database: ReturnType<typeof getServiceClient>, rows: readonly Record<string, unknown>[]) {
+  const user = getContextUser(context), organizationId = await getActiveOrgId(database, user);
+  if (!organizationId) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+  const access = await verifyOrgAccess(database, user.id, organizationId, PERMISSIONS.VIEW_CANDIDATES);
+  if (!access.allowed) return apiError(403, 'FORBIDDEN', 'Candidate viewing permission is required', context.request);
+  return readRecruiterInterviewViews({ env: context.env as PagesEnv, request: context.request,
+    actorId: user.id, organizationId, database }, rows);
+}
 const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
   const env = context.env as unknown as Record<string, string>;
@@ -292,6 +316,12 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
 
   const id = url.searchParams.get('id');
   const learnerFeed = user.roles?.includes('learner') === true;
+  const organizationId = learnerFeed ? null : await getActiveOrgId(supabase, user);
+  const subject = learnerFeed ? { kind: 'user' as const, id: user.id } : organizationId ? { kind: 'organization' as const, id: organizationId } : null;
+  if (!subject) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+  const lifecycle = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request, actorId: user.id,
+    subject, mode: 'read' });
+  if (lifecycle instanceof Response) return lifecycle;
   if (id) {
     const { data, error } = await findOpportunityById(supabase, id, learnerFeed ? `${JOB_FIELDS},organization_id,applications_count,views_count` : '*');
     if (error) return apiDbError(error, context.request);
@@ -312,6 +342,7 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const experienceLevel = url.searchParams.get('experienceLevel');
   const mode = url.searchParams.get('mode');
   const department = url.searchParams.get('department');
+  const location = url.searchParams.get('location');
   const salaryMin = url.searchParams.get('salaryMin');
   const salaryMax = url.searchParams.get('salaryMax');
   const postedWithin = url.searchParams.get('postedWithin');
@@ -365,16 +396,24 @@ const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     else query = query.in('employment_type', vals);
   }
   if (experienceLevel) {
-    const vals = experienceLevel.split(',');
-    if (vals.length === 1) query = query.eq('experience_level', vals[0]);
-    else query = query.in('experience_level', vals);
+    query = query.in('experience_level', experienceLevelVariants(experienceLevel));
   }
   if (mode) query = query.in('mode', workModeVariants(mode));
   if (selectedSkills.length) query = query.or(skillsPredicate(selectedSkills));
   if (department) {
-    const vals = department.split(',');
+    // Values come from the facets endpoint which reads DISTINCT department from
+    // the same table, so they always match exactly — use eq/in for precision.
+    const vals = department.split(',').map((d) => d.trim()).filter(Boolean);
     if (vals.length === 1) query = query.eq('department', vals[0]);
     else query = query.in('department', vals);
+  }
+  if (location) {
+    const vals = location.split(',').map((l) => l.trim()).filter(Boolean);
+    if (vals.length === 1) {
+      query = query.ilike('location', `%${vals[0]}%`);
+    } else {
+      query = query.or(vals.map((v) => `location.ilike.%${v}%`).join(','));
+    }
   }
   if (searchTerm) query = query.or(opportunitySearchPredicate(searchTerm));
   if (minimum !== undefined) query = query.gte('salary_range_min', minimum);
@@ -453,9 +492,26 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const supabase = getServiceClient(env as any);
   const body: any = await context.request.json().catch(() => ({}));
   const { action } = body;
-  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
+  if(['create-shortlist','update-shortlist','delete-shortlist','add-candidate-to-shortlist','add-application-to-shortlist','remove-candidate-from-shortlist','update-shortlist-candidate-notes','update-interview','delete-interview','update-scorecard','update-interview-status','update-application-status','bulk-update-applications'].includes(action)){const user=getContextUser(context);const orgId=await getActiveOrgId(supabase,user);if(!orgId||!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.MANAGE_CANDIDATES)).allowed)return apiError(403,'FORBIDDEN','Candidate management permission is required',context.request);}
 
   if (!action) return apiError(400, 'VALIDATION_ERROR', 'action is required', context.request);
+
+  const user = getContextUser(context), learner = user.roles?.includes('learner') === true;
+  const organizationId = learner ? null : await getActiveOrgId(supabase, user);
+  const subject = learner ? { kind: 'user' as const, id: user.id } : organizationId ? { kind: 'organization' as const, id: organizationId } : null;
+  if (!subject) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+  const readActions = new Set(['can-proceed-pipeline', 'get-opportunities-stats', 'get-placement-stats', 'get-application-resume',
+    'has-applied', 'get-learner-applications', 'get-learner-application-stats', 'get-all-applications', 'get-application-stats',
+    'get-recent-applications', 'get-all-applicants', 'get-applicant-stats', 'get-companies-with-applications',
+    'get-pipeline-data-for-application', 'check-openings-available', 'get-opportunity-with-openings', 'get-interviews',
+    'get-interview-by-id', 'get-interviews-for-learner', 'get-upcoming-interviews', 'get-pending-scorecards', 'get-reminder-history',
+    'is-saved', 'get-saved-job-ids', 'get-saved-jobs-with-details', 'get-saved-jobs-with-applied-status', 'get-saved-jobs-count',
+    'get-search-history', 'get-most-searched-terms', 'get-shortlists', 'get-shortlist-by-id', 'get-shortlist-candidates',
+    'is-learner-in-shortlist', 'get-shortlists-for-learner', 'get-export-history', 'get-opportunities-by-ids', 'get-skills-by-learner-ids']);
+  const lifecycle = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request, actorId: user.id,
+    subject,
+    mode: readActions.has(action) || (action === 'recruiter-saved-searches' && body.sub_action === 'get') ? 'read' : 'write' });
+  if (lifecycle instanceof Response) return lifecycle;
 
   switch (action) {
 
@@ -751,6 +807,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase.from('opportunities').insert([opportunity]).select().single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       await notifyLearnersOfNewOpportunity(supabase, data);
       return apiSuccess({ opportunity: data }, context.request);
     }
@@ -846,6 +903,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase.from('opportunities').update(updates).eq('id', existing.data.id).select().single();
       if (error) return apiDbError(error, context.request);
+      context.waitUntil(wakeJobIndex(context.env));
       return apiSuccess({ opportunity: data }, context.request);
     }
 
@@ -961,15 +1019,47 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }, context.request);
     }
 
+    case 'get-application-resume':
+    case 'set-application-resume': {
+      const user = getContextUser(context);
+      const { data: learner, error } = await supabase.from('learners').select('id, resumeUrl')
+        .eq('id', body.learner_id).eq('user_id', user.id).maybeSingle();
+      if (error) return apiError(503, 'PROFILE_UNAVAILABLE', 'Your profile could not be loaded.', context.request);
+      if (!learner) return apiError(403, 'FORBIDDEN', 'Only your own resume may be attached.', context.request);
+      const value = action === 'set-application-resume' ? body.resume_url : learner.resumeUrl;
+      if (action === 'get-application-resume' && !value) return apiSuccess({ resume: null }, context.request);
+      try {
+        const resume = await validateApplicationResume(context.env, user.id, value, context.request.url);
+        if (action === 'set-application-resume') {
+          const { error: saveError } = await supabase.from('learners').update({ resumeUrl: resume.url })
+            .eq('id', learner.id).eq('user_id', user.id);
+          if (saveError) return apiDbError(saveError, context.request);
+        }
+        return apiSuccess({ resume }, context.request);
+      } catch (error) {
+        if (error instanceof ApplicationResumeError) {
+          if (action === 'get-application-resume' && error.status === 400)
+            return apiSuccess({ resume: null, validationMessage: error.message }, context.request);
+          return apiError(error.status, error.code, error.message, context.request);
+        }
+        throw error;
+      }
+    }
+
     // ── applied_jobs / application actions ──
     case 'apply-to-job': {
       const user = getContextUser(context);
       const { learner_id, opportunity_id } = body;
       if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id and opportunity_id required', context.request);
-      const { data: owner, error: ownerError } = await supabase.from('learners').select('id').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
+      const { data: owner, error: ownerError } = await supabase.from('learners').select('id, resumeUrl').eq('id', learner_id).eq('user_id', user.id).maybeSingle();
       if (ownerError) return apiError(503, 'PROFILE_UNAVAILABLE', 'Learner profile is temporarily unavailable', context.request);
       if (!owner) return apiError(403, 'FORBIDDEN', 'Only your own applications may be submitted', context.request);
-      const available = await findOpportunityById(supabase, opportunity_id, 'id,status,is_active,deadline,learning_requirements,learning_requirements_version');
+      try { await validateApplicationResume(context.env, user.id, owner.resumeUrl, context.request.url); }
+      catch (error) {
+        if (error instanceof ApplicationResumeError) return apiError(error.status, error.code, error.message, context.request);
+        throw error;
+      }
+      const available = await findOpportunityById(supabase, opportunity_id, 'id,organization_id,status,is_active,deadline,learning_requirements,learning_requirements_version');
       if (available.error) return apiError(503, 'OPPORTUNITY_UNAVAILABLE', 'Opportunity could not be verified', context.request);
       if (!isEligibleJob(available.data)) return apiError(409, 'OPPORTUNITY_CLOSED', 'Opportunity is no longer available', context.request);
 
@@ -988,7 +1078,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       try {
         await supabase.from('pipeline_candidates').insert([{
-          opportunity_id, learner_id, candidate_name: learner.name || 'Unknown', candidate_email: learner.email || '',
+          opportunity_id, learner_id, organization_id: available.data.organization_id, candidate_name: learner.name || 'Unknown', candidate_email: learner.email || '',
           candidate_phone: learner.contact_number || '', stage: 'sourced', source: 'direct_application',
           status: 'active', added_at: new Date().toISOString(), stage_changed_at: new Date().toISOString()
         }]);
@@ -1049,10 +1139,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const learnerIds = [...new Set(appliedJobs.map(job => job.learner_id))];
       const opportunityIds = [...new Set(appliedJobs.map(job => job.opportunity_id))];
 
-      const [{ data: learners }, { data: opportunities }] = await Promise.all([
-        supabase.from('learners').select('id, user_id, name, email, contact_number, university, universityId, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id').in('id', learnerIds),
+      const [{ data: learnerRows, error: learnerError }, { data: opportunities }] = await Promise.all([
+        supabase.from('zoho_recruiter_learners').select('id, user_id, name, email, contact_number, university, universityId, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status, college_id').in('id', learnerIds),
         supabase.from('opportunities').select('*').in('id', opportunityIds),
       ]);
+      if (learnerError) return apiDbError(learnerError, context.request);
+      const learners = await recruiterProfiles(context, supabase, learnerRows || []);
+      if (learners instanceof Response) return learners;
 
       const companyNames = [...new Set((opportunities || []).map(o => o.company_name).filter(Boolean))];
       let companies: any[] = [];
@@ -1061,7 +1154,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         companies = companiesData || [];
       }
 
-      const learnerMap = (learners || []).reduce((acc, l) => { acc[l.id] = l; return acc; }, {});
+      const learnerMap = learners.reduce<Record<string, typeof learners[number]>>((acc, l) => { acc[l.id] = l; return acc; }, {});
       const oppMap = (opportunities || []).reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
       const companyMap = companies.reduce((acc, c) => { acc[c.name] = c; return acc; }, {});
 
@@ -1258,18 +1351,18 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const learnerIds = [...new Set(appliedJobs.map(j => j.learner_id))];
       const opportunityIds = [...new Set(appliedJobs.map(j => j.opportunity_id))];
 
-      const [{ data: learners }, { data: opportunities }] = await Promise.all([
-        supabase.from('learners').select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status').in('id', learnerIds),
+      const [{ data: learnerRows, error: learnerError }, { data: opportunities }] = await Promise.all([
+        supabase.from('zoho_recruiter_learners').select('id, user_id, name, email, contact_number, university, branch_field, course_name, college_school_name, district_name, currentCgpa, expectedGraduationDate, approval_status').in('id', learnerIds),
         supabase.from('opportunities').select('*').in('id', opportunityIds),
       ]);
+      if (learnerError) return apiDbError(learnerError, context.request);
+      const learners = await recruiterProfiles(context, supabase, learnerRows || []);
+      if (learners instanceof Response) return learners;
 
-      const learnerMap = (learners || []).reduce((acc, l) => {
-        acc[l.id] = { id: l.id, name: l.name || 'Unknown', email: l.email || '', phone: l.contact_number ? String(l.contact_number) : '', department: l.branch_field || l.course_name || '', university: l.university || '', college: l.college_school_name || l.university || '', district: l.district_name || '', course: l.course_name || '', cgpa: l.currentCgpa || '', year_of_passing: l.expectedGraduationDate ? l.expectedGraduationDate.split('-')[0] : '', verified: l.approval_status === 'approved' || false, employability_score: 0, skill: '' };
-        return acc;
-      }, {});
+      const learnerMap = new Map(learners.map(l => [l.id, { id: l.id, name: l.name || 'Unknown', email: l.email || '', phone: l.contact_number ? String(l.contact_number) : '', department: l.branch_field || l.course_name || '', university: l.university || '', college: l.college_school_name || l.university || '', district: l.district_name || '', course: l.course_name || '', cgpa: l.currentCgpa || '', year_of_passing: l.expectedGraduationDate ? l.expectedGraduationDate.split('-')[0] : '', verified: l.approval_status === 'approved' || false, employability_score: 0, skill: '' }]));
       const oppMap = (opportunities || []).reduce((acc, o) => { acc[o.id] = o; return acc; }, {});
 
-      const result = (appliedJobs || []).map(job => ({ ...job, learner: learnerMap[job.learner_id] || null, opportunity: oppMap[job.opportunity_id] || null }));
+      const result = (appliedJobs || []).map(job => ({ ...job, learner: learnerMap.get(job.learner_id) || null, opportunity: oppMap[job.opportunity_id] || null }));
       return apiSuccess({ applicants: result }, context.request);
     }
 
@@ -1316,9 +1409,33 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'get-pipeline-data-for-application': {
       const { learner_id, opportunity_id } = body;
       if (!learner_id || !opportunity_id) return apiError(400, 'VALIDATION_ERROR', 'learner_id and opportunity_id required', context.request);
-      const { data, error } = await supabase.from('pipeline_candidates').select('*').eq('learner_id', learner_id).eq('opportunity_id', opportunity_id).maybeSingle();
+      const self=user.roles?.includes('learner')===true;
+      let organizationId:string|null=null;
+      if(self){
+        const own=await supabase.from('learners').select('id').eq('id',learner_id).eq('user_id',user.id).maybeSingle();
+        if(own.error)return apiDbError(own.error,context.request);
+        if(!own.data)return apiError(403,'FORBIDDEN','You may only view your own pipeline application',context.request);
+      }else{
+        organizationId=await getActiveOrgId(supabase,user);
+        if(!organizationId||!(await verifyOrgAccess(supabase,user.id,organizationId,PERMISSIONS.VIEW_CANDIDATES)).allowed)
+          return apiError(403,'FORBIDDEN','Candidate viewing permission is required',context.request);
+        const job=await supabase.from('opportunities').select('id').eq('id',opportunity_id).eq('organization_id',organizationId).maybeSingle();
+        if(job.error)return apiDbError(job.error,context.request);
+        if(!job.data)return apiError(403,'FORBIDDEN','Application does not belong to your organization',context.request);
+      }
+      let query=supabase.from('pipeline_candidates').select('id,learner_id,opportunity_id,organization_id,candidate_name,candidate_email,candidate_phone,stage,previous_stage,status,source,recruiter_rating,recruiter_notes,next_action,next_action_date,next_action_notes,rejection_reason,rejection_date,assigned_to,added_at,updated_at,added_by,stage_changed_at,stage_changed_by')
+        .eq('learner_id',learner_id).eq('opportunity_id',opportunity_id);
+      if(organizationId)query=query.eq('organization_id',organizationId);
+      const { data, error } = await query.maybeSingle();
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ pipelineCandidate: data }, context.request);
+      if(!data||self)return apiSuccess({pipelineCandidate:data},context.request);
+      const canonical=await supabase.from('zoho_recruiter_learners').select('id,user_id,name,email,contact_number').eq('id',data.learner_id).maybeSingle();
+      if(canonical.error)return apiDbError(canonical.error,context.request);
+      if(!canonical.data)return apiSuccess({pipelineCandidate:null},context.request);
+      const profiles=await recruiterProfiles(context,supabase,[canonical.data]);
+      if(profiles instanceof Response)return profiles;
+      const profile=profiles[0];
+      return apiSuccess({pipelineCandidate:profile?{...data,candidate_name:profile.name,candidate_email:profile.email,candidate_phone:profile.contact_number}:null},context.request);
     }
 
     // ── Offer actions ──
@@ -1393,7 +1510,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       const { data, error } = await query.order('date');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ interviews: data || [] }, context.request);
+      const views = user.roles?.includes('learner') ? data || [] : await recruiterInterviewProfiles(context, supabase, data || []);
+      return views instanceof Response ? views : apiSuccess({ interviews: views }, context.request);
     }
     case 'get-interview-by-id': {
       const user = getContextUser(context);
@@ -1401,7 +1519,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (gated.error) return gated.error;
       const { data, error } = await supabase.from('interviews').select('*').eq('id', gated.id).single();
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ interview: data }, context.request);
+      const views = user.roles?.includes('learner') ? [data] : await recruiterInterviewProfiles(context, supabase, [data]);
+      return views instanceof Response ? views : apiSuccess({ interview: views[0] ?? null }, context.request);
     }
     case 'get-interviews-for-learner': {
       const { learner_id } = body;
@@ -1792,44 +1911,23 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // profile (jsonb) may be absent on drifted/local DBs — select the flat
       // authoritative columns too and compose the object server-side so the
       // FE contract holds regardless of schema drift state.
-      const { data: learners, error: learnersErr } = await supabase.from('learners').select('id, name, email, contact_number, alternate_number, branch_field, college_school_name, university, registration_number, date_of_birth, age, profile').in('id', learnerIds);
+      const { data: learnerRows, error: learnersErr } = await supabase.from('zoho_recruiter_learners').select('id, user_id, name, email, contact_number, branch_field, college_school_name, university, currentCgpa, expectedGraduationDate, approval_status').in('id', learnerIds);
       if (learnersErr) return apiDbError(learnersErr, context.request);
-      const composeProfile = (l: any): Record<string, unknown> => {
-        if (!l) return {};
-        const base: Record<string, unknown> = {
-          name: l.name,
-          email: l.email,
-          contact_number: l.contact_number,
-          phone_number: l.contact_number,
-          alternate_number: l.alternate_number,
-          branch_field: l.branch_field,
-          university: l.university || l.college_school_name,
-          college_school_name: l.college_school_name,
-          registration_number: l.registration_number,
-          date_of_birth: l.date_of_birth,
-          age: l.age,
-        };
-        const stored = l.profile && typeof l.profile === 'object' && !Array.isArray(l.profile) ? l.profile : {};
-        return { ...base, ...stored };
-      };
+      const learners = await recruiterProfiles(context, supabase, learnerRows || []);
+      if (learners instanceof Response) return learners;
       const candidates = data.map(item => {
         const learner = (learners || []).find(l => l.id === item.learner_id);
         if (!learner) return null;
-        const profile = composeProfile(learner);
-        const educationArray = profile.education || [];
-        const education = educationArray.find((e: any) => e.status === 'ongoing') || educationArray[0] || {};
-        let cgpa = education.cgpa || profile.cgpa || 'N/A';
         return {
-          id: learner.id, name: profile.name || profile.nm_id || 'Unknown', email: profile.email || (profile.contact_number ? String(profile.contact_number) : 'N/A'),
-          phone: profile.contact_number ? String(profile.contact_number) : (profile.alternate_number ? String(profile.alternate_number) : 'N/A'),
-          university: education.university || profile.university || profile.college_school_name || 'N/A',
-          department: education.department || profile.branch_field || 'N/A', cgpa, year_of_passing: education.yearOfPassing || education.year_of_passing || 'N/A',
-          employability_score: profile._ || profile.score || null, photo: profile.photo || null, verified: profile.verified || false,
+          id: learner.id, name: learner.name, email: learner.email, phone: learner.contact_number,
+          university: learner.university, department: learner.branch_field, cgpa: learner.currentCgpa,
+          year_of_passing: learner.expectedGraduationDate?.slice(0, 4), verified: learner.approval_status === 'approved',
           added_at: item.added_at, notes: item.notes, junction_id: item.id
         };
       }).filter(Boolean);
       return apiSuccess({ candidates }, context.request);
     }
+    case 'add-application-to-shortlist':
     case 'add-candidate-to-shortlist': {
       const { shortlist_id, learner_id, notes } = body;
       if (!shortlist_id || !learner_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id and learner_id required', context.request);
@@ -1842,6 +1940,17 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       // and force added_by to the server-side user id (client value ignored).
       const gated = await loadGatedShortlist(supabase, user, context, shortlist_id);
       if (gated.error) return gated.error;
+      if (action === 'add-application-to-shortlist') {
+        if (!body.application_id) return apiError(400, 'VALIDATION_ERROR', 'Application ID is required', context.request);
+        const { data, error } = await supabase.rpc('recruitment_shortlist_application', {
+          p_org: orgId, p_actor: user.id, p_application: body.application_id,
+          p_shortlist: gated.id, p_learner: learner_id, p_notes: notes ?? null,
+        });
+        if (error) return apiDbError(error, context.request);
+        if (!data) return apiError(503, 'DECISION_UNAVAILABLE', 'Shortlist decision was not confirmed', context.request);
+        if (data.code) return apiError(data.code === 'FORBIDDEN' ? 403 : data.code === 'NOT_FOUND' ? 404 : 409, data.code, data.message, context.request);
+        return apiSuccess(data, context.request);
+      }
       const { data, error } = await supabase.from('shortlist_candidates').insert([{ shortlist_id: gated.id, learner_id, added_by: user.id, notes }]).select().single();
       if (error) {
         if (error.code === '23505') return apiSuccess({ data: null, error: { ...error, message: 'Candidate is already in this shortlist' } }, context.request);
@@ -1914,14 +2023,21 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     case 'log-export-activity': {
       const { export_data } = body;
       if (!export_data) return apiError(400, 'VALIDATION_ERROR', 'export_data required', context.request);
-      const { data, error } = await supabase.from('export_activities').insert([export_data]).select().single();
+      const gated=await loadGatedShortlist(supabase,user,context,export_data.shortlist_id);
+      if(gated.error)return gated.error;
+      if(typeof export_data.export_format!=='string'||!export_data.export_format.trim()||typeof export_data.export_type!=='string'||!export_data.export_type.trim()
+        ||(export_data.include_pii!==undefined&&typeof export_data.include_pii!=='boolean'))return apiError(400,'VALIDATION_ERROR','Export format, type and PII declaration are invalid',context.request);
+      const { data, error } = await supabase.from('export_activities').insert([{shortlist_id:gated.id,export_format:export_data.export_format,
+        export_type:export_data.export_type,...(export_data.include_pii===undefined?{}:{include_pii:export_data.include_pii}),exported_by:user.id}]).select('id,shortlist_id,export_format,export_type,exported_at,exported_by,include_pii').single();
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ data }, context.request);
     }
     case 'get-export-history': {
       const { shortlist_id } = body;
       if (!shortlist_id) return apiError(400, 'VALIDATION_ERROR', 'shortlist_id required', context.request);
-      const { data, error } = await supabase.from('export_activities').select('*').eq('shortlist_id', shortlist_id).order('exported_at', { ascending: false });
+      const gated=await loadGatedShortlist(supabase,user,context,shortlist_id);
+      if(gated.error)return gated.error;
+      const { data, error } = await supabase.from('export_activities').select('id,shortlist_id,export_format,export_type,exported_at,exported_by,include_pii').eq('shortlist_id', gated.id).order('exported_at', { ascending: false });
       if (error) return apiDbError(error, context.request);
       return apiSuccess({ exports: data }, context.request);
     }

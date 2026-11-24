@@ -55,6 +55,7 @@ export interface Program {
   code: string;
   department_id: string;
   degree_level: string;
+  specializations?: string[];
 }
 
 export interface Faculty {
@@ -179,7 +180,7 @@ export async function updateCourseMapping(id: string, updates: Partial<CourseMap
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'update-course-mapping', id, ...updates });
+  const response = await apiPost('/college-admin/academic', { action: 'update-course-mapping', ...updates, mapping_id: id });
   if (!response.success) throw new Error(response.error || 'Failed to update course mapping');
   return response.data;
 }
@@ -192,7 +193,7 @@ export async function deleteCourseMapping(id: string): Promise<void> {
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'delete-course-mapping', id });
+  const response = await apiPost('/college-admin/academic', { action: 'delete-course-mapping', mapping_id: id });
   if (!response.success) throw new Error(response.error || 'Failed to delete course mapping');
 }
 

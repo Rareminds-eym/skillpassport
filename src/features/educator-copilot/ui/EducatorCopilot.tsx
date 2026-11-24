@@ -164,25 +164,25 @@ const EducatorCopilot: React.FC = () => {
 
   // Removed fake typing animation - using real LLM streaming now
 
-  const handleSend = async () => {
-    if (!input.trim() || loading) return;
+  const handleSend = async (query = input) => {
+    if (!query.trim() || loading || isTyping || !user?.id) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: query.trim(),
       timestamp: new Date().toISOString()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const userInput = input.trim();
+    const userInput = query.trim();
     setInput('');
     setLoading(true);
     setShowWelcome(false);
     setUserScrolledUp(false);
 
     try {
-      const educatorId = user?.id || 'demo-educator';
+      const educatorId = user.id;
       const id = (Date.now() + 1).toString();
 
       // Create empty assistant message for streaming
@@ -194,7 +194,6 @@ const EducatorCopilot: React.FC = () => {
       };
 
       setMessages(prev => [...prev, aiMessage]);
-      setLoading(false);
       setIsTyping(true);
 
       // Stream response from LLM in real-time
@@ -216,12 +215,12 @@ const EducatorCopilot: React.FC = () => {
         }
       );
 
-      // Update with interactive elements if any
-      if (result.interactive) {
-        setMessages(prev => prev.map(m =>
-          m.id === id ? { ...m, interactive: result.interactive } : m
-        ));
-      }
+      // Data-driven answers and failures may return without streaming chunks.
+      setMessages(prev => prev.map(m => m.id === id ? {
+        ...m,
+        content: result.message || result.error || m.content || 'No response was returned. Please try again.',
+        interactive: result.interactive,
+      } : m));
     } catch (error) {
       logger.error('Educator AI error', error as Error);
 
@@ -250,8 +249,7 @@ const EducatorCopilot: React.FC = () => {
   };
 
   const handleSendQuery = (query: string) => {
-    setInput(query);
-    setTimeout(() => handleSend(), 100);
+    void handleSend(query);
   };
 
   return (
@@ -544,16 +542,23 @@ const EducatorCopilot: React.FC = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  void handleSend();
+                }
+              }}
+              aria-label="Ask Teaching Intelligence"
               placeholder={educatorChatConfig.placeholder}
-              disabled={true}
+              disabled={loading || isTyping || !user?.id}
               className="w-full px-5 py-4 pr-16 text-gray-900 placeholder-gray-500 bg-gray-50 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all"
             />
 
             <div className="absolute right-2 top-1/2 -translate-y-1/2">
               <button
-                onClick={handleSend}
-                disabled={true}
+                onClick={() => void handleSend()}
+                disabled={!input.trim() || loading || isTyping || !user?.id}
+                aria-label="Send message"
                 className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
                 title="Send message"
               >

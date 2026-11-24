@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, waitFor, within } from '@testing-library/
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { opportunityFailure } from '@/features/opportunities/lib/accessFailure';
 
 const f = vi.hoisted(() => ({
   learner: { id: 'learner', grade: 'UG', email: 'learner@example.test' },
@@ -12,6 +13,7 @@ const f = vi.hoisted(() => ({
   register: vi.fn(),
   registeredIds: [] as string[],
   jobs: [] as Record<string, any>[],
+  failure: null as ReturnType<typeof opportunityFailure> | null,
   recommendations: [] as Record<string, any>[],
   apply: vi.fn(),
   visitTotal: 30,
@@ -35,7 +37,7 @@ vi.mock('@/features/opportunities/api/opportunitiesService', () => ({ opportunit
 vi.mock('@/features/opportunities', async () => ({
   ApplicationsPanel: (await import('@/features/opportunities/ui/ApplicationsPanel')).ApplicationsPanel,
   applicationUpdated: (await import('@/features/opportunities/lib/applicationPresentation')).applicationUpdated,
-  useOpportunities: () => ({ opportunities: f.jobs, loading: false, hasLoadedPage: true, totalCount: 0, totalPages: 1 }),
+  useOpportunities: () => ({ opportunities: f.jobs, error: f.failure?.message, failure: f.failure, loading: false, hasLoadedPage: true, totalCount: 0, totalPages: 1 }),
   useOpportunityPage: (_path: string, collection: string) => ({ rows: collection === 'visits' ? f.visits : f.apps, total: collection === 'visits' ? f.visitTotal : 30, loading: false, error: '' }),
   LearningMatches: () => null, AppliedJobsService: {applyToJob: f.apply}, SavedJobsService: {},
 }));
@@ -69,6 +71,7 @@ beforeEach(() => {
   f.subscription = {subscriptionData: null, error: null, hasAccess: false};
   f.registeredIds = [];
   f.jobs = [];
+  f.failure = null;
   f.recommendations = [];
   f.apply.mockClear();
   f.visitTotal = 30;
@@ -321,3 +324,12 @@ it('still expands the recruitment pipeline when one exists', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Hide progress for Developer at Employer' }));
   expect(screen.getByText('Recruitment progress')).not.toBeVisible();
 });
+
+it.each([{status:409,code:'SUBSCRIPTION_SETUP_REQUIRED',heading:'Subscription setup required',label:'Manage subscription'}, {status:403,code:'SUBSCRIPTION_REQUIRED',heading:'Subscription access required',label:'Review subscription'}])('shows actionable subscription error instead of retry for %j',async({status,code,heading,label})=>{
+ f.failure=opportunityFailure(Object.assign(new Error('Denied'),{status,code}),'Failed');mount('?tab=my-jobs&q=Python');
+ expect(await screen.findByRole('heading',{name:heading})).toBeVisible();
+ expect(screen.queryByRole('button',{name:'Retry jobs'})).not.toBeInTheDocument();
+ expect(screen.getByRole('button',{name:label})).toBeVisible();
+ expect(screen.getByTestId('location')).toHaveTextContent('q=Python');
+});
+it('keeps retry available for a temporary jobs service failure',async()=>{f.failure=opportunityFailure(new Error('Offline'),'Failed');mount('?tab=my-jobs');expect(await screen.findByRole('button',{name:'Retry jobs'})).toBeVisible();});

@@ -79,6 +79,8 @@ export interface RazorpaySubscription {
  * Mirrors the PaymentService WorkerEntrypoint methods.
  */
 export interface PaymentWorkerBinding {
+  createRefund(paymentId: string, input: { amount: number; receipt: string; notes: Record<string, string> }): Promise<RazorpayRefund>;
+  getRefund(paymentId: string, refundId: string): Promise<RazorpayRefund>;
   createOrder(params: CreateOrderParams): Promise<RazorpayOrder>;
   verifyPaymentSignature(orderId: string, paymentId: string, signature: string): Promise<VerifyPaymentResult>;
   getPayment(paymentId: string): Promise<RazorpayPayment>;
@@ -87,6 +89,17 @@ export interface PaymentWorkerBinding {
   getOrderPayments(orderId: string): Promise<{ items: RazorpayPayment[] }>;
   cancelSubscription(subscriptionId: string): Promise<RazorpaySubscription>;
   verifyWebhookSignature(body: string, signature: string): Promise<VerifyWebhookResult>;
+}
+
+export interface RazorpayRefund {
+  id: string;
+  entity: 'refund';
+  payment_id: string;
+  amount: number;
+  currency: string;
+  receipt: string | null;
+  status: 'pending' | 'processed' | 'failed';
+  notes: Record<string, string>;
 }
 
 // ─── Environment Interface ──────────────────────────────────────────────────────

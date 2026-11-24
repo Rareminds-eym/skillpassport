@@ -79,7 +79,6 @@ export type { default as AssignmentFileUpload } from './ui/AssignmentFileUpload'
 export { MANDATORY_FIELDS } from './api/csvImportService';
 export type { default as ManageLearnersModal } from './ui/modals/ManageLearnersModal';
 export type { default as ManageProgramLearnersModal } from './ui/modals/ManageProgramLearnersModal';
-export type { default as AddLearnerModal } from './ui/AddLearnerModal';
 export type { default as MentorResponseModal } from './ui/modals/MentorResponseModal';
 export { getlearnerTypeInfo } from './api/collegeClassService';
 export type { default as LearnerSelectionModal } from './ui/LearnerSelectionModal';
@@ -92,3 +91,6 @@ export type { default as SwapRequestModal } from './ui/modals/SwapRequestModal';
 // Note: getFacultyStatistics from facultyService
 export { timetableService, assessmentService } from './api/assessmentService';
 export { CollegeGradingModal } from './ui/CollegeGradingModal';
+
+export { bulkCreateCollegeAssignments } from './api/collegeAssignmentService';
+export type { BulkTaskRow, BulkCreatePayload } from './api/collegeAssignmentService';

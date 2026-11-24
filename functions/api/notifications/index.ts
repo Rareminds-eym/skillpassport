@@ -8,6 +8,93 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const env = context.env as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
+  const jwtIsCollegeAdmin = (Array.isArray(user.roles) && user.roles.includes('college_admin')) || user.role === 'college_admin';
+  if (jwtIsCollegeAdmin) {
+    const { data: actor } = await supabase.from('users').select('organizationId').eq('id', user.id).maybeSingle();
+    if (actor?.organizationId) {
+      const { data: currData } = await supabase
+        .from('college_curriculums')
+        .select('id, course_id, pending_changes, academic_year')
+        .eq('college_id', actor.organizationId);
+
+      for (const curr of currData || []) {
+        const changes = Array.isArray(curr.pending_changes) ? curr.pending_changes : [];
+        for (const r of changes) {
+          const isPending = !r?.status || r.status === 'pending' || r.status === 'submitted';
+          if (isPending && r.id && r.requested_by !== user.id) {
+            const { data: existing } = await supabase
+              .from('notifications')
+              .select('id')
+              .eq('recipient_id', user.id)
+              .eq('curriculum_change_id', r.id)
+              .eq('type', 'curriculum_change_submitted')
+              .maybeSingle();
+
+            if (!existing) {
+              let courseTitle = 'a course';
+              if (curr.course_id) {
+                const { data: c } = await supabase.from('college_courses').select('course_name').eq('id', curr.course_id).maybeSingle();
+                if (c?.course_name) courseTitle = c.course_name;
+              }
+              let educatorName = r.requester_name || '';
+              if (!educatorName && r.requested_by) {
+                const { data: u } = await supabase.from('users').select('email').eq('id', r.requested_by).maybeSingle();
+                educatorName = u?.email || 'An educator';
+              }
+              const entityLabel = (r.change_type === 'unit_add' || r.change_type === 'unit_edit') ? 'unit' : 'learning outcome';
+              const actionVerb = r.change_type?.endsWith('_add') ? 'a new' : 'an edit to a';
+              const message = `${educatorName} submitted ${actionVerb} ${entityLabel} for ${courseTitle} (${curr.academic_year || 'current'}).`;
+
+              await supabase.from('notifications').insert({
+                recipient_id: user.id,
+                type: 'curriculum_change_submitted',
+                title: 'Curriculum change awaiting review',
+                message,
+                read: false,
+                curriculum_change_id: r.id,
+                action_url: `/college-admin/academics/curriculum?reviewChange=${r.id}`,
+              });
+            }
+          }
+        }
+      }
+
+      const { data: plansData } = await supabase
+        .from('college_lesson_plans')
+        .select('id, course_id, title, metadata')
+        .eq('college_id', actor.organizationId);
+
+      for (const p of plansData || []) {
+        const pa = p.metadata?.pending_approval;
+        if (pa && pa.status === 'pending' && pa.id && pa.requested_by !== user.id) {
+          const { data: existing } = await supabase
+            .from('notifications')
+            .select('id')
+            .eq('recipient_id', user.id)
+            .eq('curriculum_change_id', pa.id)
+            .eq('type', 'curriculum_change_submitted')
+            .maybeSingle();
+
+          if (!existing) {
+            const isEdit = pa.action === 'edit';
+            const actionTitle = isEdit ? 'Session plan edit awaiting review' : 'New session plan awaiting review';
+            const message = `${pa.requester_name || 'An educator'} submitted ${isEdit ? 'an edit for session plan "' + p.title + '"' : 'a new session plan "' + (pa.proposed_plan?.title || p.title) + '"'} for review.`;
+
+            await supabase.from('notifications').insert({
+              recipient_id: user.id,
+              type: 'curriculum_change_submitted',
+              title: actionTitle,
+              message,
+              read: false,
+              curriculum_change_id: pa.id,
+              action_url: `/college-admin/academics/lesson-plans?reviewChange=${pa.id}`,
+            });
+          }
+        }
+      }
+    }
+  }
+
   const url = new URL(context.request.url);
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
   const offset = parseInt(url.searchParams.get('offset') || '0', 10);
@@ -227,14 +314,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiSuccess({ userId, schoolId: schoolAdmin.school_id, collegeId: null, adminType: 'school_admin' }, context.request);
       }
 
+      const jwtIsCollegeAdmin = (Array.isArray(user.roles) && user.roles.includes('college_admin')) || user.role === 'college_admin';
       const { data: collegeAdmin } = await supabase
         .from('users')
-        .select('id, organizationId')
+        .select('id, organizationId, role')
         .eq('id', userId)
-        .eq('role', 'college_admin')
         .maybeSingle();
 
-      if (collegeAdmin) {
+      if ((jwtIsCollegeAdmin || collegeAdmin?.role === 'college_admin') && collegeAdmin?.organizationId) {
         return apiSuccess({ userId, schoolId: null, collegeId: collegeAdmin.organizationId, adminType: 'college_admin' }, context.request);
       }
 

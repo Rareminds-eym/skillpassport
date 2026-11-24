@@ -252,8 +252,8 @@ const Header = ({ activeTab }) => {
               />
             </div>
 
-            {/* Center: Navigation - Desktop Only (1024px+) */}
-            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
+            {/* Center: Navigation - Desktop Only (1280px+) */}
+            <nav className="hidden xl:flex items-center space-x-1 xl:space-x-2">
               <NavButton
                 onClick={handleDashboard}
                 isActive={activeTab === "dashboard"}
@@ -344,7 +344,7 @@ const Header = ({ activeTab }) => {
               {/* Mobile Menu Button */}
               <button
                 aria-label="Navigation menu" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
+                className="xl:hidden flex items-center justify-center w-8 h-8 md:w-9 md:h-9 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-full transition-all duration-200"
               >
                 {mobileMenuOpen ? (
                   <XMarkIcon className="w-5 h-5 md:w-6 md:h-6" />
@@ -357,7 +357,7 @@ const Header = ({ activeTab }) => {
 
           {/* Mobile Menu - Show on tablet and mobile */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-gray-200">
+            <div className="xl:hidden border-t border-gray-200">
               <div className="px-3 sm:px-4 py-3 sm:py-4 space-y-1 sm:space-y-2">
 
                 {/* Dashboard - Mobile */}

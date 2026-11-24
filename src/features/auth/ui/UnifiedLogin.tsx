@@ -28,6 +28,12 @@ const ALL_ROLES: UserRole[] = [
   'university_admin',
 ];
 
+// Shown for wrong credentials AND for a role not linked to the account, so the
+// response never reveals whether the email is registered.
+
+const INVALID_CREDENTIALS_MESSAGE = 'We couldn’t sign you in. Check your email, password, and selected role, then try again';
+
+
 // Messages for ?oauth_error=<code> set by the /api/oauth/google callback.
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   disabled: 'Google sign-in is currently unavailable.',
@@ -59,7 +65,7 @@ const ROLE_DISPLAY_NAMES: Partial<Record<UserRole, string>> = {
 const UnifiedLogin = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login } = useAuthActions();
+  const { login, logout } = useAuthActions();
 
   const returnUrl =
     searchParams.get('returnUrl') || searchParams.get('redirect') || sessionStorage.getItem('invitation_return_url');
@@ -152,7 +158,7 @@ const UnifiedLogin = () => {
 
   const mapAuthError = (err: unknown): string => {
     if (err instanceof AuthClientError) {
-      if (err.httpStatus === 401) return 'Invalid email or password';
+      if (err.httpStatus === 401) return INVALID_CREDENTIALS_MESSAGE;
       if (err.httpStatus === 403) return 'Your account is not active. Contact support.';
       if (err.httpStatus === 429) return 'Too many attempts. Please try again in a few minutes.';
       if (err.httpStatus && err.httpStatus >= 500) return 'The authentication service is unavailable. Please try again.';
@@ -190,6 +196,10 @@ const UnifiedLogin = () => {
     trackLogin.submit(state.selectedRole || undefined);
 
     setState((prev) => ({ ...prev, loading: true, error: '' }));
+
+    // Keep GuestOnlyRoute from redirecting to the account's own dashboard
+    // until the selected role has been validated below.
+    useAuthStore.setState({ loginInProgress: true });
 
     try {
       // Login via SSO — the store reads roles from the JWT
@@ -328,6 +338,12 @@ const UnifiedLogin = () => {
         console.error('[UnifiedLogin] 2. SSO service not populating roles from memberships');
         console.error('[UnifiedLogin] 3. Role name mismatch (DB has \'recruiter\', JWT has something else)');
 
+        // The credentials were valid but the selected role is not on this account:
+        // end the session so the user cannot reach any dashboard with it.
+        trackLogin.failed('role_mismatch', state.selectedRole || undefined);
+        hasStartedLoginRef.current = false;
+        await logout();
+
         // If they came from an invitation, show a more helpful error
         if (invitationToken) {
           setState((prev) => ({
@@ -336,11 +352,10 @@ const UnifiedLogin = () => {
             error: `Failed to assign ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role. The invitation may have already been used or expired. Please contact support.`,
           }));
         } else {
-          // TEMPORARY: Don't logout immediately, show error with more context
           setState((prev) => ({
             ...prev,
             loading: false,
-            error: `You do not have access to the ${ROLE_DISPLAY_NAMES[state.selectedRole!]} role. Your account may need to be set up correctly. Current roles: ${currentRoles.length > 0 ? currentRoles.join(', ') : 'none'}`,
+            error: INVALID_CREDENTIALS_MESSAGE,
           }));
         }
         return;
@@ -392,6 +407,8 @@ const UnifiedLogin = () => {
         loading: false,
         error: mapAuthError(error),
       }));
+    } finally {
+      useAuthStore.setState({ loginInProgress: false });
     }
   };
 
@@ -402,7 +419,7 @@ const UnifiedLogin = () => {
 
   return (
     <div className="flex items-center lg:py-8 bg-white">
-      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 h-screen lg:h-[700px] overflow-hidden">
+      <div className="w-full lg:mx-4 lg:my-8 xl:mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 min-h-screen lg:min-h-[700px]">
         {/* LEFT SIDE - Illustration */}
         <div className="hidden lg:flex relative p-10 text-white flex-col justify-between rounded-3xl shadow-lg bg-gradient-to-br from-[#0a6aba] to-[#09277f] overflow-hidden">
           <div className="absolute inset-0 z-0">
@@ -423,14 +440,14 @@ const UnifiedLogin = () => {
         </div>
 
         {/* RIGHT SIDE - Login Form */}
-        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8">
+        <div className="relative flex items-center justify-center px-4 sm:px-8 md:px-12 py-8 lg:py-8 lg:items-stretch lg:pb-0">
           <div
             className="absolute inset-0 lg:hidden bg-gradient-to-br from-[#0a6aba] to-[#09277f]"
             aria-hidden
           />
           <div className="hidden lg:block absolute inset-0 bg-white" />
 
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full max-w-md lg:flex lg:flex-col">
             <div className="text-center mb-8">
               <h3 className="text-3xl font-bold text-white lg:text-gray-900">Sign In</h3>
               <p className="text-sm text-white/80 lg:text-gray-600 mt-2">
@@ -438,7 +455,7 @@ const UnifiedLogin = () => {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-transparent lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
+            <div className="rounded-2xl bg-transparent lg:flex-1 lg:bg-white/95 lg:shadow-xl lg:ring-1 lg:ring-black/5 p-5 sm:p-6 lg:p-8">
               {justVerified && (
                 <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />

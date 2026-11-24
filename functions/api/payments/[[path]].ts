@@ -30,7 +30,7 @@
  */
 
 import { withAuth, getContextUser, getAuthInstance } from '../../lib/auth';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { SeatRequestContext as AuthenticatedContext } from '../../lib/seat-access';
 
 // Dedicated handlers — all routes use RPC or Supabase-direct (no proxy)
 import { handleCreateOrder } from './handlers/create-order';

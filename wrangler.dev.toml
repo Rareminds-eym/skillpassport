@@ -1,0 +1,140 @@
+# Wrangler configuration for Cloudflare Pages Functions
+# DEV Pages project. Selected by npm run build:pages:dev.
+# For local dev: wrangler pages dev ./dist
+
+name = "skillpassport-dev"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-04"
+compatibility_flags = ["nodejs_compat"]
+
+# Flagship feature flags (Cloudflare native, KV+DO backed, sub-ms edge eval)
+# Public beta 2026-05-26 — Worker binding replaces env-var toggles for DORA elite MTTR
+# Requires app created in Cloudflare dashboard → flagship app_id
+# [[flagship]]
+# binding = "FLAGS"
+# app_id = "<FILL_FROM_DASHBOARD>"
+
+# ============================================================================
+# DURABLE OBJECT BINDINGS
+# ============================================================================
+
+[[durable_objects.bindings]]
+name = "REALTIME_HUB"
+class_name = "RealtimeHub"
+script_name = "realtime-worker-dev"
+
+# ============================================================================
+# SERVICE BINDINGS
+# ============================================================================
+
+[[services]]
+binding = "PAYMENT_WORKER"
+service = "razorpay-api-dev"
+entrypoint = "PaymentService"
+
+[[services]]
+binding = "SSO_SERVICE"
+service = "sso-api-dev"
+entrypoint = "SsoWorker"
+
+[[services]]
+binding = "ZOHO_CANDIDATE_SOURCE"
+service = "sso-api-dev"
+entrypoint = "ZohoCandidateProvisioner"
+
+[[services]]
+binding = "EMBEDDING_SERVICE"
+service = "embedding-api-dev"
+entrypoint = "EmbeddingService"
+
+# Job indexing orchestration belongs to the application; embeddings stay a pure
+# provider RPC. Environment-specific deployments must target their dashboard.
+[[services]]
+binding = "JOB_INDEX_SERVICE"
+service = "sp-dash-2"
+entrypoint = "JobIndexService"
+
+[[queues.producers]]
+binding = "REALTIME_EVENTS_QUEUE"
+queue = "realtime-events-queue-dev"
+
+[[queues.producers]]
+binding = "SSO_REVERSE_SYNC_QUEUE"
+queue = "sso-reverse-sync-queue-dev"
+
+[[services]]
+binding = "EMAIL_SERVICE"
+service = "shared-email-api-dev"
+entrypoint = "EmailService"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "skill-echosystem-dev"
+
+# ============================================================================
+# VARIABLES
+# ============================================================================
+
+[vars]
+# Must match EMBEDDING_SERVICE output; each job vector is independently verified.
+MATCHING_EMBEDDING_MODEL = "google/gemini-embedding-2-preview"
+ENVIRONMENT = "development"
+REALTIME_PARTITIONS = "10"
+APP_URL = "https://skillpassport-dev-bcp.pages.dev"
+SUPABASE_URL = "https://qidmndjtlbajwswufghf.supabase.co"
+LTE_APP_URL = "https://lte-dev-b42.pages.dev"
+# Host-only cookies: do not set COOKIE_DOMAIN for pages.dev projects.
+GOOGLE_CLIENT_ID = "775729170329-s95ebosv3kj0b844ol87uhcjsgocq2mk.apps.googleusercontent.com"
+GOOGLE_OAUTH_ENABLED = "true"
+CLOUDFLARE_R2_PUBLIC_URL = "https://storage-sp.rareminds.in"
+# Self-healing toggles — Flagship (env.FLAGS) primary, env fallback when Flagship not provisioned
+# Safe defaults: heal enabled (true). Set to "disabled" to turn off a heal without redeploy (after Flagship) or via dashboard env var.
+HEAL_MODE = "enabled"
+# HEAL_CATEGORIES = '{"heal-user":"enabled","subscription-cache-heal":"enabled","cron-reconcile-heal":"enabled","resilience-breaker":"enabled","ws-reconnect-heal":"enabled"}'
+
+# ============================================================================
+# RUNTIME SECRETS AND EXTERNAL SETTINGS
+# ============================================================================
+# Complete inventory and provisioning conditions: docs/pages-deployment.md.
+# Secret VALUES belong in this Pages project's Variables and Secrets, never TOML.
+# Local development uses the Git-ignored .dev.vars file. Pages projects do not
+# inherit each other's secrets. Select the exact project and deployment environment.
+#
+# Core server secrets:
+# - SUPABASE_ANON_KEY (public database key, also used by the frontend build)
+# - SUPABASE_SERVICE_ROLE_KEY (server-only)
+# - INTERNAL_WEBHOOK_SECRET (authenticated sync and payment callbacks)
+# - LTE_INTERNAL_SECRET (LTE gateway and catalogue HMAC, at least 32 characters)
+# - SIGNING_SECRET (protected media)
+#
+# Feature-specific secrets:
+# - GOOGLE_CLIENT_SECRET (required while GOOGLE_OAUTH_ENABLED is true)
+# - OAUTH_STATE_SECRET (optional dedicated OAuth state-signing key)
+# - OPENROUTER_API_KEY (AI features)
+# - CLOUDFLARE_API_TOKEN (Browser Rendering PDF access, scoped to its account)
+# - CRON_SECRET (subscription reconciliation, must match the invoking SSO worker)
+# - DEEPGRAM_API_KEY (course transcription)
+# - GROQ_API_KEY (existing alternate transcription provider, only if approved)
+#
+# Canonical SKILLPASSPORT_PRODUCT_ID and HYBRID_PLAN_ID are named constants in
+# functions/lib/subscription-config.ts, shared by every environment.
+#
+# Feature-specific plain settings not necessarily configured above:
+# - SP_DASH_CATALOG_URL (required HTTPS dashboard origin for managed catalogue)
+# - SALES_ENQUIRY_EMAIL, SALES_ENQUIRY_PHONE (owner-approved enquiry destination)
+# - CLOUDFLARE_ACCOUNT_ID (account for PDF generation)
+# - ADMIN_EMAIL (event registration notification recipient)
+# - AI_RESOURCE_ALLOWED_HOSTS (additional approved download hostnames)
+# - JOB_MATCHING_ENABLED, MATCHING_CATALOG_MODEL, MATCHING_VECTOR_PIPELINE_VERIFIED
+#   (matching policy and attestation, do not enable without writer verification)
+# - HEAL_MODE, HEAL_CATEGORIES (existing healing controls, no policy changes here)
+# - COOKIE_DOMAIN (production only; leave unset for pages.dev)
+#
+# Build-only secret: NPM_TOKEN (private package access; never VITE-prefixed).
+# VITE_SUPABASE_URL is derived by the Pages build; VITE_SUPABASE_ANON_KEY is an
+# existing public-key alias. Never expose server-only secrets through VITE_*.
+# R2_BUCKET and EMAIL_SERVICE own storage/email access. R2 access keys, EMAIL_API_KEY,
+# SMTP_*, FROM_EMAIL, FROM_NAME and CLAUDE_API_KEY are not consumed by these Functions.
+# Provider credentials belong to the owning workers rather than this Pages app.
+# REALTIME_WORKER is a local RPC option; deployed REALTIME_HUB already handles tickets.
+# FLAGS is optional and unprovisioned above. NODE_ENV is a toolchain value.

@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { courseWorkflow } from '@/features/college-course-workflow';
 import { useAuthStore } from '@/shared/model/authStore';
 import { useState, useMemo, useEffect } from "react";
 import {
@@ -10,7 +12,8 @@ import {
     BookOpen as BookOpenIcon,
     GraduationCap as AcademicCapIcon,
     MoreVertical,
-    Trash2
+    Trash2,
+    Upload
 } from "lucide-react";
 import { useEducatorSchool } from '@/features/educator/model/useEducatorSchool';
 import { useAssignedTeaching } from '@/features/external-teaching/model/teachingContext';
@@ -18,10 +21,12 @@ import toast from "react-hot-toast";
 import * as collegeAssignmentService from "@/features/college-admin";
 import { CollegeGradingModal } from "@/features/college-admin";
 import { getDocumentUrl, uploadMultipleFiles } from '@/shared/api';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { deleteFile } from '@/shared/api/storageApiService';
 import { getLogger } from '@/shared/config/logging';
 import { apiPost } from '@/shared/api/apiClient';
 import { formatProgramLabel } from '@/shared/lib';
+import { TaskBulkImportModal } from '@/features/educator/ui/modals/TaskBulkImportModal';
 
 const logger = getLogger('CollegeSkillTasks');
 
@@ -116,6 +121,10 @@ const defaultSkills = [
 ];
 
 export default function CollegeSkillTasks() {
+    const actor = useAuthStore(state => state.user);
+    const assignmentCourseAccess = useQuery({ queryKey: ['assignment-course-access', actor?.id], queryFn: courseWorkflow.courses, enabled: Boolean(actor?.id) });
+    const canCreateTasks = Boolean(assignmentCourseAccess.data?.courses.some(course => course.ownership === 'institution' || course.ownership === 'rareminds'));
+
     // State management
     const [loading, setLoading] = useState(true);
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -142,6 +151,8 @@ export default function CollegeSkillTasks() {
     const [deleteConfirmModal, setDeleteConfirmModal] = useState(false);
     const [gradingModalOpen, setGradingModalOpen] = useState(false);
     const [gradingAssignment, setGradingAssignment] = useState<TaskAssignment | null>(null);
+
+    const [bulkImportModal, setBulkImportModal] = useState(false);
 
     const handleOpenGradingModal = (assignment: TaskAssignment) => {
         setGradingAssignment(assignment);
@@ -179,6 +190,22 @@ export default function CollegeSkillTasks() {
     const [selectedDepartment, setSelectedDepartment] = useState("all");
     const [selectedProgram, setSelectedProgram] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
+
+    // Check if any filter is active
+    const isAnyFilterActive = Boolean(
+        searchQuery ||
+        selectedDepartment !== "all" ||
+        selectedProgram !== "all" ||
+        selectedStatus !== "all"
+    );
+
+    // Clear all filters
+    const clearAllFilters = () => {
+        setSearchQuery("");
+        setSelectedDepartment("all");
+        setSelectedProgram("all");
+        setSelectedStatus("all");
+    };
 
     // Learner selection states
     const [selectedLearnerIds, setSelectedLearnerIds] = useState<string[]>([]);
@@ -779,20 +806,35 @@ export default function CollegeSkillTasks() {
             section_id: sectionId
         }));
 
-        // If courses are loaded, match by section or semester if available
-        if (courses.length > 0 && sectionId) {
-            const sec = programSections.find(s => s.id === sectionId);
-            if (sec) {
-                const matched = courses.find((c: any) =>
-                    (c.semester && sec.semester && Number(c.semester) === Number(sec.semester)) ||
-                    (c.section && sec.section && c.section.toLowerCase() === sec.section.toLowerCase())
-                );
-                if (matched) {
-                    setTaskForm(prev => ({
-                        ...prev,
-                        course_name: matched.course_name,
-                        course_code: matched.course_code || ""
-                    }));
+        // Fetch courses for this specific section (for external trainers, this will filter by section)
+        if (sectionId && taskForm.program_id) {
+            logger.info('Fetching courses for section', { sectionId, programId: taskForm.program_id });
+            const { data: { user } } = { data: { user: useAuthStore.getState().user } };
+            if (user) {
+                const { data, error } = await collegeAssignmentService.fetchEducatorCoursesBySection(user.id, taskForm.program_id, sectionId);
+                if (error) {
+                    logger.error('Error fetching courses', error);
+                    toast.error('Failed to load courses for this section');
+                    setCourses([]);
+                    setTaskForm(prev => ({ ...prev, course_name: "", course_code: "" }));
+                } else {
+                    logger.info('Loaded courses for section', { count: data?.length || 0, courses: data });
+                    const fetchedCourses = data || [];
+                    setCourses(fetchedCourses);
+                    // Auto-select first course
+                    if (fetchedCourses.length > 0) {
+                        setTaskForm(prev => ({
+                            ...prev,
+                            course_name: fetchedCourses[0].course_name,
+                            course_code: fetchedCourses[0].course_code || ""
+                        }));
+                    } else {
+                        setTaskForm(prev => ({
+                            ...prev,
+                            course_name: "",
+                            course_code: ""
+                        }));
+                    }
                 }
             }
         }
@@ -840,6 +882,7 @@ export default function CollegeSkillTasks() {
             }
 
             const assignmentData = {
+                college_course_id: courses.find(course => course.course_name === taskForm.course_name && course.course_code === taskForm.course_code)?.id,
                 title: taskForm.title.trim(),
                 description: taskForm.description,
                 instructions: taskForm.instructions,
@@ -1029,18 +1072,30 @@ export default function CollegeSkillTasks() {
 
             logger.info('User IDs to assign', { userIds });
 
-            const { error } = await collegeAssignmentService.assignTaskTolearners(
-                selectedAssignment.assignment_id,
-                userIds
-            );
+            // Check if this is a bulk assignment (multiple assignment IDs stored)
+            const bulkAssignmentIds = (window as any).__bulkAssignmentIds;
+            const assignmentIds = bulkAssignmentIds && Array.isArray(bulkAssignmentIds) && bulkAssignmentIds.length > 0 
+                ? bulkAssignmentIds 
+                : [selectedAssignment.assignment_id];
+            
+            // Assign learners to all tasks (single or bulk)
+            for (const assignmentId of assignmentIds) {
+                const { error } = await collegeAssignmentService.assignTaskTolearners(
+                    assignmentId,
+                    userIds
+                );
 
-            if (error) {
-                logger.error('Assignment service error', error);
-                toast.error(error);
-                return;
+                if (error) {
+                    logger.error('Assignment service error for ID', assignmentId, error);
+                    toast.error(`Failed to assign task ${assignmentId}: ${error}`);
+                    // Continue with other assignments even if one fails
+                }
             }
+            
+            // Clear bulk assignment IDs
+            delete (window as any).__bulkAssignmentIds;
 
-            toast.success(`Task assigned to ${userIds.length} learner${userIds.length !== 1 ? 's' : ''}`);
+            toast.success(`Task${assignmentIds.length > 1 ? 's' : ''} assigned to ${userIds.length} learner${userIds.length !== 1 ? 's' : ''}`);
             setAssignlearnersModal(false);
             setSelectedLearnerIds([]);
             setAssignedLearnerIds([]);
@@ -1132,6 +1187,44 @@ export default function CollegeSkillTasks() {
             document_pdf: extractReferenceDocumentUrl(assignment.instruction_files),
             instruction_files: [] as File[] // Reset to empty for new uploads
         };
+    };
+
+    const openSubmittedFile = async (fileUrl: string) => {
+        try {
+            // External URLs (Google Drive, Dropbox, etc.) → open directly
+            const isExternalUrl = (url: string): boolean => {
+                try {
+                    const parsedUrl = new URL(url);
+                    return !url.includes('rareminds.in') &&
+                           !url.includes('.r2.dev') &&
+                           !url.includes('localhost') &&
+                           parsedUrl.hostname !== window.location.hostname;
+                } catch {
+                    return false;
+                }
+            };
+
+            if (isExternalUrl(fileUrl)) {
+                window.open(fileUrl, '_blank');
+                return;
+            }
+
+            // R2 storage and internal files → go through authenticated proxy
+            const url = getDocumentUrl(fileUrl, 'inline');
+            const response = await ssoClient.fetch(url);
+            if (!response.ok) {
+                console.error('Failed to access file:', response.status);
+                toast.error(`Failed to access file: ${response.status}`);
+                return;
+            }
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            window.open(blobUrl, '_blank');
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+        } catch (e) {
+            console.error('Error opening file:', e);
+            toast.error('Failed to open file. Please try again.');
+        }
     };
 
     const handleViewDetails = (assignment: TaskAssignment) => {
@@ -1330,23 +1423,52 @@ export default function CollegeSkillTasks() {
                     <div className="flex items-center justify-between">
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">Skill Tasks</h1>
+                            {!assignmentCourseAccess.isPending && !canCreateTasks && <p role="status" className="text-sm text-gray-600">Assignment creation requires at least one mapped course.</p>}
+                            {assignmentCourseAccess.error && <p role="alert">Could not verify course access. <button type="button" onClick={() => { void assignmentCourseAccess.refetch(); }}>Try again</button></p>}
                             <p className="text-gray-600 mt-1">Create, manage, and evaluate skill-based assignments</p>
                         </div>
-                        <button
-                            onClick={() => {
-                                setFormMode('create');
-                                setCreateTaskModal(true);
-                            }}
-                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                            <Plus size={20} />
-                            New Task
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                disabled={!canCreateTasks}
+                                title={canCreateTasks ? undefined : "Assignments require a mapped college course"}
+                                onClick={() => setBulkImportModal(true)}
+                                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Upload size={20} />
+                                Bulk Import
+                            </button>
+                            <button
+                                disabled={!canCreateTasks}
+                                title={canCreateTasks ? undefined : "Assignments require a mapped college course"}
+                                onClick={() => {
+                                    setFormMode('create');
+                                    setCreateTaskModal(true);
+                                }}
+                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <Plus size={20} />
+                                New Task
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 {/* Filters */}
                 <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+                    {/* Header with Clear All button */}
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
+                        {isAnyFilterActive && (
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+                            >
+                                Clear All
+                            </button>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Search Tasks</label>
@@ -1357,8 +1479,19 @@ export default function CollegeSkillTasks() {
                                     placeholder="Search by title..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                                        title="Clear search"
+                                        aria-label="Clear search"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -1473,7 +1606,9 @@ export default function CollegeSkillTasks() {
                                 <p className="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
                                 <div className="mt-6">
                                     <button
-                                        onClick={() => {
+                                        disabled={!canCreateTasks}
+                            title={canCreateTasks ? undefined : "Assignments require a mapped college course"}
+                            onClick={() => {
                                             setFormMode('create');
                                             setCreateTaskModal(true);
                                         }}
@@ -2208,9 +2343,6 @@ export default function CollegeSkillTasks() {
                                         <h4 className="text-sm font-medium text-gray-700 mb-3">Instruction Files</h4>
                                         <div className="space-y-2">
                                             {selectedAssignment.instruction_files.map((file: { name: string; url: string; size: number; type: string }, idx: number) => {
-                                                // Use document-access API for secure file access
-                                                const accessUrl = getDocumentUrl(file.url, 'inline');
-
                                                 return (
                                                     <button
                                                         key={idx}
@@ -2218,7 +2350,7 @@ export default function CollegeSkillTasks() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             e.preventDefault();
-                                                            window.open(accessUrl, '_blank', 'noopener,noreferrer');
+                                                            openSubmittedFile(file.url);
                                                         }}
                                                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group w-full text-left"
                                                     >
@@ -2586,6 +2718,56 @@ export default function CollegeSkillTasks() {
                     </div>
                 </div>
             )}
+
+            {/* Bulk Import Modal */}
+            <TaskBulkImportModal
+                isOpen={bulkImportModal}
+                onClose={() => setBulkImportModal(false)}
+                onSuccess={async (sectionId: string, autoAssign: boolean, assignmentIds: string[]) => {
+                    const user = useAuthStore.getState().user;
+                    if (user?.id) {
+                        await fetchAssignments(user.id);
+                        await fetchStatistics(user.id);
+                        
+                        // Fetch learners for the section
+                        await fetchlearnersForSection(sectionId);
+                        
+                        // Fetch learners and get their IDs
+                        const { data: sectionLearners } = await collegeAssignmentService.fetchProgramSectionlearners(sectionId);
+                        const learnerIds = Array.isArray(sectionLearners) ? sectionLearners.map((l: any) => l.id) : [];
+                        
+                        // If auto-assign was checked, pre-select all learners, otherwise leave empty
+                        setSelectedLearnerIds(autoAssign ? learnerIds : []);
+                        
+                        // Set the first created assignment as the placeholder for the modal
+                        // The assignment modal will be used to manage learner assignments for all bulk tasks
+                        if (assignmentIds.length > 0) {
+                            setSelectedAssignment({
+                                assignment_id: assignmentIds[0], // Use first assignment ID
+                                title: `${assignmentIds.length} Bulk Imported Task${assignmentIds.length > 1 ? 's' : ''}`,
+                                description: '',
+                                course_name: '',
+                                course_code: '',
+                                due_date: '',
+                                assignment_type: 'homework',
+                                total_points: 100,
+                                skill_outcomes: [],
+                                status: 'active',
+                                created_date: new Date().toISOString(),
+                                program_section_id: sectionId
+                            } as TaskAssignment);
+                            
+                            // Store all assignment IDs for bulk assignment
+                            (window as any).__bulkAssignmentIds = assignmentIds;
+                            
+                            // Open assign learners modal
+                            setAssignlearnersModal(true);
+                        }
+                    }
+                }}
+                educatorUserId={actor?.id || ''}
+                collegeId={activeCollegeId || ''}
+            />
 
             {/* College Grading & Submissions Modal */}
             <CollegeGradingModal

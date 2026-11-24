@@ -1,5 +1,3 @@
-import { SubscriptionDashboard } from '@/features/subscription';
-import { useSubscriptionPlansData, useSubscriptionQuery } from '@/features/subscription/model';
 import {
   AlertCircle,
   ArrowLeft,
@@ -21,24 +19,57 @@ import {
   Shield,
   Sparkles,
   TrendingUp,
-  X as XIcon
+  X as XIcon,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-
+import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useQuery } from '@tanstack/react-query';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { Dialog, DialogContent, DialogTitle } from '@/shared/ui/DialogNew';
+import { formatManagementPrice, managementBillingLabel, managementPaymentLabel, handleTabKeyDown } from '../../lib/subscriptionPresentation';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLearnerDataByEmail } from '@/entities/learner';
 import { useUsageStatistics } from '@/features/analytics/model/useUsageStatistics';
-import { RECEIPT_CONFIG } from '@/shared/config/constants';
-import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
-import { deactivateSubscription, pauseSubscription, resumeSubscription } from '@/features/subscription';
-import { getUserSubscriptions } from '@/features/subscription/api';
-import { calculateDaysRemaining, calculateProgressPercentage, formatDate as formatDateUtil, getSubscriptionStatusChecks } from '@/features/subscription/lib';
-import { getPaymentReceiptPresignedUrl } from '@/shared/api';
-import { getLogger } from '@/shared/config/logging';
+import { calculateDaysRemaining, calculateProgressPercentage, formatDate, getSubscriptionStatusChecks } from '../../lib/subscriptionHelpers';
+import { deactivateSubscription, pauseSubscription, resumeSubscription } from '../../api/paymentsApiService';
+import { getUserPayments } from '../../api/subscriptionService';
+import MemberSubscriptionView from '../organization/MemberSubscriptionView';
+import SubscriptionDashboard from './SubscriptionDashboard';
 
-import { useUser, useUserRole, useAuthLoading } from '@/shared/model/authStore';
+import { useSubscriptionManagement } from '../../model/useSubscriptionManagement';
+import SubscriptionOwnerActions, { SubscriptionOwnerUsage } from './SubscriptionOwnerActions';
+import { getPaymentReceiptPresignedUrl } from '@/shared/api';
+import { RECEIPT_CONFIG, ROUTES } from '@/shared/config/constants';
+import { getLogger } from '@/shared/config/logging';
+import { useAuthLoading, useUser, useUserRole } from '@/shared/model/authStore';
+import { downloadFileFromUrl, generateReceiptFilename } from '@/shared/utils/downloadHelpers';
+import { openZohoChat } from '@/shared/utils/zohoChat';
 
 const logger = getLogger('my-subscription');
+
+function SubscriptionSelector({ management, onSelect, disabled = false }) {
+  if (management.subscriptions.length < 2) return null;
+  return <label className="block mb-6 text-sm font-semibold text-slate-700">Your subscriptions
+    <select disabled={disabled} value={management.selectedId || ''} onChange={event => (onSelect || management.selectSubscription)(event.target.value)} className="block w-full mt-2 rounded-xl border border-slate-300 bg-white p-3">
+      {management.subscriptions.map(item => <option key={item.id} value={item.id}>{item.planName || item.plan || 'Subscription'} · {item.status} · {item.startDate ? formatDate(item.startDate) : 'Purchase date unavailable'}</option>)}
+    </select>
+  </label>;
+}
+
+/**
+ * Returns Tailwind class names and display label for a billing history status badge.
+ * @param {string} status - Transaction status ('paid', 'failed', 'refunded', or any other value)
+ * @returns {{ badgeClass: string, iconClass: string, label: string }}
+ */
+function getStatusBadgeConfig(status) {
+  const configs = {
+    paid:     { badgeClass: 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white', iconClass: 'fill-white', label: 'Paid' },
+    failed:   { badgeClass: 'bg-gradient-to-r from-red-500 to-red-600 text-white',     iconClass: 'fill-white', label: 'Failed' },
+    refunded: { badgeClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white',  iconClass: 'fill-white', label: 'Refunded' },
+  };
+  return configs[status] ?? { badgeClass: 'bg-slate-200 text-slate-700', iconClass: 'fill-slate-600', label: 'Pending' };
+}
+
 /**
  * Get the settings path based on current URL path (more reliable than role)
  */
@@ -49,7 +80,7 @@ function getSettingsPathFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return '/college-admin/settings';
   if (pathname.startsWith('/school-admin')) return '/school-admin/settings';
   if (pathname.startsWith('/university-admin')) return '/university-admin/settings';
-  return '/learner/settings'; // fallback
+  return null;
 }
 
 /**
@@ -76,45 +107,9 @@ function getUserTypeFromUrl(pathname) {
   if (pathname.startsWith('/college-admin')) return 'college_admin';
   if (pathname.startsWith('/school-admin')) return 'school_admin';
   if (pathname.startsWith('/university-admin')) return 'university_admin';
-  return 'learner'; // fallback
-}
-
-// Removed FALLBACK_PLANS as per requirement to use DB data only
-
-/**
- * Validate receipt download URL format.
- */
-function isValidReceiptDownloadUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  
-  try {
-    const parsedUrl = new URL(url);
-    const isLocalhost = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
-    return Boolean(parsedUrl.hostname) && (parsedUrl.protocol === 'https:' || (isLocalhost && parsedUrl.protocol === 'http:'));
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Resolve payment ID from available sources
- * Priority: invoice payment ID > subscription payment ID > order ID > subscription ID
- */
-function resolvePaymentId(invoiceData, subscriptionData) {
-  // Safely normalize invoice payment ID if provided
-  const invoicePaymentId =
-    typeof invoiceData?.razorpay_payment_id === 'string'
-      ? invoiceData.razorpay_payment_id.trim()
-      : '';
-  
-  // Priority order: invoice payment ID > subscription payment ID > order ID > subscription ID
-  if (invoicePaymentId) return invoicePaymentId;
-  if (subscriptionData?.razorpayPaymentId) return subscriptionData.razorpayPaymentId;
-  if (subscriptionData?.razorpayOrderId) return subscriptionData.razorpayOrderId;
-  if (subscriptionData?.razorpaySubscriptionId) return subscriptionData.razorpaySubscriptionId;
-  
   return null;
 }
+
 
 function MySubscription() {
   const navigate = useNavigate();
@@ -123,29 +118,25 @@ function MySubscription() {
   const user = useUser();
   const { role } = useUserRole();
   const authLoading = useAuthLoading();
-  const { subscriptionData, loading: subscriptionLoading, refreshSubscription } = useSubscriptionQuery();
 
-  // Get settings, dashboard paths, and user type from current URL (more reliable than role)
-  const settingsPath = useMemo(() => getSettingsPathFromUrl(location.pathname), [location.pathname]);
-  const dashboardPath = useMemo(() => getDashboardPathFromUrl(location.pathname), [location.pathname]);
-  const userType = useMemo(() => getUserTypeFromUrl(location.pathname), [location.pathname]);
+  // Get learner data with phone number
+  const { learnerData, error: learnerError, loading: learnerLoading } = useLearnerDataByEmail(user?.email);
+
+  const management = useSubscriptionManagement();
+  const { subscriptionData, loading: subscriptionLoading, refreshSubscription, modern, owner, error: subscriptionError } = management;
+
+  // Role-prefixed routes retain their context; shared routes use the canonical role router.
+  const routePath = location.pathname.startsWith('/subscription/') ? getRouteForRole(role) : location.pathname;
+  const settingsPath = useMemo(() => getSettingsPathFromUrl(routePath), [routePath]);
+  const dashboardPath = location.pathname.startsWith('/subscription/') ? getRouteForRole(role) : getDashboardPathFromUrl(location.pathname);
+  const userType = useMemo(() => getUserTypeFromUrl(routePath), [routePath]);
+
+  const isOrganizationLearner = Boolean(subscriptionData?.isOrganizationLicense);
 
   // Tab state - 'subscription' or 'addons'
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'subscription');
 
-  // Fetch plans from Cloudflare Worker API (limited to 4 features initially)
-  const {
-    plans: dbPlans,
-    loading: plansLoading,
-    loadingMore: loadingMoreFeatures,
-    showingAllFeatures,
-    fetchAllFeatures,
-    showLimitedFeatures
-  } = useSubscriptionPlansData({
-    businessType: 'b2b',
-    featuresLimit: 4
-  });
-
+  const [showingAllFeatures, setShowingAllFeatures] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
@@ -156,32 +147,23 @@ function MySubscription() {
   const [isPausing, setIsPausing] = useState(false);
   const [pauseMonths, setPauseMonths] = useState(1);
   const [showRetentionOffer, setShowRetentionOffer] = useState(false);
-  const [autoRenewEnabled, setAutoRenewEnabled] = useState(subscriptionData?.autoRenew || false);
-  const [billingHistory, setBillingHistory] = useState([]);
-  const [loadingBillingHistory, setLoadingBillingHistory] = useState(false);
-  const [billingHistoryFetched, setBillingHistoryFetched] = useState(false);
-  const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
+  const autoRenewEnabled = subscriptionData?.autoRenew === true;
+  const renewalKnown = typeof subscriptionData?.autoRenew === 'boolean';
+  const isCancelled = subscriptionData?.status === 'cancelled';
+  const ownerAccess = modern && owner.status === 'ready' ? owner.current?.access : null;
+  const dashboardAvailable = modern ? ['full', 'restricted', 'read_only'].includes(ownerAccess) : management.hasAccess;
+  const renewalNotApplicable = subscriptionData?.billingCycle === 'free' || (modern && owner.status === 'ready' && owner.current?.state.validity === 'perpetual');
+  const legacyActionsReady = !modern && owner.status === 'ready';
 
-  // Ref to prevent duplicate download requests (synchronous guard)
-  const downloadInProgressRef = useRef(false);
-
-  // Use database plans directly
-  const plans = useMemo(() => {
-    if (dbPlans && dbPlans.length > 0) {
-      return dbPlans.map(plan => ({
-        id: plan.id,
-        name: plan.name,
-        price: plan.price,
-        priceLabel: plan.contactSales ? 'Contact Sales' : 'Per Person',
-        features: plan.features || [],
-        totalFeatures: plan.totalFeatures ?? plan.features?.length ?? 0,
-        hasMoreFeatures: plan.hasMoreFeatures || false,
-        detailedFeatures: plan.detailedFeatures || [],
-        limits: plan.limits
-      }));
-    }
-    return [];
-  }, [dbPlans]);
+  const selectSubscription = id => {
+    setShowCancelModal(false);
+    setShowPauseModal(false);
+    setCancelReason('');
+    setAdditionalFeedback('');
+    setShowRetentionOffer(false);
+    setShowingAllFeatures(false);
+    management.selectSubscription(id);
+  };
 
   // Calculate days remaining and progress - optimized
   const daysRemaining = useMemo(() =>
@@ -194,21 +176,14 @@ function MySubscription() {
     [subscriptionData?.startDate, subscriptionData?.endDate]
   );
 
-  const formatDate = useCallback((dateString) => formatDateUtil(dateString), []);
-
   const handleUpgradePlan = () => {
-    // Use userType from URL path (more reliable than role from auth)
-    navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
+    if (!userType) return;
+    navigate(`/subscription/plans?type=${encodeURIComponent(userType)}&mode=upgrade&subscriptionId=${encodeURIComponent(subscriptionData.id)}`);
   };
 
   const handleRenewSubscription = () => {
-    // Use the memoized currentPlan instead of finding again
-    navigate('/subscription/payment', {
-      state: {
-        plan: currentPlan,
-        isRenewal: true
-      }
-    });
+    if (modern) navigate(`/subscription/plans?type=${encodeURIComponent(userType)}&mode=renew&subscriptionId=${encodeURIComponent(subscriptionData.id)}`);
+    else navigate(ROUTES.CONTACT);
   };
 
   const handleCancelSubscription = () => {
@@ -216,6 +191,7 @@ function MySubscription() {
   };
 
   const confirmCancelSubscription = async () => {
+    if (!legacyActionsReady) return;
     if (!subscriptionData || !cancelReason) {
       alert('Please select a cancellation reason');
       return;
@@ -232,7 +208,7 @@ function MySubscription() {
 
       if (result.success) {
         // Success - show confirmation
-        alert(`Subscription cancelled successfully. You'll have access until ${formatDate(subscriptionData.endDate)}`);
+        alert(`Subscription cancelled successfully. You'll have access until ${subscriptionData.endDate ? formatDate(subscriptionData.endDate) : 'No expiry'}`);
 
         // Refresh subscription data
         await refreshSubscription();
@@ -253,6 +229,7 @@ function MySubscription() {
   };
 
   const handlePauseSubscription = async () => {
+    if (!legacyActionsReady) return;
     if (!subscriptionData) return;
 
     setIsPausing(true);
@@ -265,7 +242,7 @@ function MySubscription() {
       );
 
       if (result.success) {
-        alert(`Subscription paused for ${pauseMonths} month(s). It will automatically resume after this period.`);
+        alert('Subscription paused. You can resume it from this page.');
         await refreshSubscription();
         setShowPauseModal(false);
         setShowCancelModal(false);
@@ -281,6 +258,7 @@ function MySubscription() {
   };
 
   const handleResumeSubscription = async () => {
+    if (!legacyActionsReady) return;
     if (!subscriptionData) return;
 
     const confirmed = window.confirm('Resume your subscription now?');
@@ -317,17 +295,12 @@ function MySubscription() {
   };
 
   const handleDownloadInvoice = async (invoiceData = null) => {
-    // Prevent duplicate requests - synchronous guard
-    if (downloadInProgressRef.current) {
-      return;
-    }
-
-    // Early validation guards
     if (!subscriptionData && !invoiceData) {
       toast.error('Subscription details are not available. Please try again.');
       return;
     }
 
+    // Validate invoiceData structure when passed
     if (
       invoiceData &&
       (typeof invoiceData !== 'object' || Array.isArray(invoiceData))
@@ -347,24 +320,43 @@ function MySubscription() {
       return;
     }
 
-    downloadInProgressRef.current = true;
+    const isValidReceiptDownloadUrl = (url) => {
+      if (!url || typeof url !== 'string') return false;
+
+      try {
+        const parsedUrl = new URL(url);
+        const isLocalhost = parsedUrl.hostname === 'localhost' || parsedUrl.hostname === '127.0.0.1';
+        return Boolean(parsedUrl.hostname) && (parsedUrl.protocol === 'https:' || (isLocalhost && parsedUrl.protocol === 'http:'));
+      } catch {
+        return false;
+      }
+    };
+
     setIsDownloadingInvoice(true);
-    
+
     let successfulDownload = false;
     let errorOccurred = false;
     let errorMessage = '';
-    
+
     try {
       // PRIORITY 1: Check if subscription has receipt_url stored in database (R2 key)
+      // Only use this when no specific invoiceData is passed (i.e. main "Download Invoice" button)
+      // If invoiceData is passed (billing history row), skip this and use that transaction's payment ID
+      if (invoiceData && subscriptionData?.receiptUrl) {
+        logger.debug('Bypassing receiptUrl: invoiceData provided, using transaction payment ID instead', {
+          invoicePaymentId: invoiceData.razorpay_payment_id,
+          receiptUrl: subscriptionData.receiptUrl,
+        });
+      }
       const receiptUrl =
-        typeof subscriptionData?.receiptUrl === 'string'
+        !invoiceData && typeof subscriptionData?.receiptUrl === 'string'
           ? subscriptionData.receiptUrl.trim()
           : '';
-      
+
       if (receiptUrl) {
         // receipt_url is the R2 key, so request an authenticated download URL.
         const receiptDownloadUrl = await getPaymentReceiptPresignedUrl(receiptUrl, 3600);
-        
+
         if (!isValidReceiptDownloadUrl(receiptDownloadUrl)) {
           errorOccurred = true;
           errorMessage = 'Failed to generate download link. Please try again.';
@@ -374,48 +366,68 @@ function MySubscription() {
             await downloadFileFromUrl(receiptDownloadUrl, generateReceiptFilename());
             successfulDownload = true;
           } catch (downloadError) {
-            logger.error('Download helper failed', downloadError);
+            logger.error('Download failed', downloadError);
             errorOccurred = true;
-            errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+            errorMessage = 'Failed to download receipt. Please try again.';
           }
         }
       } else {
-        // PRIORITY 2: Construct receipt path from payment ID
-        const paymentId = resolvePaymentId(invoiceData, subscriptionData);
-        
+        // PRIORITY 2: Determine which payment ID to use for constructing receipt path
+        let paymentId = null;
+
+        // Safely normalize invoice payment ID if provided
+        const invoicePaymentId =
+          typeof invoiceData?.razorpay_payment_id === 'string'
+            ? invoiceData.razorpay_payment_id.trim()
+            : '';
+
+        if (invoiceData && !invoicePaymentId) throw new Error('This transaction has no receipt reference.');
+
+        // If invoice data is passed (from billing history), use that
+        if (invoicePaymentId) {
+          paymentId = invoicePaymentId;
+        } else if (subscriptionData?.razorpayPaymentId) {
+          // Use current subscription's payment ID
+          paymentId = subscriptionData.razorpayPaymentId;
+        } else if (subscriptionData?.razorpayOrderId) {
+          // Fallback to order ID if payment ID not available
+          paymentId = subscriptionData.razorpayOrderId;
+        } else if (subscriptionData?.razorpaySubscriptionId) {
+          // Last resort: use subscription ID
+          paymentId = subscriptionData.razorpaySubscriptionId;
+        }
+
         if (!paymentId) {
-          logger.error('No payment information found', new Error('Missing payment ID'));
           errorOccurred = true;
           errorMessage = 'Receipt not available. Payment information not found.';
         } else {
           // Construct the receipt key pattern - matches what the backend generates
           // Pattern: payment_pdf/user_{shortUserId}/{sanitizedPaymentId}_{timestamp}.pdf
-          const RECEIPT_FILE_PREFIX = 'payment_pdf/user_';
           const userPrefix = user?.id
             ? user.id.substring(0, Math.min(user.id.length, RECEIPT_CONFIG.USER_ID_PREFIX_LENGTH))
             : '';
           const sanitizedPaymentId = paymentId.replace(RECEIPT_CONFIG.PAYMENT_ID_SANITIZE_REGEX, '');
-          
+
           // The exact key format may vary by timestamp, so we use the payment ID as identifier
           // The backend will handle key extraction from payment ID
-          const fileIdentifier = `${RECEIPT_FILE_PREFIX}${userPrefix}/${sanitizedPaymentId}`;
-          
+          const fileIdentifier = `payment_pdf/user_${userPrefix}/${sanitizedPaymentId}`;
+
           // Get authenticated download URL for the receipt.
           const receiptDownloadUrl = await getPaymentReceiptPresignedUrl(fileIdentifier, 3600);
-          
+
           if (!isValidReceiptDownloadUrl(receiptDownloadUrl)) {
             logger.error('Invalid receipt download URL received', new Error('Invalid URL'));
             errorOccurred = true;
-            errorMessage = 'Failed to generate download link. Receipt may not exist yet.';
+            errorMessage = 'Failed to generate download link. Receipt may not exist.';
           } else {
             // Use shared download helper with fallback mechanism
             try {
               await downloadFileFromUrl(receiptDownloadUrl, generateReceiptFilename());
               successfulDownload = true;
             } catch (downloadError) {
-              logger.error('Download helper failed', downloadError);
+              logger.error('Download failed', downloadError);
               errorOccurred = true;
-              errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+              errorMessage = 'Failed to download receipt. Please try again.';
             }
           }
         }
@@ -425,14 +437,13 @@ function MySubscription() {
       errorOccurred = true;
       const msg = error?.message || 'Failed to download receipt';
       if (msg.includes('not found')) {
-        errorMessage = 'Receipt is still being generated. Please try again in a moment or check your email.';
+        errorMessage = 'Receipt not found. It may still be generating. Please try again in a moment.';
       } else {
-        errorMessage = 'Failed to download receipt. A copy has been sent to your email.';
+        errorMessage = `Failed to download receipt: ${msg}`;
       }
     } finally {
-      downloadInProgressRef.current = false;
       setIsDownloadingInvoice(false);
-      
+
       // Show appropriate toast message after cleanup
       if (successfulDownload) {
         toast.success('Receipt downloading!');
@@ -442,32 +453,77 @@ function MySubscription() {
     }
   };
 
-  const handleToggleAutoRenew = async () => {
-    if (isTogglingAutoRenew) return; // Prevent double clicks
 
-    const newValue = !autoRenewEnabled;
-    const previousValue = autoRenewEnabled;
 
-    // Optimistic update - instant UI feedback
-    setAutoRenewEnabled(newValue);
-    setIsTogglingAutoRenew(true);
+  /**
+   * Helper to safely extract phone number from learner data
+   */
+  const getLearnerPhoneNumber = (learnerData) => {
+    if (!learnerData) return '';
 
-    try {
-      // TODO: Call actual API to update auto-renewal setting
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API call
-      // Success - keep the new value
-    } catch (error) {
-      // Rollback on error
-      setAutoRenewEnabled(previousValue);
-      logger.error('Failed to toggle auto-renewal', error);
-    } finally {
-      setIsTogglingAutoRenew(false);
-    }
+    return (
+      learnerData.phone ||
+      learnerData.alternatePhone ||
+      learnerData.profile?.phone ||
+      learnerData.profile?.mob ||
+      learnerData.profile?.contact_number ||
+      ''
+    );
   };
 
   const handleContactSupport = () => {
-    // Navigate to support page or open support modal
-    navigate('/support?topic=billing');
+    try {
+      // Get phone number - safe even if learnerData is loading or errored
+      const phoneNumber = learnerLoading || learnerError ? '' : getLearnerPhoneNumber(learnerData);
+
+      // Get user name - try multiple sources with safe fallbacks
+      const userName = user?.user_metadata?.full_name ||
+                       user?.user_metadata?.name ||
+                       learnerData?.name ||
+                       'User';
+
+      // Check if user is a learner (from URL path)
+      const isLearner = location.pathname.startsWith('/learner');
+
+      // Open Zoho SalesIQ chat with best available context
+      // Don't block user from opening support chat even if learner data failed
+      openZohoChat({
+        userId: user?.id,
+        userName: userName,
+        userEmail: user?.email,
+        userPhone: phoneNumber,
+        userRole: role,
+        userRoles: user?.roles,
+        subscriptionId: subscriptionData?.id,
+        subscriptionPlan: subscriptionData?.planName || subscriptionData?.plan_type || currentPlan?.name || 'Unknown',
+        subscriptionStatus: subscriptionData?.status || 'Unknown',
+        subscriptionStartDate: subscriptionData?.startDate,
+        subscriptionEndDate: subscriptionData?.endDate,
+        billingCycle: subscriptionData?.billingCycle,
+        organizationId: subscriptionData?.organizationId || user?.orgId,
+        organizationType: subscriptionData?.organizationType || subscriptionData?.entityType,
+        pageSource: 'My Subscription Page',
+        pagePath: location.pathname,
+        additionalInfo: {
+          'Days Remaining': daysRemaining || 0,
+          'Plan Price': subscriptionData?.planPrice || currentPlan?.price || 'N/A',
+          'Auto Renew': autoRenewEnabled ? 'Enabled' : 'Disabled',
+          'Payment Status': subscriptionData?.paymentStatus || 'N/A',
+          'Is Organization License': subscriptionData?.isOrganizationLicense ? 'Yes' : 'No',
+          'License Assignment ID': subscriptionData?.licenseAssignmentId || 'N/A',
+          'User Type': userType
+        }
+      }, {
+        // Enable auto-close on scroll for learners only
+        autoCloseOnScroll: isLearner,
+        scrollThreshold: 100 // Close after scrolling 100px
+      });
+    } catch (error) {
+      // Defensive catch for data preparation errors before calling openZohoChat
+      // (openZohoChat has its own internal error handling and never throws)
+      // This protects against errors in: getLearnerPhoneNumber, string operations, object access, etc.
+      logger.error('Failed to prepare support chat context', error instanceof Error ? error : new Error(String(error)));
+    }
   };
 
   // Use URL-based paths (already computed from location.pathname)
@@ -475,122 +531,75 @@ function MySubscription() {
   const getSettingsUrl = useCallback(() => settingsPath, [settingsPath]);
 
   // Fetch billing history from database (with caching)
-  const fetchBillingHistory = useCallback(async (force = false) => {
-    if (!user) return;
-    if (billingHistoryFetched && !force) return; // Skip if already fetched
+  const { data: billingHistory = [], isFetching: loadingBillingHistory, isSuccess: billingHistoryFetched,
+    error: billingHistoryError, refetch: fetchBillingHistory } = useQuery({
+    queryKey: ['subscription-billing-history', user?.id],
+    enabled: Boolean(user?.id && showBillingHistory),
+    retry: false,
+    queryFn: async () => {
+      const result = await getUserPayments();
+      if (!result.success || !Array.isArray(result.data)) throw new Error(result.error || 'Unable to load billing history.');
+      const history = result.data
+        .map(tx => {
+          const meta = tx.metadata || {};
+          const plan = meta.plan || {};
+          const planName = plan.name ?? '';
+          const billingCycle = plan.billing_cycle ?? '';
+          const description = planName
+            ? (billingCycle ? `${planName} — ${billingCycle}` : planName)
+            : (() => {
+                const typeMap = {
+                  upgrade: 'Plan Upgrade',
+                  subscription: 'Subscription',
+                  addon: 'Add-on Purchase',
+                  bulk_purchase: 'Bulk Purchase',
+                  refund: 'Refund',
+                };
+                const mappedType = typeMap[tx.transaction_type?.toLowerCase()];
+                if (!mappedType && tx.transaction_type) {
+                  logger.warn('Unmapped transaction type displayed as raw value', { type: tx.transaction_type });
+                }
+                  const rawType = typeof tx.transaction_type === 'string'
+                    ? tx.transaction_type.slice(0, 50)
+                    : null;
+                  return mappedType || rawType || 'Purchase';
+              })();
+          const statusMap = {
+            completed: 'paid',
+            failed: 'failed',
+            refunded: 'refunded',
+            pending: 'pending',
+          };
+          return {
+            id: tx.id,
+            date: tx.created_at,
+            amount: tx.amount,
+            status: statusMap[tx.status?.toLowerCase()] || tx.status || 'pending',
+            description,
+            planName,
+            billingCycle,
+            razorpay_payment_id: tx.razorpay_payment_id,
+          };
+        });
 
-    setLoadingBillingHistory(true);
-    try {
-      const result = await getUserSubscriptions(false); // false = optimized query
+      return history;
+    },
+  });
 
-      if (result.success && result.data) {
-        // Transform database subscriptions to billing history format
-        // More lenient filter - show all subscriptions that have been processed
-        const history = result.data
-          .filter(sub => {
-            // Show if it has any of these statuses
-            const validStatuses = ['active', 'expired', 'cancelled'];
-            const hasValidStatus = validStatuses.includes(sub.status?.toLowerCase());
-            const hasPayment = sub.razorpay_subscription_id;
-            return hasValidStatus || hasPayment;
-          })
-          .map(sub => ({
-            id: sub.id,
-            date: sub.created_at || sub.subscription_start_date,
-            amount: sub.plan_amount || '',
-            status: sub.status === 'active' ? 'paid' : 'completed',
-            description: sub.billing_cycle
-              ? `${sub.plan_type ?? ''} — ${sub.billing_cycle}`
-              : `${sub.plan_type ?? ''}`,
-            planType: sub.plan_type,
-            billingCycle: sub.billing_cycle,
-            subscriptionStatus: sub.status
-          }));
-
-        setBillingHistory(history);
-        setBillingHistoryFetched(true);
-      }
-    } catch (error) {
-      logger.error('Error fetching billing history', error);
-    } finally {
-      setLoadingBillingHistory(false);
-    }
-  }, [user, billingHistoryFetched]);
-
-  // Prefetch billing history in background after page loads
-  useEffect(() => {
-    if (user && !billingHistoryFetched && !loadingBillingHistory) {
-      // Wait 1 second after page load to prefetch billing history
-      const timer = setTimeout(() => {
-        fetchBillingHistory();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [user, billingHistoryFetched, loadingBillingHistory, fetchBillingHistory]);
-
-  // Get current plan early for use in billing history
-  // Map subscription plan to database plan (handle 'pro' -> 'professional' mapping)
-  const currentPlan = useMemo(() => {
-    if (!subscriptionData?.plan) return null;
-
-    // The subscriptionData.plan comes directly from the backend (plan_code or fallback plan_type)
-    const planId = subscriptionData.plan.toLowerCase();
-
-    // Find plan in database plans by exact ID match only
-    let plan = plans.find(p => p.id === planId);
-
-    // If still not found, use subscription data to build plan info
-    if (!plan) {
-      const features = subscriptionData.features || [];
-      return {
-        id: subscriptionData.plan,
-        name: subscriptionData.planName || `${subscriptionData.plan.charAt(0).toUpperCase() + subscriptionData.plan.slice(1)} Plan`,
-        price: subscriptionData.planPrice ? String(subscriptionData.planPrice) : null,
-        priceLabel: 'Per Person',
-        features: features,
-        totalFeatures: features.length,
-        hasMoreFeatures: false
-      };
-    }
-
-    return plan;
-  }, [plans, subscriptionData?.plan, subscriptionData?.planName, subscriptionData?.planPrice, subscriptionData?.features]);
-
-  // Calculate display features and whether there are more to show
-  // Uses showingAllFeatures from hook instead of local state
-  const { displayFeatures, totalFeaturesCount, hasMoreFeatures, hiddenCount } = useMemo(() => {
-    const features = currentPlan?.features || subscriptionData?.features || [];
-    // totalFeatures from API, or fallback to a reasonable estimate
-    // If we have exactly 4 features and no totalFeatures, assume there might be more
-    const total = currentPlan?.totalFeatures || (features.length === 4 ? 10 : features.length);
-
-    // hasMoreFeatures is true if:
-    // 1. API explicitly says there are more (currentPlan.hasMoreFeatures) OR
-    // 2. Total features > currently displayed features OR
-    // 3. We have exactly 4 features (the limit) and haven't expanded yet
-    const hasMore = (currentPlan?.hasMoreFeatures === true) ||
-      (total > features.length) ||
-      (features.length === 4 && !showingAllFeatures);
-
-    const hidden = Math.max(0, total - features.length);
-
-    return {
-      displayFeatures: features,
-      totalFeaturesCount: total,
-      hiddenCount: hidden,
-      // Only show "Show more" if there are more features AND we haven't already loaded all
-      hasMoreFeatures: hasMore && !showingAllFeatures
-    };
-  }, [currentPlan?.features, currentPlan?.totalFeatures, currentPlan?.hasMoreFeatures, subscriptionData?.features, showingAllFeatures]);
-
-  // Simple handler to toggle features - no complex animation state needed
-  const handleToggleFeatures = async () => {
-    if (showingAllFeatures) {
-      await showLimitedFeatures();
-    } else {
-      await fetchAllFeatures();
-    }
-  };
+  // Display the purchased terms, including plans retired from the current catalog.
+  const currentPlan = useMemo(() => subscriptionData ? ({
+    id: subscriptionData.planId || subscriptionData.plan,
+    name: subscriptionData.planName,
+    price: subscriptionData.planPrice,
+    features: subscriptionData.features || [],
+  }) : null, [subscriptionData]);
+  const allFeatures = currentPlan?.features || [];
+  const displayFeatures = showingAllFeatures ? allFeatures : allFeatures.slice(0, 4);
+  const totalFeaturesCount = allFeatures.length;
+  const hiddenCount = Math.max(0, totalFeaturesCount - displayFeatures.length);
+  const hasMoreFeatures = hiddenCount > 0;
+  const loadingMoreFeatures = false;
+  const handleToggleFeatures = () => setShowingAllFeatures(value => !value);
 
   // Memoize status checks for better performance using optimized helper
   // Must be called before any conditional returns (Rules of Hooks)
@@ -602,7 +611,9 @@ function MySubscription() {
   const { isExpiringSoon, isExpired, isActive, isPaused } = statusChecks;
 
   // Fetch dynamic usage statistics
-  const { usageStats, loading: usageLoading } = useUsageStatistics(currentPlan);
+  const usagePlan = useMemo(() => currentPlan ? ({ ...currentPlan, features: currentPlan.features.map(feature =>
+    typeof feature === 'string' ? feature : feature?.name || feature?.feature_key || '') }) : null, [currentPlan]);
+  const { usageStats, loading: usageLoading, error: usageError } = useUsageStatistics(usagePlan, { enabled: legacyActionsReady && Boolean(usagePlan) });
 
   // Skeleton loader component - Editorial luxury style
   const SkeletonLoader = () => (
@@ -632,7 +643,7 @@ function MySubscription() {
   );
 
   // Loading state
-  if (authLoading || subscriptionLoading || plansLoading) {
+  if (authLoading || subscriptionLoading) {
     return <SkeletonLoader />;
   }
 
@@ -644,7 +655,8 @@ function MySubscription() {
         <div className="bg-white border-b-2 border-slate-200">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <button
-              onClick={() => navigate(getSettingsUrl())}
+              type="button"
+              disabled={!settingsPath} onClick={() => navigate(getSettingsUrl())}
               className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors group font-medium"
             >
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -658,20 +670,70 @@ function MySubscription() {
             <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Shield className="w-7 h-7 text-slate-700" />
             </div>
-            <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>No Active Subscription</h2>
+            <h2 className="text-3xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>{subscriptionError ? 'Unable to load subscription' : 'No Active Subscription'}</h2>
             <p className="text-slate-600 text-sm mb-6 font-light leading-relaxed">
-              You don't have an active subscription yet. Choose a plan to get started.
+              {subscriptionError ? 'Your subscription could not be checked. Please try again.' : "You don't have an active subscription yet. Choose a plan to get started."}
             </p>
             <button
+              type="button"
               onClick={() => {
+                if (subscriptionError) { void refreshSubscription(); return; }
                 // Use userType from URL path (already computed at top of component)
                 navigate(`/subscription/plans?type=${userType}`);
               }}
               className="w-full bg-gradient-to-r from-slate-800 to-slate-900 text-white py-3 px-6 rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all shadow-lg hover:shadow-xl hover:scale-105"
             >
-              View Plans
+              {subscriptionError ? 'Try again' : 'View Plans'}
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isOrganizationLearner) {
+    const orgName = subscriptionData?.organizationName;
+    const orgEmail = subscriptionData?.organizationEmail;
+    const orgPhone = subscriptionData?.organizationPhone;
+    const planTitle = subscriptionData?.planName;
+    const endDate = subscriptionData?.endDate;
+    const startDate = subscriptionData?.startDate;
+
+    return (
+      <div className="min-h-screen bg-slate-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">My Subscription</h1>
+              <p className="text-gray-500 mt-1">Your active access{orgName ? ` provided by ${orgName}` : ''}</p>
+            </div>
+            <button
+              onClick={() => navigate(dashboardPath)}
+              className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+
+          <SubscriptionSelector management={management} onSelect={selectSubscription} disabled={isCancelling || isPausing} />
+          <MemberSubscriptionView
+            hasOrganizationSubscription={true}
+            learnerName={user?.full_name}
+            organization={{
+              id: subscriptionData?.organizationId,
+              name: orgName,
+              email: orgEmail,
+              phone: orgPhone,
+              type: subscriptionData?.organizationType,
+            }}
+            subscription={{
+              planName: planTitle,
+              startDate: startDate,
+              endDate: endDate,
+              status: subscriptionData?.status || 'active',
+              autoRenew: false,
+            }}
+          />
         </div>
       </div>
     );
@@ -684,7 +746,8 @@ function MySubscription() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Back to Settings Button */}
           <button
-            onClick={() => navigate(getSettingsUrl())}
+            type="button"
+            disabled={!settingsPath} onClick={() => navigate(getSettingsUrl())}
             className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-6 transition-colors group font-medium"
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -722,8 +785,10 @@ function MySubscription() {
           </div>
 
           {/* Tab Navigation - Editorial Style */}
-          <div className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
+          <div role="tablist" aria-label="Subscription management" className="mt-8 inline-flex bg-white rounded-2xl p-1.5 shadow-lg border border-slate-200">
             <button
+              type="button"
+              role="tab" id="management-subscription-tab" aria-selected={activeTab === 'subscription'} aria-controls="management-panel" tabIndex={activeTab === 'subscription' ? 0 : -1} onKeyDown={handleTabKeyDown}
               onClick={() => setActiveTab('subscription')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'subscription'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -734,6 +799,8 @@ function MySubscription() {
               Subscription
             </button>
             <button
+              type="button"
+              role="tab" id="management-addons-tab" aria-selected={activeTab === 'addons'} aria-controls="management-panel" tabIndex={activeTab === 'addons' ? 0 : -1} onKeyDown={handleTabKeyDown}
               onClick={() => setActiveTab('addons')}
               className={`px-6 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${activeTab === 'addons'
                 ? 'bg-gradient-to-br from-slate-800 to-slate-900 text-white shadow-lg'
@@ -747,14 +814,22 @@ function MySubscription() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div id="management-panel" role="tabpanel" aria-labelledby={`management-${activeTab}-tab`} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SubscriptionSelector management={management} onSelect={selectSubscription} disabled={isCancelling || isPausing} />
+        {management.historyError && <p role="alert" className="mb-4 text-sm text-red-700">Additional purchases could not be loaded. <button onClick={refreshSubscription} className="underline">Try again</button></p>}
         {/* Add-Ons Tab Content */}
         {activeTab === 'addons' ? (
           <SubscriptionDashboard subscriptionData={subscriptionData} />
         ) : (
           <>
+            {isCancelled && <div role="status" className="mb-8 p-6 rounded-3xl border-2 border-amber-200 bg-amber-50 text-amber-900">
+              <h3 className="text-xl font-semibold mb-2">Subscription cancelled</h3>
+              <p>{ownerAccess === 'read_only' ? 'You can view your existing information with read-only subscription access.'
+                : ownerAccess === 'suspended' ? 'Dashboard access is unavailable for this cancelled subscription.'
+                  : 'Review your subscription access before continuing.'} Contact support to review restoration options.</p>
+            </div>}
             {/* Alert Banner - Editorial Luxury Style */}
-            {(isExpiringSoon || isExpired || isPaused) && (
+            {!isCancelled && (isExpiringSoon || isExpired || isPaused) && (
               <div className={`mb-8 p-6 rounded-3xl border-2 flex items-start gap-4 shadow-lg ${isExpired
                 ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200'
                 : isPaused
@@ -780,7 +855,8 @@ function MySubscription() {
                     }
                   </p>
                   <button
-                    onClick={handleRenewSubscription}
+                    type="button"
+                    onClick={isPaused && legacyActionsReady ? handleResumeSubscription : handleRenewSubscription}
                     className={`mt-4 px-6 py-3 rounded-2xl text-sm font-semibold transition-all inline-flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 ${isPaused
                       ? 'bg-gradient-to-r from-amber-600 to-amber-700 text-white hover:from-amber-700 hover:to-amber-800'
                       : isExpired
@@ -788,7 +864,7 @@ function MySubscription() {
                         : 'bg-gradient-to-r from-slate-800 to-slate-900 text-white hover:from-slate-900 hover:to-black'
                       }`}
                   >
-                    {isPaused ? 'Resume Subscription' : 'Renew Now'}
+                    {isPaused ? (legacyActionsReady ? 'Resume Subscription' : 'View renewal options') : 'Renew Now'}
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -809,7 +885,7 @@ function MySubscription() {
                     </h3>
                   </div>
                   <div className="p-6">
-                    {usageLoading ? (
+                    {modern ? <SubscriptionOwnerUsage owner={owner} /> : usageError ? <p role="alert">Usage statistics are temporarily unavailable.</p> : usageLoading ? (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                         {[1, 2, 3].map((idx) => (
                           <div key={idx} className="animate-pulse">
@@ -872,13 +948,11 @@ function MySubscription() {
                         </h2>
                         <div className="flex items-baseline gap-1">
                           <span className="text-4xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                            {subscriptionData?.planPrice ? `₹${subscriptionData.planPrice}` : (currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales')}
+                            {formatManagementPrice(subscriptionData?.planPrice)}
                           </span>
-                          {subscriptionData?.billingCycle && (
-                            <span className="text-sm text-slate-600 font-light">
-                              ({subscriptionData.billingCycle})
-                            </span>
-                          )}
+                          <span className="text-sm text-slate-600 font-light">
+                            {managementBillingLabel(subscriptionData.billingCycle)}
+                          </span>
                         </div>
                       </div>
                       {isActive && daysRemaining !== null && (
@@ -963,6 +1037,7 @@ function MySubscription() {
                     {/* Show More/Less Toggle */}
                     {(hasMoreFeatures || showingAllFeatures) && (
                       <button
+                        type="button"
                         onClick={handleToggleFeatures}
                         disabled={loadingMoreFeatures}
                         className={`mt-5 w-full flex items-center justify-center gap-2 py-3 px-4 text-sm font-semibold rounded-2xl transition-all duration-200 group ${loadingMoreFeatures
@@ -1012,41 +1087,25 @@ function MySubscription() {
                       </div>
                       <div>
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">End Date</dt>
-                        <dd className="text-sm text-slate-900 font-medium">{formatDate(subscriptionData.endDate)}</dd>
+                        <dd className="text-sm text-slate-900 font-medium">{subscriptionData.endDate ? formatDate(subscriptionData.endDate) : 'No expiry'}</dd>
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Auto Renewal</dt>
-                        <dd className="flex items-center justify-between p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
-                          <div className="flex items-center gap-3">
+                        <dd className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl border border-slate-200">
+                          <div className="flex min-w-0 flex-wrap items-center gap-3">
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${autoRenewEnabled
                               ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
                               : 'bg-slate-200 text-slate-700'
                               }`}>
                               <Circle className={`w-1.5 h-1.5 ${autoRenewEnabled ? 'fill-white animate-pulse' : 'fill-slate-600'
                                 }`} />
-                              {autoRenewEnabled ? 'Enabled' : 'Disabled'}
+                              {renewalNotApplicable ? 'Not applicable' : !renewalKnown ? 'Not available' : autoRenewEnabled ? 'Enabled' : 'Disabled'}
                             </span>
                             <span className="text-xs text-slate-600 font-medium">
-                              {autoRenewEnabled ? 'Subscription renews automatically' : 'Manual renewal required'}
+                              {renewalNotApplicable ? 'No recurring billing for this plan' : isCancelled ? 'Cancelled subscriptions do not renew' : !renewalKnown ? 'Contact support for renewal details' : autoRenewEnabled ? 'Subscription renews automatically' : 'Manual renewal required'}
                             </span>
                           </div>
-                          <button
-                            onClick={handleToggleAutoRenew}
-                            disabled={isTogglingAutoRenew}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-inner ${autoRenewEnabled ? 'bg-gradient-to-r from-slate-800 to-slate-900' : 'bg-slate-300'
-                              }`}
-                          >
-                            {isTogglingAutoRenew ? (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-3 h-3 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
-                              </div>
-                            ) : (
-                              <span
-                                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-lg ${autoRenewEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                                  }`}
-                              />
-                            )}
-                          </button>
+                          <span className="text-xs text-slate-500">{renewalKnown ? 'Saved setting' : 'Unavailable'}</span>
                         </dd>
                       </div>
                       {subscriptionData.nextBillingDate && autoRenewEnabled && (
@@ -1062,7 +1121,9 @@ function MySubscription() {
                 {/* Billing History - Editorial Luxury */}
                 <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
                   <button
-                    onClick={() => setShowBillingHistory(!showBillingHistory)}
+                    type="button"
+                    aria-expanded={showBillingHistory} aria-controls="billing-history-content"
+                    onClick={() => setShowBillingHistory(value => !value)}
                     onMouseEnter={() => {
                       // Prefetch on hover for instant display
                       if (!billingHistoryFetched && !loadingBillingHistory) {
@@ -1084,11 +1145,13 @@ function MySubscription() {
                     )}
                   </button>
                   {showBillingHistory && (
-                    <div className="px-6 py-4">
+                    <div id="billing-history-content" className="px-6 py-4">
                       {loadingBillingHistory ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
                         </div>
+                      ) : billingHistoryError ? (
+                        <div role="alert"><p>Unable to load billing history.</p><button type="button" onClick={() => void fetchBillingHistory()} className="mt-2 underline">Retry billing history</button></div>
                       ) : billingHistory.length === 0 ? (
                         <div className="text-center py-8">
                           <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
@@ -1105,21 +1168,18 @@ function MySubscription() {
                                 <p className="text-xs text-slate-500 mt-0.5">{formatDate(invoice.date)}</p>
                               </div>
                               <div className="flex items-center gap-3">
-                                <span className="text-sm font-semibold text-slate-900">₹{invoice.amount}</span>
-                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${invoice.status === 'success' || invoice.status === 'paid'
-                                  ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white'
-                                  : 'bg-slate-200 text-slate-700'
-                                  }`}>
-                                  <Circle className={`w-1.5 h-1.5 ${invoice.status === 'success' || invoice.status === 'paid' ? 'fill-white' : 'fill-slate-600'
-                                    }`} />
-                                  {invoice.status === 'success' || invoice.status === 'paid' ? 'Paid' : 'Pending'}
+                                <span className="text-sm font-semibold text-slate-900">{formatManagementPrice(invoice.amount)}</span>
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm ${getStatusBadgeConfig(invoice.status).badgeClass}`}>
+                                  <Circle className={`w-1.5 h-1.5 ${getStatusBadgeConfig(invoice.status).iconClass}`} />
+                                  {getStatusBadgeConfig(invoice.status).label}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => handleDownloadInvoice(invoice)}
-                                  disabled={isDownloadingInvoice}
-                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title="Download Invoice"
+                                  className="p-2 hover:bg-slate-100 rounded-2xl transition-colors"
+                                  title={invoice.razorpay_payment_id ? 'Download Invoice' : 'Receipt unavailable for this transaction'}
+                                  aria-label={`Download invoice for ${invoice.description}`}
+                                  disabled={isDownloadingInvoice || !invoice.razorpay_payment_id}
                                 >
                                   <Download className="w-4 h-4 text-slate-600" />
                                 </button>
@@ -1141,20 +1201,23 @@ function MySubscription() {
                     <h3 className="text-lg font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Quick Actions</h3>
                   </div>
                   <div className="p-4 space-y-3">
+                    {!modern && <p className="px-1 text-sm text-slate-600">Your existing purchase keeps its original terms. For renewal or a plan change, contact support using the actions below.</p>}
                     {/* Go to Dashboard - Primary CTA */}
-                    <button
+                    {dashboardAvailable && <button
+                      type="button"
                       onClick={() => navigate(getDashboardUrl())}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl text-sm font-semibold hover:from-slate-900 hover:to-black transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
                       <span className="flex items-center gap-2">
                         <LayoutDashboard className="w-4 h-4" />
-                        Go to Dashboard
+                        {ownerAccess === 'read_only' ? 'View read-only dashboard' : 'Go to Dashboard'}
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
-                    <button
-                      onClick={handleUpgradePlan}
+                    {!isCancelled && <button
+                      type="button"
+                      disabled={!userType} onClick={handleUpgradePlan}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl text-sm font-semibold hover:from-amber-600 hover:to-amber-700 transition-all group shadow-lg hover:shadow-xl hover:scale-105"
                     >
                       <span className="flex items-center gap-2">
@@ -1162,9 +1225,10 @@ function MySubscription() {
                         Upgrade Plan
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
-                    <button
+                    {!isCancelled && !renewalNotApplicable && <button
+                      type="button"
                       onClick={handleRenewSubscription}
                       className="w-full flex items-center justify-between px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all group border border-slate-200"
                     >
@@ -1173,10 +1237,11 @@ function MySubscription() {
                         Renew Now
                       </span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </button>
+                    </button>}
 
-                    {isPaused && (
+                    {legacyActionsReady && isPaused && (
                       <button
+                        type="button"
                         onClick={handleResumeSubscription}
                         disabled={isPausing}
                         className="w-full flex items-center justify-center px-4 py-3 text-emerald-700 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl text-sm font-semibold hover:from-emerald-100 hover:to-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-200 shadow-sm"
@@ -1192,9 +1257,10 @@ function MySubscription() {
                       </button>
                     )}
 
-                    {isActive && (
+                    {legacyActionsReady && isActive && (
                       <>
                         <button
+                          type="button"
                           onClick={() => setShowPauseModal(true)}
                           className="w-full flex items-center justify-center px-4 py-3 text-amber-700 bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl text-sm font-semibold hover:from-amber-100 hover:to-amber-200 transition-all border border-amber-200 shadow-sm"
                         >
@@ -1204,6 +1270,7 @@ function MySubscription() {
                           </span>
                         </button>
                         <button
+                          type="button"
                           onClick={handleCancelSubscription}
                           className="w-full flex items-center justify-center px-4 py-3 text-slate-600 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all border border-slate-200"
                         >
@@ -1217,6 +1284,7 @@ function MySubscription() {
                   </div>
                 </div>
 
+                {modern && <div className="bg-white rounded-3xl border-2 border-slate-200 p-5 shadow-lg"><h3 className="text-lg text-slate-900 mb-4">Manage your plan</h3><span id="owner-subscription-actions" /><SubscriptionOwnerActions key={subscriptionData.id} owner={owner} onRefresh={refreshSubscription} /></div>}
                 {/* Payment Information - Editorial Luxury */}
                 <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
                   <div className="px-5 py-4 border-b border-slate-100">
@@ -1238,7 +1306,7 @@ function MySubscription() {
                             }`}>
                             <Circle className={`w-1.5 h-1.5 ${subscriptionData.paymentStatus === 'success' ? 'fill-white animate-pulse' : 'fill-slate-600'
                               }`} />
-                            {subscriptionData.paymentStatus === 'success' ? 'Paid' : 'Pending'}
+                            {managementPaymentLabel(subscriptionData.paymentStatus, subscriptionData.billingCycle, subscriptionData.planPrice)}
                           </span>
                         </dd>
                       </div>
@@ -1246,22 +1314,18 @@ function MySubscription() {
                         <dt className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Plan Price</dt>
                         <dd className="flex items-baseline gap-1">
                           <span className="text-3xl font-light text-slate-900" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                            {subscriptionData.planPrice ? `₹${subscriptionData.planPrice}` : (currentPlan?.price ? `₹${currentPlan.price}` : 'Contact Sales')}
+                            {formatManagementPrice(subscriptionData.planPrice)}
                           </span>
-                          {subscriptionData.billingCycle && (
-                            <span className="text-xs text-slate-600 font-medium">
-                              ({subscriptionData.billingCycle})
-                            </span>
-                          )}
+                          <span className="text-xs text-slate-600 font-medium">
+                            {managementBillingLabel(subscriptionData.billingCycle)}
+                          </span>
                         </dd>
                       </div>
                       <div className="pt-3 border-t border-slate-200">
                         <button
                           type="button"
-                          onClick={() => {
-                            handleDownloadInvoice();
-                          }}
-                          disabled={isDownloadingInvoice}
+                          onClick={() => handleDownloadInvoice(null)}
+                          disabled={isDownloadingInvoice || !(subscriptionData.receiptUrl || subscriptionData.razorpayPaymentId || subscriptionData.razorpayOrderId || subscriptionData.razorpaySubscriptionId)}
                           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-slate-200"
                         >
                           {isDownloadingInvoice ? (
@@ -1296,6 +1360,7 @@ function MySubscription() {
                       Have questions about your subscription or billing?
                     </p>
                     <button
+                      type="button"
                       onClick={handleContactSupport}
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-slate-300 text-slate-900 rounded-2xl text-sm font-semibold hover:bg-slate-50 transition-all hover:scale-105"
                     >
@@ -1312,14 +1377,14 @@ function MySubscription() {
 
       {/* Cancel Confirmation Modal - Editorial Luxury */}
       {showCancelModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+          <DialogContent aria-describedby={undefined} className="!block !max-w-lg !overflow-y-auto !rounded-3xl border-2 border-slate-200 p-8 shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <AlertCircle className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Cancel Subscription?</h3>
+                <DialogTitle asChild><h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Cancel Subscription?</h3></DialogTitle>
                 <p className="text-sm text-slate-600 font-light leading-relaxed">
                   You'll keep access until {subscriptionData?.endDate ? formatDate(subscriptionData.endDate) : 'the end of your billing period'}.
                 </p>
@@ -1327,10 +1392,10 @@ function MySubscription() {
             </div>
 
             {/* Cancellation Feedback */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 Why are you canceling? *
-              </label>
+              </legend>
               <div className="space-y-2">
                 {[
                   'Too expensive',
@@ -1352,7 +1417,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             {/* Additional Feedback */}
             {cancelReason && (
@@ -1371,34 +1436,12 @@ function MySubscription() {
               </div>
             )}
 
-            {/* Retention Offers */}
-            {showRetentionOffer && (
-              <div className="mb-6 p-5 bg-gradient-to-br from-amber-50 to-amber-100 border-2 border-amber-200 rounded-3xl shadow-lg">
-                <h4 className="text-lg font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-                  {cancelReason === 'Too expensive' ? '💰 Special Offer: 30% Off' : '⏸️ Try Pausing Instead'}
-                </h4>
-                <p className="text-sm text-slate-600 mb-4 font-light leading-relaxed">
-                  {cancelReason === 'Too expensive'
-                    ? 'We\'d hate to see you go! How about 30% off for the next 3 months?'
-                    : 'Not using it right now? Pause your subscription for 1-3 months instead of canceling.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (cancelReason === 'Too expensive') {
-                      alert('Discount offer applied! Redirecting to payment...');
-                      setShowCancelModal(false);
-                    } else {
-                      setShowPauseModal(true);
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl text-sm font-semibold hover:from-amber-700 hover:to-amber-800 transition-all shadow-lg hover:scale-105"
-                >
-                  {cancelReason === 'Too expensive' ? 'Claim 30% Discount' : 'Pause Subscription'}
-                </button>
+            {showRetentionOffer && cancelReason === 'Not using enough' && (
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <p className="mb-3 text-sm text-slate-700">You can pause instead of cancelling.</p>
+                <button type="button" onClick={() => { setShowCancelModal(false); setShowPauseModal(true); }} className="rounded-xl bg-amber-700 px-4 py-3 text-sm font-semibold text-white">Pause Subscription</button>
               </div>
             )}
-
             <div className="flex gap-3">
               <button
                 type="button"
@@ -1429,30 +1472,30 @@ function MySubscription() {
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Pause Subscription Modal - Editorial Luxury */}
       {showPauseModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border-2 border-slate-200 max-w-md w-full p-8 shadow-2xl">
+        <Dialog open={showPauseModal} onOpenChange={setShowPauseModal}>
+          <DialogContent aria-describedby={undefined} className="!block !max-w-md !overflow-y-auto !rounded-3xl border-2 border-slate-200 p-8 shadow-2xl">
             <div className="flex items-start gap-4 mb-6">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
                 <Clock className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Pause Subscription</h3>
+                <DialogTitle asChild><h3 className="text-2xl font-light text-slate-900 mb-2" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Pause Subscription</h3></DialogTitle>
                 <p className="text-sm text-slate-600 font-light leading-relaxed">
                   Take a break without losing your data. Your subscription will automatically resume.
                 </p>
               </div>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
+            <fieldset className="mb-6">
+              <legend className="block text-sm font-semibold text-slate-900 mb-3 uppercase tracking-wider">
                 How long would you like to pause?
-              </label>
+              </legend>
               <div className="space-y-2">
                 {[1, 2, 3].map((months) => (
                   <label key={months} className="flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
@@ -1468,7 +1511,7 @@ function MySubscription() {
                   </label>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
             <div className="flex gap-3">
               <button
@@ -1495,12 +1538,11 @@ function MySubscription() {
                 )}
               </button>
             </div>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
 }
 
 export default MySubscription;
-

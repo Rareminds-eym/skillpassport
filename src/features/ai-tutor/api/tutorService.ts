@@ -12,7 +12,15 @@ const API_URL = getApiUrl('ai-tutor');
 
 // ==================== TYPES ====================
 
+export interface SourceCitation { chunkId: string; analysisId: string; lessonId: string; resourceId: string | null; location: Record<string, unknown> }
 export interface ChatMessage {
+  citations?: SourceCitation[];
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
+  worksheetAvailable?: boolean;
+  materialAvailable?: boolean;
+  status?: 'streaming' | 'complete' | 'failed' | 'stopped';
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -20,6 +28,12 @@ export interface ChatMessage {
 }
 
 interface MessageData {
+  lessonPlanConfig?: unknown;
+  citations?: SourceCitation[];
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
+  worksheetVariants?: unknown[];
   id: string;
   role: 'user' | 'assistant';
   content: string;
@@ -64,6 +78,9 @@ export interface Conversation {
 }
 
 export interface ChatRequest {
+  inputMode?: 'voice';
+  guideSubmissionId?: string;
+  facilitatorMode?: string;
   conversationId?: string;
   courseId: string;
   lessonId?: string;
@@ -96,7 +113,13 @@ export interface CourseProgress {
 let lastConversationId: string | null = null;
 
 export interface StreamChunk {
-  type: 'content' | 'reasoning' | 'done';
+  citations?: SourceCitation[];
+  facilitator?: string;
+  facilitatorMode?: string;
+  assignmentSourceId?: string;
+  worksheetAvailable?: boolean;
+  materialAvailable?: boolean;
+  type: 'metadata' | 'content' | 'reasoning' | 'done' | 'compacting';
   content?: string;
   reasoning?: string;
   conversationId?: string;
@@ -112,12 +135,13 @@ export interface StreamChunk {
  * Send a message to the AI tutor with streaming response
  * Returns an async generator that yields content and reasoning chunks
  */
-export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamChunk, void, unknown> {
+export async function* sendMessage(request: ChatRequest, signal?: AbortSignal): AsyncGenerator<StreamChunk, void, unknown> {
   const response = await ssoClient.fetch(
     `${API_URL}/chat`,
     {
       method: 'POST',
-            body: JSON.stringify(request),
+      body: JSON.stringify(request),
+      signal,
     }
   );
 
@@ -133,12 +157,17 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
   const decoder = new TextDecoder();
   let buffer = '';
   let currentEventType = '';
+  let completed = false;
 
+  const cancelReader = () => { void reader.cancel().catch(() => {}); };
+  signal?.addEventListener('abort', cancelReader, { once: true });
+  try {
   while (true) {
+    signal?.throwIfAborted();
     const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
+    signal?.throwIfAborted();
+    // Flush the final frame even when the connection ends without a trailing newline.
+    buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() || '';
 
@@ -151,11 +180,26 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
 
       if (line.startsWith('data: ')) {
         const data = line.slice(6);
+        if (currentEventType === 'error') {
+          let streamError: { error?: string };
+          try {
+            streamError = JSON.parse(data);
+          } catch {
+            throw new Error('The AI response failed. Please try again.');
+          }
+          throw new Error(streamError.error || 'The AI response failed. Please try again.');
+        }
         try {
           const parsed = JSON.parse(data);
 
           // Handle reasoning events (from grok/reasoning models)
-          if (currentEventType === 'reasoning' && parsed.reasoning) {
+          if (currentEventType === 'compacting') {
+            yield { type: 'compacting' };
+          }
+          else if (currentEventType === 'metadata') {
+            yield { type: 'metadata', facilitator: parsed.facilitator, facilitatorMode: parsed.facilitatorMode, assignmentSourceId: parsed.assignmentSourceId };
+          }
+          else if (currentEventType === 'reasoning' && parsed.reasoning) {
             yield { type: 'reasoning', reasoning: parsed.reasoning };
           }
           // Handle content events
@@ -163,12 +207,19 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
             yield { type: 'content', content: parsed.content };
           }
           // Handle done event with conversation info
-          else if (parsed.conversationId) {
+          else if (currentEventType === 'done' && typeof parsed.conversationId === 'string' && parsed.conversationId.trim() && typeof parsed.messageId === 'string' && parsed.messageId.trim()) {
+            completed = true;
             lastConversationId = parsed.conversationId;
             yield {
               type: 'done',
               conversationId: parsed.conversationId,
               messageId: parsed.messageId,
+              worksheetAvailable: parsed.worksheetAvailable,
+              materialAvailable: parsed.materialAvailable,
+              citations: parsed.citations,
+              facilitator: parsed.facilitator,
+              facilitatorMode: parsed.facilitatorMode,
+              assignmentSourceId: parsed.assignmentSourceId,
               generationUsage: parsed.generationUsage
             };
           }
@@ -177,6 +228,13 @@ export async function* sendMessage(request: ChatRequest): AsyncGenerator<StreamC
         }
       }
     }
+    if (done) break;
+  }
+  if (!completed) throw new Error('The connection ended before your answer was confirmed. Please try again.');
+  } finally {
+    signal?.removeEventListener('abort', cancelReader);
+    await reader.cancel().catch(() => {});
+    reader.releaseLock();
   }
 }
 
@@ -206,7 +264,7 @@ export function getLastConversationId(): string | null {
  */
 export async function getConversations(courseId: string): Promise<Conversation[]> {
   try {
-    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
+    const response = await apiPost<{ data: RawConversation[] }>('/ai-tutor/actions', { action: 'get-conversations', course_id: courseId });
     const data = response?.data || [];
     return data.map((conv: RawConversation) => ({
       id: conv.id,
@@ -219,7 +277,11 @@ export async function getConversations(courseId: string): Promise<Conversation[]
         id: m.id,
         role: m.role,
         content: m.content,
-        timestamp: new Date(m.timestamp)
+        timestamp: new Date(m.timestamp),
+        facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
+        citations: m.citations,
+        materialAvailable: !!m.worksheetVariants?.length || !!m.lessonPlanConfig,
+        worksheetAvailable: !!m.worksheetVariants?.length
       }))
     }));
   } catch (error) {
@@ -233,7 +295,7 @@ export async function getConversations(courseId: string): Promise<Conversation[]
  */
 export async function getConversation(conversationId: string): Promise<Conversation | null> {
   try {
-    const response = await apiPost('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
+    const response = await apiPost<{ data: RawConversation }>('/ai-tutor/actions', { action: 'get-conversation', id: conversationId });
     const data = response?.data;
     if (!data) return null;
     return {
@@ -247,7 +309,11 @@ export async function getConversation(conversationId: string): Promise<Conversat
         id: m.id,
         role: m.role,
         content: m.content,
-        timestamp: new Date(m.timestamp)
+        timestamp: new Date(m.timestamp),
+        facilitator: m.facilitator, facilitatorMode: m.facilitatorMode, assignmentSourceId: m.assignmentSourceId,
+        citations: m.citations,
+        materialAvailable: !!m.worksheetVariants?.length || !!m.lessonPlanConfig,
+        worksheetAvailable: !!m.worksheetVariants?.length
       }))
     };
   } catch (error) {

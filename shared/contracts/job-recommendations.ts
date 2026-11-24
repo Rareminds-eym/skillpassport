@@ -22,6 +22,10 @@ export const recommendationEnvelopeSchema = z.object({
   recommendations: z.array(z.object({ id: z.string().min(1) }).passthrough()).max(50),
   provenance: z.enum(['none', 'embedding', 'rules']),
   cached: z.boolean(),
+  indexing: z.object({
+    total: z.number().int().nonnegative(), verified: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(), failed: z.number().int().nonnegative(),
+  }).strict().refine(v => v.verified + v.pending === v.total && v.failed <= v.pending).optional(),
   retry_after_seconds: z.number().int().min(1).max(60).optional(),
   input_revision: z.string().min(1),
 }).passthrough().superRefine((value, context) => {

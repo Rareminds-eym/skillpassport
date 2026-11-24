@@ -1,3 +1,5 @@
+import JobDescription from '@/features/opportunities/ui/JobDescription';
+import { jobDescriptionText } from '@/features/opportunities/lib/jobDescription';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bookmark, ExternalLink, MapPin } from 'lucide-react';
 import { OpportunityDialog } from '@/features/opportunities/ui/OpportunityDialog';
@@ -216,7 +218,7 @@ export default function OpportunityPreview({
           </div>
           <div className="space-y-4 p-5">
             <p className="line-clamp-4 whitespace-pre-line break-words text-sm leading-6 text-slate-600">
-              {opportunityText(opportunity.description) ||
+              {jobDescriptionText(opportunity.description) ||
                 'Review the job requirements and application details.'}
             </p>
             <LearningEligibilityPanel job={opportunity} compact />
@@ -359,10 +361,7 @@ export default function OpportunityPreview({
             <h3 className="mb-2 text-sm font-semibold text-slate-900">
               Job description
             </h3>
-            <p className="whitespace-pre-line break-words text-sm leading-6 text-slate-700">
-              {opportunityText(opportunity.description) ||
-                'The employer has not provided a description.'}
-            </p>
+            <JobDescription value={opportunity.description} />
           </section>
           {sections.map(([label, value]) => {
             const items = textItems(value);

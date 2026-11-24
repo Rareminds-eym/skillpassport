@@ -307,13 +307,11 @@ const UnifiedSignup = () => {
   // Keep control until the destination route commits, including concurrent navigation.
   useEffect(() => () => { useAuthStore.setState({ signupInProgress: false }); }, []);
 
-  // Check if running on localhost using utility function
-  const isDevEnvironment = isLocalhost() || isDevelopment();
+  // Development and QA allow signup without a phone; production requires it.
+  const isPhoneOptionalEnvironment = isLocalhost() || isDevelopment() || import.meta.env.MODE === 'qa';
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
-  const learnerTypeFromState = (location.state as any)?.learnerType || (location.state as any)?.studentType;
-  const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
@@ -608,13 +606,13 @@ const UnifiedSignup = () => {
     if (!state.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(state.email)) { setState(prev => ({ ...prev, error: 'Please enter a valid email' })); return false; }
 
     // Phone number validation based on environment
-    if (!isDevEnvironment) {
+    if (!isPhoneOptionalEnvironment) {
       // Production: Phone number is required
       if (!state.phone) { setState(prev => ({ ...prev, error: 'Please enter your mobile number' })); return false; }
       if (state.phone.length < 7 || state.phone.length > 15) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
       if (!state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     } else {
-      // Localhost: Phone number is optional, but if provided, must be verified
+      // Development/QA: Phone is optional, but if provided, must be verified
       if (state.phone && (state.phone.length < 7 || state.phone.length > 15)) { setState(prev => ({ ...prev, error: 'Please enter a valid phone number (7-15 digits)' })); return false; }
       if (state.phone && !state.otpVerified) { setState(prev => ({ ...prev, error: 'Please verify your phone number' })); return false; }
     }
@@ -963,18 +961,9 @@ const UnifiedSignup = () => {
         // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
-      } else if (returnToFromState === '/subscription/payment' && planFromState) {
-        // User selected a plan before signing up - go directly to payment
-        if (import.meta.env.DEV) console.log('[UnifiedSignup] User had pre-selected plan, redirecting to payment page');
-        navigate('/subscription/payment', {
-          state: {
-            plan: planFromState,
-            learnerType: learnerTypeFromState || entityType,
-            isUpgrade: false,
-            referralCode: normalizedReferralCode || undefined
-          }
-        });
       } else {
+        // A plan chosen before signup is preselected in the published catalog by its revision only;
+        // the owner quote, not a client-carried plan object, sets the price.
         // Redirect to subscription plans page to choose a plan
         const { getActiveSubscription } = await import('@/features/subscription/api/subscriptionService');
         const coverage = await getActiveSubscription();
@@ -984,9 +973,13 @@ const UnifiedSignup = () => {
           navigate(getRouteForRole(state.selectedRole === 'recruiter_admin' ? 'recruiter' : state.selectedRole!), { replace: true });
           return;
         }
-        const subscriptionPlansPath = normalizedReferralCode
-          ? `/subscription/plans/${entityType}/purchase?referralCode=${encodeURIComponent(normalizedReferralCode)}`
-          : `/subscription/plans/${entityType}/purchase`;
+        const catalogQuery = new URLSearchParams();
+        if (normalizedReferralCode) catalogQuery.set('referralCode', normalizedReferralCode);
+        const selectedRevisionId = (planFromState as { revisionId?: unknown } | undefined)?.revisionId;
+        if (typeof selectedRevisionId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedRevisionId)) {
+          catalogQuery.set('revision', selectedRevisionId.toLowerCase());
+        }
+        const subscriptionPlansPath = `/subscription/plans/${entityType}/purchase${catalogQuery.size ? `?${catalogQuery}` : ''}`;
         navigate(subscriptionPlansPath, {
           state: {
             message: 'Account created successfully! Please choose a plan to continue.',
@@ -1313,8 +1306,8 @@ const UnifiedSignup = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
                     Mobile Number
-                    {isDevEnvironment && <span className="text-gray-400 text-xs">(Optional)</span>}
-                    {!isDevEnvironment && <span className="text-red-500">*</span>}
+                    {isPhoneOptionalEnvironment && <span className="text-gray-400 text-xs">(Optional)</span>}
+                    {!isPhoneOptionalEnvironment && <span className="text-red-500">*</span>}
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="flex-1 flex items-center border rounded-xl bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all border-gray-200">

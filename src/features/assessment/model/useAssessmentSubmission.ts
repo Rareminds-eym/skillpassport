@@ -632,6 +632,10 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
           throw new Error('Assessment attempt not found. Please start the assessment again.');
         }
 
+        // Submission disconnects debounced synchronization. Persist the complete
+        // answer snapshot before analysis so the final answers cannot be lost.
+        await patchOwnAssessment(attemptId, { allResponses: answers });
+
         // ============================================================================
         // STEP 3: Build and store learner context
         // ============================================================================
@@ -892,12 +896,14 @@ export const useAssessmentSubmission = (): UseAssessmentSubmissionResult => {
         alert(`Assessment Submission Error: ${errorMessage}`);
         setError(errorMessage);
         setIsSubmitting(false);
+        throw err;
       }
     }
   } catch (err: any) {
     console.error('❌ Outer submission error:', err);
     setError(err.message || 'Submission failed');
     setIsSubmitting(false);
+    throw err;
   }
 },
 [navigate]

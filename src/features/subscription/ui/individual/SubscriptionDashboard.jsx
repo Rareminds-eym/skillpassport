@@ -28,9 +28,12 @@ import {
     Sparkles,
     X
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUser, useUserRole } from '@/shared/model/authStore';
+import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
+import { featureName, formatManagementPrice, managementBillingLabel, monthlyPlanCost } from '../../lib/subscriptionPresentation';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { entitlementService } from '@/features/subscription';
+import { entitlementService } from '../../api/entitlementService';
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
 import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 /**
@@ -52,8 +55,13 @@ function getSubscriptionBasePath(pathname) {
 export function SubscriptionDashboard({ className = '', subscriptionData: propSubscriptionData }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const basePath = getSubscriptionBasePath(location.pathname);
+  const user = useUser();
+  const { role } = useUserRole();
+  const routePath = location.pathname.startsWith('/subscription/') ? getRouteForRole(role) : location.pathname;
+  const basePath = getSubscriptionBasePath(routePath);
   const {
+    entitlementsUserId,
+    entitlementsError,
     userEntitlements,
     activeEntitlements,
     totalAddOnCost,
@@ -62,11 +70,13 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
     cancelAddOn,
     isCancelling
   } = useSubscription();
-  const { subscriptionData: rqSubscriptionData } = useSubscriptionQuery();
+  const { subscriptionData: rqSubscriptionData } = useSubscriptionQuery({ enabled: !propSubscriptionData });
   
   // Use prop subscriptionData if provided, otherwise fall back to React Query
   const subscriptionData = propSubscriptionData || rqSubscriptionData;
 
+  const [actionError, setActionError] = useState(null);
+  useEffect(() => { if (user?.id) void fetchUserEntitlements(); }, [user?.id, fetchUserEntitlements]);
   const [cancellingId, setCancellingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 
@@ -76,11 +86,12 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
       return;
     }
 
+    setActionError(null);
     setCancellingId(entitlementId);
     try {
       await cancelAddOn(entitlementId);
     } catch (error) {
-      console.error('Failed to cancel:', error);
+      setActionError(error.message || 'Unable to cancel add-on.');
     } finally {
       setCancellingId(null);
     }
@@ -88,12 +99,14 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
 
   // Handle toggle auto-renew
   const handleToggleAutoRenew = async (entitlementId, currentValue) => {
+    setActionError(null);
     setTogglingId(entitlementId);
     try {
-      await entitlementService.toggleAutoRenew(entitlementId, !currentValue);
-      fetchUserEntitlements();
+      const result = await entitlementService.toggleAutoRenew(entitlementId, !currentValue);
+      if (!result.success) throw new Error(result.error || 'Unable to update renewal.');
+      await fetchUserEntitlements();
     } catch (error) {
-      console.error('Failed to toggle auto-renew:', error);
+      setActionError(error.message || 'Unable to update renewal.');
     } finally {
       setTogglingId(null);
     }
@@ -104,20 +117,23 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
   const gracePeriodEnts = userEntitlements.filter(e => e.status === 'grace_period');
   const cancelledEnts = userEntitlements.filter(e => e.status === 'cancelled');
 
-  if (isLoadingEntitlements) {
+  if (isLoadingEntitlements || entitlementsUserId !== user?.id) {
     return <DashboardSkeleton />;
   }
 
+  if (entitlementsError) return <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4"><p>Unable to load add-ons.</p><button type="button" className="mt-2 underline" onClick={() => void fetchUserEntitlements()}>Retry add-ons</button></div>;
+
   return (
     <div className={`space-y-8 ${className}`}>
+      {actionError && <p role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4">{actionError}</p>}
       {/* Header - Editorial Luxury */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-5xl font-light text-slate-900 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>My Subscription</h1>
+      <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-3xl sm:text-5xl font-light text-slate-900 tracking-tight" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>Plan and add-ons</h2>
           <p className="text-slate-600 mt-2 text-lg font-light">Manage your plan and add-ons</p>
         </div>
         <button
-          onClick={() => navigate(`${basePath}/subscription/add-ons`)}
+          disabled={!basePath} onClick={() => navigate(`${basePath}/subscription/add-ons`)}
           className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-105"
         >
           <Sparkles className="w-4 h-4" />
@@ -135,23 +151,23 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
         {/* Accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-400"></div>
         
-        <div className="relative flex items-start justify-between">
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Current Plan</p>
             <h2 className="text-4xl font-light mb-3" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
               {subscriptionData?.planName || subscriptionData?.plan_name || subscriptionData?.plan_type || ''}
             </h2>
-            {subscriptionData?.current_period_end && (
+            {subscriptionData?.nextBillingDate && subscriptionData?.autoRenew === true && (
               <p className="text-white/70 text-sm flex items-center gap-2 font-medium">
                 <Calendar className="w-4 h-4" />
-                Renews {new Date(subscriptionData.current_period_end).toLocaleDateString()}
+                Renews {new Date(subscriptionData.nextBillingDate).toLocaleDateString()}
               </p>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <p className="text-white/60 text-sm font-semibold uppercase tracking-wider mb-2">Plan Cost</p>
             <p className="text-5xl font-light" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              ₹{subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0}
+              {formatManagementPrice(subscriptionData?.planPrice)}
             </p>
             {subscriptionData?.billingCycle && (
               <p className="text-white/50 text-xs font-medium mt-1">({subscriptionData.billingCycle})</p>
@@ -165,6 +181,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
               Status: <span className="text-white font-semibold capitalize">{subscriptionData.status}</span>
             </span>
             <button
+              disabled={!basePath}
               onClick={() => {
                 // Get user type from basePath for proper plan display
                 const typeMap = {
@@ -175,8 +192,9 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
                   '/school-admin': 'school_admin',
                   '/university-admin': 'university_admin'
                 };
-                const userType = typeMap[basePath] || 'learner';
-                navigate(`/subscription/plans?type=${userType}&mode=upgrade`);
+                const userType = typeMap[basePath];
+                if (!userType) return;
+                navigate(`/subscription/plans?type=${userType}&mode=upgrade&subscriptionId=${encodeURIComponent(subscriptionData.id)}`);
               }}
               className="text-sm text-white hover:text-amber-300 flex items-center gap-1 font-semibold transition-colors"
             >
@@ -191,20 +209,20 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
       <div className="grid md:grid-cols-3 gap-6">
         <CostCard
           title="Base Plan"
-          amount={subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0}
-          period="month"
+          amount={subscriptionData?.planPrice}
+          period={managementBillingLabel(subscriptionData?.billingCycle)}
           icon={CreditCard}
         />
         <CostCard
           title="Add-ons"
           amount={totalAddOnCost.monthly}
-          period="month"
+          period="/month"
           icon={Package}
         />
         <CostCard
-          title="Total"
-          amount={Math.round(((subscriptionData?.planPrice ?? subscriptionData?.plan_amount ?? 0) + totalAddOnCost.monthly) * 100) / 100}
-          period="month"
+          title="Monthly equivalent"
+          amount={monthlyPlanCost(subscriptionData?.planPrice, subscriptionData?.billingCycle) === null || totalAddOnCost.monthly === null ? null : Math.round((monthlyPlanCost(subscriptionData.planPrice, subscriptionData.billingCycle) + totalAddOnCost.monthly) * 100) / 100}
+          period="/month"
           icon={DollarSign}
           highlight
         />
@@ -244,7 +262,7 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
             </div>
             <p className="text-slate-600 mb-6 font-light text-lg">No active add-ons</p>
             <button
-              onClick={() => navigate(`${basePath}/subscription/add-ons`)}
+              disabled={!basePath} onClick={() => navigate(`${basePath}/subscription/add-ons`)}
               className="px-6 py-3 bg-gradient-to-r from-slate-800 to-slate-900 text-white font-semibold rounded-2xl hover:from-slate-900 hover:to-black transition-all shadow-lg hover:scale-105"
             >
               Browse available add-ons
@@ -295,11 +313,8 @@ export function SubscriptionDashboard({ className = '', subscriptionData: propSu
  * CostCard - Displays a cost metric - Editorial Luxury
  */
 function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
-  // Format amount to 2 decimal places and remove trailing zeros
-  const formattedAmount = typeof amount === 'number' 
-    ? amount.toFixed(2).replace(/\.?0+$/, '')
-    : amount;
-    
+  const formattedAmount = formatManagementPrice(amount);
+
   return (
     <div className={`
       rounded-3xl p-6 border-2 shadow-lg hover:shadow-xl transition-all
@@ -316,11 +331,11 @@ function CostCard({ title, amount, period, icon: Icon, highlight = false }) {
         </div>
         <span className="text-sm text-slate-600 font-semibold uppercase tracking-wider">{title}</span>
       </div>
-      <div className="flex items-baseline gap-1">
+      <div className="flex flex-wrap items-baseline gap-1">
         <span className={`text-4xl font-light ${highlight ? 'text-amber-700' : 'text-slate-900'}`} style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-          ₹{formattedAmount}
+          {formattedAmount}
         </span>
-        <span className="text-slate-500 text-sm font-medium">/{period}</span>
+        <span className="text-slate-500 text-sm font-medium">{period}</span>
       </div>
     </div>
   );
@@ -347,8 +362,8 @@ function EntitlementCard({
       ${isGracePeriod ? 'border-amber-300 bg-gradient-to-br from-amber-50 to-amber-100' : 'border-slate-200'}
       ${isCancelled ? 'opacity-75' : ''}
     `}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
           {/* Status Indicator */}
           <div className={`
             w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg
@@ -370,12 +385,12 @@ function EntitlementCard({
 
           <div>
             <h3 className="font-light text-xl text-slate-900 capitalize mb-1" style={{ fontFamily: 'Georgia, Cambria, "Times New Roman", serif' }}>
-              {entitlement.feature_key?.replace(/_/g, ' ')}
+              {featureName(entitlement.feature_key)}
             </h3>
             <div className="flex items-center gap-3 text-sm text-slate-500 font-medium">
               <span className="capitalize">{entitlement.billing_period}</span>
               <span>•</span>
-              <span>₹{entitlement.price_at_purchase}/{entitlement.billing_period === 'monthly' ? 'mo' : 'yr'}</span>
+              <span>{formatManagementPrice(entitlement.price_at_purchase)} {managementBillingLabel(entitlement.billing_period)}</span>
             </div>
             
             {/* Renewal/Expiry Info */}
@@ -408,6 +423,8 @@ function EntitlementCard({
                 }
                 ${isToggling ? 'opacity-50' : ''}
               `}
+              aria-label={`Automatic renewal for ${featureName(entitlement.feature_key)}`}
+              aria-pressed={entitlement.auto_renew === true}
               title={entitlement.auto_renew ? 'Auto-renew is ON' : 'Auto-renew is OFF'}
             >
               <RefreshCw className={`w-4 h-4 ${isToggling ? 'animate-spin' : ''}`} />

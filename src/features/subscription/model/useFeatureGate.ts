@@ -62,28 +62,29 @@ export function useFeatureGate(featureKey) {
   const [requiredAddOn, setRequiredAddOn] = useState(null);
   const [error, setError] = useState(null);
 
-  const checkInProgress = useRef(false);
+  const requestSequence = useRef(0);
   const userId = user?.id;
 
   // Get actual plan code from subscription
   const planCode = subscription?.plan || subscription?.plan_type || 'unknown';
+  const contextKey = JSON.stringify([subscription, activeEntitlements]);
+  const cacheKey = JSON.stringify([userId, featureKey, contextKey]);
 
   const checkAccess = useCallback(async () => {
+    const sequence = ++requestSequence.current;
+    setError(null);
     if (!featureKey) {
       setIsLoading(false);
       setHasAccess(false);
+      setAccessSource(null);
+      setRequiredAddOn(null);
       return;
     }
 
-    if (checkInProgress.current) {
-      return;
-    }
-    checkInProgress.current = true;
 
     try {
       clearExpiredCache();
 
-      const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
       const cached = accessCache.get(cacheKey);
 
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
@@ -91,7 +92,6 @@ export function useFeatureGate(featureKey) {
         setAccessSource(cached.accessSource);
         setRequiredAddOn(cached.requiredAddOn);
         setIsLoading(false);
-        checkInProgress.current = false;
         return;
       }
 
@@ -113,7 +113,6 @@ export function useFeatureGate(featureKey) {
         });
 
         setIsLoading(false);
-        checkInProgress.current = false;
         return;
       }
 
@@ -122,12 +121,13 @@ export function useFeatureGate(featureKey) {
 
       if (userId) {
         const result = await entitlementService.hasFeatureAccess(userId, featureKey);
+        if (sequence !== requestSequence.current) return;
 
         if (result.success) {
           access = result.data.hasAccess;
           source = result.data.accessSource;
         } else {
-          setError(result.error);
+          throw new Error(result.error || 'Unable to check feature access');
         }
       }
 
@@ -139,6 +139,7 @@ export function useFeatureGate(featureKey) {
       if (!access && userId) {
         try {
           const addOnResult = await addOnCatalogService.getAddOnByFeatureKey(featureKey);
+          if (sequence !== requestSequence.current) return;
           if (addOnResult.success && addOnResult.data) {
             fetchedAddOn = addOnResult.data;
           }
@@ -147,6 +148,7 @@ export function useFeatureGate(featureKey) {
         }
       }
 
+      if (sequence !== requestSequence.current) return;
       setRequiredAddOn(fetchedAddOn);
 
       accessCache.set(cacheKey, {
@@ -156,6 +158,9 @@ export function useFeatureGate(featureKey) {
         timestamp: Date.now()
       });
     } catch (err) {
+      if (sequence !== requestSequence.current) return;
+      setAccessSource(null);
+      setRequiredAddOn(null);
       setError(err.message);
       setHasAccess(false);
 
@@ -174,41 +179,19 @@ export function useFeatureGate(featureKey) {
       // Default to denying access on error
       console.error('[FeatureGate] Error checking feature access:', err);
     } finally {
-      setIsLoading(false);
-      checkInProgress.current = false;
+      if (sequence === requestSequence.current) setIsLoading(false);
     }
-  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements, planCode]);
+  }, [featureKey, userId, hasAddOnAccessSync, activeEntitlements, planCode, cacheKey]);
 
   useEffect(() => {
-    checkInProgress.current = false;
-    checkAccess();
+    void checkAccess();
+    return () => { requestSequence.current++; };
   }, [checkAccess]);
 
-  const entitlementsRef = useRef(activeEntitlements);
-  useEffect(() => {
-    if (entitlementsRef.current !== activeEntitlements && activeEntitlements !== undefined) {
-      const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
-      accessCache.delete(cacheKey);
-      checkInProgress.current = false;
-      entitlementsRef.current = activeEntitlements;
-      checkAccess();
-    }
-  }, [activeEntitlements, userId, featureKey, checkAccess]);
-
-  useEffect(() => {
-    if (userId) {
-      const cacheKey = `anonymous-${featureKey}`;
-      accessCache.delete(cacheKey);
-      checkInProgress.current = false;
-      checkAccess();
-    }
-  }, [userId, featureKey]);
-
   const invalidateCache = useCallback(() => {
-    const cacheKey = `${userId || 'anonymous'}-${featureKey}`;
     accessCache.delete(cacheKey);
-    checkAccess();
-  }, [userId, featureKey, checkAccess]);
+    return checkAccess();
+  }, [cacheKey, checkAccess]);
 
   const showUpgradePrompt = useCallback(() => {
     if (requiredAddOn) {

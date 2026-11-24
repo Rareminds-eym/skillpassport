@@ -274,5 +274,5 @@ export function buildWorksheetPrompt(
     throw new Error(`Unknown worksheet template type: ${config.templateType}`);
   }
   
-  return builder(config, context);
+  return `${config.gradeLevel ? `Teaching level: ${config.gradeLevel}. Adapt vocabulary, examples and expected prior knowledge to this audience.\n\n` : ''}${builder(config, context)}`;
 }

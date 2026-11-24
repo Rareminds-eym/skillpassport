@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 const request = vi.hoisted(() => vi.fn());
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: request } }));
-import { verifyPayment } from './paymentsApiService';
+import { createOrder, PaymentApiError, verifyPayment } from './paymentsApiService';
 const details = { razorpay_order_id: 'existing-order', razorpay_payment_id: 'existing-payment', razorpay_signature: 'signature', plan: { id: 'plan' } };
 afterEach(() => { vi.unstubAllGlobals(); request.mockReset(); });
 function configure(body: unknown, status = 200) {
@@ -31,4 +31,10 @@ it('verification retries reuse the original payment and never create a checkout'
 it('does not treat an unsuccessful envelope as verification success', async () => {
   configure({ success: false, error: { message: 'Not activated' } });
   await expect(verifyPayment(details)).rejects.toThrow('Not activated');
+});
+it.each(['SUBSCRIPTION_CONFLICT', 'SUBSCRIPTION_PENDING'])('preserves machine-readable %s order errors', async code => {
+  configure({ success: false, error: { code, message: 'Do not pay again.' } }, 409);
+  const result = createOrder({ amount: 499900, currency: 'INR', planId: 'plan_mock', planName: 'Mock', userEmail: 'mock@example.invalid', userName: 'Mock', isUpgrade: false, referralCode: undefined });
+  await expect(result).rejects.toBeInstanceOf(PaymentApiError);
+  await expect(result).rejects.toMatchObject({ code, status: 409, message: 'Do not pay again.' });
 });

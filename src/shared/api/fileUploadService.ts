@@ -30,7 +30,8 @@ export interface UploadProgress {
 export const uploadFile = async (
   file: File,
   folder: string = 'documents',
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  context?: string
 ): Promise<UploadResult> => {
   try {
     // Generate unique filename
@@ -43,6 +44,7 @@ export const uploadFile = async (
     const formData = new FormData();
     formData.append('file', file);
     formData.append('filename', filename);
+    if (context) formData.append('context', context);
 
     // Upload to Cloudflare Worker
     const response = await ssoClient.fetch(`${STORAGE_API_URL}/upload`, {
