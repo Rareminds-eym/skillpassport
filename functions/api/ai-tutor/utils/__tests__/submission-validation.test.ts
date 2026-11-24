@@ -14,6 +14,15 @@ it('accepts an identifiable attempt even when its answer is wrong',async()=>{
 it('rejects a different worksheet rather than grading it',async()=>{
  mocks.model.mockResolvedValue({...valid,matchesAssignment:false});
  await expect(validateAssignmentSubmission(questions,'same-title.docx',new Uint8Array([1]),'key')).rejects.toBeInstanceOf(InvalidSubmissionDocument);
+ expect(mocks.model).toHaveBeenCalledTimes(1);
+});
+it('recovers an incomplete mapping with one verified correction attempt',async()=>{
+ mocks.model.mockResolvedValueOnce({...valid,answers:[]}).mockResolvedValueOnce(valid);
+ expect(await validateAssignmentSubmission(questions,'answer.txt',new Uint8Array([1]),'key')).toEqual(valid.answers);
+ expect(mocks.extract).toHaveBeenCalledTimes(1);
+ expect(mocks.model).toHaveBeenCalledTimes(2);
+ expect(mocks.model.mock.calls[1][1].correction).toContain('verbatim');
+ expect(mocks.model.mock.calls[0][3]).toBe(2000);
 });
 it('rejects blank worksheets without answers',async()=>{
  mocks.model.mockResolvedValue({...valid,answers:[{questionId:id,answer:''}]});
@@ -26,6 +35,7 @@ it('fails closed when matching evidence is invented',async()=>{
 it('does not mistake provider failure for an invalid document',async()=>{
  mocks.model.mockRejectedValue(new Error('Provider unavailable'));
  await expect(validateAssignmentSubmission(questions,'answer.txt',new Uint8Array([1]),'key')).rejects.toThrow('Provider unavailable');
+ expect(mocks.model).toHaveBeenCalledTimes(1);
 });
 it('rejects duplicate or missing question mappings',async()=>{
  mocks.model.mockResolvedValue({...valid,answers:[]});

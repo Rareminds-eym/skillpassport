@@ -18,6 +18,33 @@ beforeEach(() => { vi.clearAllMocks(); sessionStorage.clear(); });
 afterEach(cleanup);
 
 describe('material completion state', () => {
+  it('new chat aborts generation immediately and ignores late events and cleanup',async()=>{
+    let finishOld!:()=>void;let finishNew!:()=>void;
+    mocks.send.mockImplementationOnce(async function*(){
+      yield {type:'reasoning',reasoning:'Old thinking'};
+      await new Promise<void>(resolve=>{finishOld=resolve;});
+      yield {type:'done',conversationId:'old-chat',messageId:'old-answer'};
+    }).mockImplementationOnce(async function*(){
+      await new Promise<void>(resolve=>{finishNew=resolve;});
+      yield {type:'content',content:'New answer'};
+      yield {type:'done',conversationId:'new-chat',messageId:'new-answer'};
+    });
+    const saved=vi.fn();const {result}=renderHook(()=>useTutorChat({courseId:'course',userId:'educator'}));
+    let old!:Promise<void>;act(()=>{old=result.current.sendMessage('Old request',{onSaved:saved});});
+    await waitFor(()=>expect(result.current.isReasoning).toBe(true));
+    act(()=>result.current.startNewConversation());
+    expect(mocks.send.mock.calls[0][1].aborted).toBe(true);
+    expect(result.current.isStreaming).toBe(false);expect(result.current.isReasoning).toBe(false);
+    expect(result.current.currentReasoning).toBe('');expect(result.current.messages).toEqual([]);
+    let next!:Promise<void>;act(()=>{next=result.current.sendMessage('New request');});
+    await waitFor(()=>expect(mocks.send).toHaveBeenCalledTimes(2));
+    await act(async()=>{finishOld();await old;});
+    expect(result.current.isStreaming).toBe(true);expect(result.current.conversationId).toBeNull();
+    expect(saved).not.toHaveBeenCalled();expect(result.current.error).toBeNull();
+    await act(async()=>{finishNew();await next;});
+    expect(result.current.conversationId).toBe('new-chat');
+    expect(result.current.messages.map(m=>m.content)).toEqual(['New request','New answer']);
+  });
   it('passes generation failures to voice while retaining the actual chat error',async()=>{
     mocks.send.mockImplementation(async function*(){throw new Error('The explanation is too long to complete.');});
     const {result}=renderHook(()=>useTutorChat({courseId:'course'}));

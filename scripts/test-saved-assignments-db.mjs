@@ -142,6 +142,36 @@ BEGIN
  IF complete_ai_assignment_evaluation(result,claim,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Duplicate evaluator committed'; END IF;
  IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Duplicate auto-release event'; END IF;
 END $$;`);
+  sql(`ALTER TABLE college_learner_assignments ADD COLUMN is_deleted boolean DEFAULT false, ADD COLUMN external_educator_graded_by uuid;`);
+  sql(readFileSync(new URL('../supabase/migrations/20270318000009_college_ai_grade_updates.sql',import.meta.url),'utf8'));
+  sql(`DO $$
+DECLARE allocation ai_assignment_learners; result ai_assignment_results; outsider uuid:=gen_random_uuid(); original jsonb;
+BEGIN
+ SELECT al.* INTO allocation FROM ai_assignment_learners al WHERE al.college_allocation_id IS NOT NULL LIMIT 1;
+ IF allocation.id IS NULL THEN RAISE EXCEPTION 'Missing college fixture'; END IF;
+ -- Link a released result to this allocation using fixture data, bypassing no production guards.
+ INSERT INTO ai_assignment_submissions(id,assignment_learner_id,file_key,file_name,mime_type)
+ VALUES(gen_random_uuid(),allocation.id,'test/college.docx','college.docx','application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+ ON CONFLICT(assignment_learner_id) DO NOTHING;
+ INSERT INTO ai_assignment_results(submission_id,status,total_marks,maximum_marks,feedback,question_results)
+ SELECT s.id,'released',1,2,'Original feedback','{"review":[{"marks":1}]}'::jsonb
+ FROM ai_assignment_submissions s WHERE s.assignment_learner_id=allocation.id ON CONFLICT(submission_id)
+ DO UPDATE SET status='released',total_marks=1,maximum_marks=2,question_results='{"review":[{"marks":1}]}'::jsonb;
+ SELECT r.* INTO result FROM ai_assignment_results r JOIN ai_assignment_submissions s ON s.id=r.submission_id WHERE s.assignment_learner_id=allocation.id;
+ original:=result.question_results->'review';
+ BEGIN PERFORM update_college_ai_grade(outsider,allocation.college_allocation_id,0,'Denied'); RAISE EXCEPTION 'Unauthorized update allowed';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Assignment educator access required' THEN RAISE; END IF; END;
+ BEGIN PERFORM update_college_ai_grade(allocation.assigned_by,allocation.college_allocation_id,3,'Invalid'); RAISE EXCEPTION 'Invalid marks allowed';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Score outside assignment range' THEN RAISE; END IF; END;
+ PERFORM update_college_ai_grade(allocation.assigned_by,allocation.college_allocation_id,0,'Educator feedback');
+ IF NOT EXISTS(SELECT 1 FROM college_learner_assignments WHERE learner_assignment_id=allocation.college_allocation_id AND grade_received=0 AND grade_percentage=0 AND instructor_feedback='Educator feedback') THEN RAISE EXCEPTION 'College grade not synchronized'; END IF;
+ SELECT * INTO result FROM ai_assignment_results WHERE id=result.id;
+ IF result.total_marks<>0 OR result.question_results->'review' IS DISTINCT FROM original OR jsonb_array_length(result.question_results->'grade_history')<>1 THEN RAISE EXCEPTION 'Missing audit or changed question scores'; END IF;
+ BEGIN UPDATE college_learner_assignments SET grade_received=1 WHERE learner_assignment_id=allocation.college_allocation_id; RAISE EXCEPTION 'Guard bypass';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Released AI result is authoritative' THEN RAISE; END IF; END;
+ IF has_function_privilege('authenticated','update_college_ai_grade(uuid,uuid,numeric,text)','EXECUTE') THEN RAISE EXCEPTION 'Untrusted RPC access'; END IF;
+END $$;`);
+  process.stdout.write('PASS: college grade synchronization, zero marks, ownership, range, audit preservation and guard protections.\n');
   console.log('PASS: automatic result release, failed/stale evaluator suppression and result retries.');
   console.log('PASS: all five notification types, school/college delivery, learner-only results, batch summaries, idempotency and rollback.');
   console.log('PASS: five-table migration, immutable materials, idempotent school/college allocation, owned file submission, grade guards, review/release, regular task synchronization and privacy.');

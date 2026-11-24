@@ -6,6 +6,13 @@ vi.mock('@/shared/model',()=>({useUser:()=>({id:'teacher'})}));
 vi.mock('../../api/materialService',()=>({materialAction:async()=>mocks.rows}));
 import GuideSubmissionPicker from '../GuideSubmissionPicker';
 afterEach(cleanup);
+it('shows creation and submission dates instead of reference codes',async()=>{
+ mocks.rows=[{id:'delivery',learner:{name:'Alex'},assignment:{id:'assignment',title:'Planning',created_at:'2026-11-20T06:00:00Z'},submissions:[{id:'submission',submitted_at:'2026-11-21T06:00:00Z',file_name:'answers.docx'}]}];
+ render(<QueryClientProvider client={new QueryClient()}><GuideSubmissionPicker courseId="course" onSelect={()=>{}} onClose={()=>{}} disabled={false}/></QueryClientProvider>);
+ expect(await screen.findByRole('option',{name:/Planning - 20 Nov 2026.*\d{2}:\d{2}/})).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:/Alex.*21 Nov 2026.*\d{2}:\d{2}/})).toBeInTheDocument();
+ expect(screen.queryByText(/Ref /)).not.toBeInTheDocument();
+});
 it('selects only submitted work and filters by assignment and learner',async()=>{
  mocks.rows=[{id:'one',learner:{name:'Alex'},assignment:{id:'a',title:'Planning'},submissions:[{id:'submission'}]},{id:'two',learner:{name:'Sam'},assignment:{id:'b',title:'Time'},submissions:[]},{id:'three',learner:{name:'Bea'},assignment:{id:'b',title:'Time'},submissions:[{id:'other'}]}];
  const select=vi.fn();render(<QueryClientProvider client={new QueryClient()}><GuideSubmissionPicker courseId="course" onSelect={select} onClose={()=>{}} disabled={false}/></QueryClientProvider>);
