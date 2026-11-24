@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onRequestGet as catalog } from '../../../api/subscriptions/catalog';
 import { onRequestGet as list } from '../../../api/subscriptions/index';
 import type { PagesFunction } from '../../types';
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 const io = vi.hoisted(() => ({ user: {} as Record<string, unknown>, authenticated: true, list: vi.fn(), catalog: vi.fn(), projection: vi.fn(), inventory: vi.fn(), database: vi.fn() }));
 vi.mock('../../auth', () => ({
   getAuthInstance: () => ({
@@ -17,7 +18,7 @@ vi.mock('../catalog-inventory', () => ({
 
 const actor = 'a0000000-0000-4000-8000-000000000001', org = 'a0000000-0000-4000-8000-000000000002';
 const id = 'b0000000-0000-4000-8000-000000000001', plan = 'c0000000-0000-4000-8000-000000000001';
-const revision = 'd0000000-0000-4000-8000-000000000001', product = 'e0000000-0000-4000-8000-000000000001';
+const revision = 'd0000000-0000-4000-8000-000000000001', product = SKILLPASSPORT_PRODUCT_ID;
 const binding = () => ({
   id, planId: plan, productId: product, subject: { kind: 'user', id: actor }, status: 'active',
   kind: 'initialized', revisionId: revision, version: 1, lifecycleOperations: ['cancel']
@@ -39,10 +40,10 @@ const projection = () => {
   const { revisionId, ...draft } = terms();
   return { projection: { bundle: { draft: { ...draft, id: revisionId, schemaVersion: 2 }, includedCredits: { rules: [] } } } };
 };
-const run = (handler: PagesFunction, query = '', bearer = true) => handler({
+const run = (handler: PagesFunction, query = '', bearer = true, configuration = {}) => handler({
   request: new Request('https://owner.invalid/api/subscriptions/test' + query,
     { headers: bearer ? { authorization: 'Bearer synthetic-token' } : {} }),
-  env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { listSubscriptionExecutions: io.list, listPublishedSubscriptionPlans: io.catalog } },
+  env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { listSubscriptionExecutions: io.list, listPublishedSubscriptionPlans: io.catalog }, ...configuration },
   params: {}, data: {}, waitUntil: vi.fn(), next: vi.fn(),
 } as unknown as Parameters<PagesFunction>[0]);
 beforeEach(() => {
@@ -52,6 +53,26 @@ beforeEach(() => {
   io.database.mockReturnValue({}); io.inventory.mockResolvedValue([{ key: 'synthetic', type: 'boolean' }]);
 });
 describe('subscription discovery and published catalog HTTP owner contracts', () => {
+  it.each(['qa', 'production', 'development', undefined])('reads the canonical catalog without an external product ID in %s', async environment => {
+    const productId = SKILLPASSPORT_PRODUCT_ID;
+    const page = catalogPage();
+    page.productId = productId;
+    page.plans[0].plan.productId = productId;
+    const stored = projection();
+    stored.projection.bundle.draft.plan.productId = productId;
+    io.catalog.mockResolvedValue(page);
+    io.projection.mockResolvedValue(stored);
+    const response = await run(catalog, '', true, { ENVIRONMENT: environment, SKILLPASSPORT_PRODUCT_ID: undefined });
+    expect(response.status).toBe(200);
+    expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', productId,
+      [{ key: 'synthetic', type: 'boolean' }], null);
+    expect(await response.json()).toEqual(page);
+  });
+  it('still rejects a catalog from another product', async () => {
+    io.catalog.mockResolvedValue({ ...catalogPage(), productId: actor });
+    expect((await run(catalog)).status).toBe(503);
+    expect(io.projection).not.toHaveBeenCalled();
+  });
   it('forwards only the verified token, configured product and explicit cursor', async () => {
     const response = await run(list);
     expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');

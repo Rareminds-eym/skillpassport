@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../lib/subscription-config';
 import { z } from 'zod';
 import { apiError } from '../../lib/response';
 import type { CreditConsumptionCommand } from '../../lib/subscriptions/credits';
@@ -29,7 +30,7 @@ function accessFailure(input: AccessRequest, status: number, code: string, messa
 /** Existing authentication/role and resource ownership checks remain the caller's responsibility. */
 export async function requireSubscriptionAccess(input: AccessRequest) {
   try {
-    const actorId = uuid.parse(input.actorId), productId = uuid.parse(input.env.SKILLPASSPORT_PRODUCT_ID);
+    const actorId = uuid.parse(input.actorId), productId = uuid.parse(SKILLPASSPORT_PRODUCT_ID);
     const scopedSubject = subject.parse(input.subject), token = getAuthToken(input.request), owner = input.env.SSO_SERVICE;
     if (!token || !owner) return subscriptionFailure(503);
     const ids: string[] = [];

@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../../lib/subscription-config';
 import type { SeatRequestContext } from '../../../lib/seat-access';
 import { getContextUser } from '../../../lib/auth';
 import { apiSuccess, apiError } from '../../../lib/response';
@@ -30,11 +31,11 @@ export async function handleGetActiveSubscription(context: SeatRequestContext): 
       }
       const env = context.env as unknown as PagesEnv;
       const token = getAuthToken(context.request);
-      if (!token || !env.SSO_SERVICE || !env.SKILLPASSPORT_PRODUCT_ID) throw new Error('Lifecycle owner unavailable');
-      const raw = await env.SSO_SERVICE.getCurrentSubscriptionExecution(token, candidate.id, env.SKILLPASSPORT_PRODUCT_ID);
+      if (!token || !env.SSO_SERVICE) throw new Error('Lifecycle owner unavailable');
+      const raw = await env.SSO_SERVICE.getCurrentSubscriptionExecution(token, candidate.id, SKILLPASSPORT_PRODUCT_ID);
       if (ownerDenial.safeParse(raw).success) throw new SubscriptionReadDenied();
       const current = currentSubscriptionSchema.parse(raw);
-      if (current.actorId !== user.id || current.state.id !== candidate.id || current.state.productId !== env.SKILLPASSPORT_PRODUCT_ID
+      if (current.actorId !== user.id || current.state.id !== candidate.id || current.state.productId !== SKILLPASSPORT_PRODUCT_ID
         || current.state.productId !== candidate.product_id || current.state.planId !== candidate.plan_id
         || current.state.revisionId !== candidate.plan_revision_id || candidate.is_organization_subscription === true
         || current.state.subject.kind !== 'user' || current.state.subject.id !== user.id) throw new Error('Lifecycle owner scope differs');

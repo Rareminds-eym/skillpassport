@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { HYBRID_PLAN_ID } from './subscription-config';
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
@@ -133,7 +134,7 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
 
       if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
         const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user,
-          (env as unknown as PagesEnv).HYBRID_PLAN_ID);
+          HYBRID_PLAN_ID);
         if (featureDenied) return featureDenied;
       }
 

@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../subscription-config';
 import { z } from 'zod';
 import { getAuthInstance } from '../auth';
 import { getAuthToken } from '../supabase';
@@ -49,7 +50,7 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
             || !memberships?.memberships?.some(row => row.org_id === platform && row.status === 'active'
               && Array.isArray(row.roles) && row.roles.includes('super_admin'))) return failure(403);
 
-          const product = reference.parse(context.env.SKILLPASSPORT_PRODUCT_ID).toLowerCase();
+          const product = reference.parse(SKILLPASSPORT_PRODUCT_ID).toLowerCase();
           const parameters = [...new URL(context.request.url).searchParams];
           let planId = '';
           if (operation === 'context' || operation === 'creditContext') {

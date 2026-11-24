@@ -1,8 +1,9 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../lib/subscription-config';
 // @vitest-environment node
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 const mocks=vi.hoisted(()=>({from:vi.fn(),rpc:vi.fn(),discover:vi.fn(),current:vi.fn(),action:vi.fn(),projection:vi.fn(),notify:vi.fn(),prepareCredit:vi.fn()}));
 const actor='10000000-0000-4000-8000-000000000001',org='20000000-0000-4000-8000-000000000001';
-const product='30000000-0000-4000-8000-000000000001',subscription='40000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID,subscription='40000000-0000-4000-8000-000000000001';
 const plan='50000000-0000-4000-8000-000000000001',revision='60000000-0000-4000-8000-000000000001';
 vi.mock('../lib/auth',()=>({withAuth:(handler:unknown)=>handler,getContextUser:()=>({id:actor,sub:actor,org_id:org})}));
 vi.mock('../lib/supabase',()=>({getServiceClient:()=>({from:mocks.from,rpc:mocks.rpc}),getAuthToken:()=> 'synthetic-signed-token'}));
@@ -40,7 +41,7 @@ function chain(table:string){
  return q;
 }
 async function request(handler:any,body:unknown){return handler({request:new Request('https://app.fixture.example/api/recruiter/actions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),
- env:{SKILLPASSPORT_PRODUCT_ID:product,SSO_SERVICE:{listSubscriptionExecutions:mocks.discover,getCurrentSubscriptionExecution:mocks.current,getSubscriptionActionContext:mocks.action,prepareSubscriptionCreditExecution:mocks.prepareCredit}},data:{user:{}}});}
+ env:{SSO_SERVICE:{listSubscriptionExecutions:mocks.discover,getCurrentSubscriptionExecution:mocks.current,getSubscriptionActionContext:mocks.action,prepareSubscriptionCreditExecution:mocks.prepareCredit}},data:{user:{}}});}
 beforeEach(()=>{
  vi.clearAllMocks();failure=false;visible=true;verified=true;unlocked=false;allowContact=true;sourceRows=[];mocks.from.mockImplementation(chain);mocks.rpc.mockResolvedValue({data:{success:true},error:null});
  mocks.discover.mockImplementation(async(_token,_product,cursor)=>({schemaVersion:1,actorId:actor,productId:product,
@@ -147,7 +148,7 @@ it('semantic generation denies owner credit rejection before any transaction',as
 it('contact unlock passes the signed deadline with canonical debit to the contact owner',async()=>{
  meteredAction('recruiter.contact.unlock');
  mocks.rpc.mockResolvedValue({data:{candidate:{id:legacy.id,name:legacy.name,email:legacy.email,phone:legacy.contact_number},alreadyUnlocked:false},error:null});
- const result=await unlockRecruiterCandidateContact({env:{SKILLPASSPORT_PRODUCT_ID:product,SSO_SERVICE:{
+ const result=await unlockRecruiterCandidateContact({env:{SSO_SERVICE:{
   listSubscriptionExecutions:mocks.discover,getSubscriptionActionContext:mocks.action,prepareSubscriptionCreditExecution:mocks.prepareCredit,
  }} as never,request:new Request('https://fixture.invalid'),actorId:actor,organizationId:org,database:{from:mocks.from,rpc:mocks.rpc} as never},legacy.id,operation);
  expect(result).not.toBeInstanceOf(Response);

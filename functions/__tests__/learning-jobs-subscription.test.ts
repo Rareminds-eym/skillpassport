@@ -1,6 +1,7 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../lib/subscription-config';
 import { beforeEach, expect, it, vi } from 'vitest';
 const m = vi.hoisted(() => ({ discover: vi.fn(), current: vi.fn(), projection: vi.fn(), from: vi.fn(), rpc: vi.fn(), snapshot: vi.fn(), policy: vi.fn(), equivalents: vi.fn(), evaluate: vi.fn(), withAuth: vi.fn((handler: unknown) => handler) }));
-const actor='10000000-0000-4000-8000-000000000001', product='20000000-0000-4000-8000-000000000001';
+const actor='10000000-0000-4000-8000-000000000001', product = SKILLPASSPORT_PRODUCT_ID;
 const subscription='30000000-0000-4000-8000-000000000001', plan='40000000-0000-4000-8000-000000000001', revision='50000000-0000-4000-8000-000000000001';
 const subject={kind:'user',id:actor};
 vi.mock('../lib/auth',()=>({withAuth:m.withAuth,getContextUser:(context: {data:{user:unknown}})=>context.data.user}));
@@ -10,7 +11,7 @@ vi.mock('../lib/subscriptions/catalog-inventory',()=>({catalogInventoryDatabase:
 vi.mock('../lib/learning-eligibility',async()=>({...await vi.importActual('../lib/learning-eligibility'),readLearningSnapshot:m.snapshot,learningEvaluationPolicy:m.policy,readLearningEquivalents:m.equivalents,evaluateLearning:m.evaluate}));
 import { onRequestGet } from '../api/learning/jobs';
 import { requireSubscriptionAccess } from '../shared/lib/subscription-access';
-function context() {return {request:new Request('https://fixture.invalid/api/learning/jobs?state=eligible'),env:{SKILLPASSPORT_PRODUCT_ID:product,SSO_SERVICE:{listSubscriptionExecutions:m.discover,getCurrentSubscriptionExecution:m.current}},data:{user:{id:actor,roles:['learner']}}} as never;}
+function context() {return {request:new Request('https://fixture.invalid/api/learning/jobs?state=eligible'),env:{SSO_SERVICE:{listSubscriptionExecutions:m.discover,getCurrentSubscriptionExecution:m.current}},data:{user:{id:actor,roles:['learner']}}} as never;}
 function grant(value: string, enabled=true) {m.projection.mockResolvedValue({projection:{bundle:{draft:{audiences:['learner'],features:[{key:'opportunity_access',type:'enum',enabled,value}]}}}});}
 beforeEach(()=>{
  for (const [key, mock] of Object.entries(m)) if (key !== 'withAuth') mock.mockClear();

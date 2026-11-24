@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onRequestGet } from '../../../api/internal/subscriptions/projection';
@@ -5,7 +6,7 @@ import { readApplicationPlanProjection, stageApplicationPlanProjection } from '.
 const mocks = vi.hoisted(() => ({ inventory: vi.fn(), database: vi.fn() }));
 vi.mock('../catalog-inventory', () => ({ readApplicationFeatureInventory: mocks.inventory, catalogInventoryDatabase: mocks.database }));
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const planId = id(1), revisionId = id(2), productId = id(3), actorId = id(4);
+const planId = id(1), revisionId = id(2), productId = SKILLPASSPORT_PRODUCT_ID, actorId = id(4);
 const feature = { id: id(5), feature_key: 'capacity', feature_type: 'numeric_limit', value_options: null };
 function projection() {
   return {

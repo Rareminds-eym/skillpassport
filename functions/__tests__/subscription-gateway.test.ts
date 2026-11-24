@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../lib/subscription-config';
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ resolve: vi.fn(), heal: vi.fn(), sync: vi.fn(), cache: vi.fn(), owner: vi.fn() }));
@@ -9,7 +10,7 @@ vi.mock('../lib/sso-client', () => ({ ssoSyncSubscription: mocks.sync }));
 vi.mock('../lib/sync-shadow', () => ({ syncUserShadow: vi.fn(), syncSubscriptionCache: mocks.cache }));
 vi.mock('../lib/resilience', () => ({ withResilience: (_key: string, call: () => Promise<unknown>) => call() }));
 import { handleGetActiveSubscription } from '../api/payments/handlers/get-active-subscription';
-const actor = 'a0000000-0000-4000-8000-000000000001', product = 'b0000000-0000-4000-8000-000000000001';
+const actor = 'a0000000-0000-4000-8000-000000000001', product = SKILLPASSPORT_PRODUCT_ID;
 const subscription = 'c0000000-0000-4000-8000-000000000001', plan = 'd0000000-0000-4000-8000-000000000001', revision = 'e0000000-0000-4000-8000-000000000001';
 const run = (scope = '') => handleGetActiveSubscription({ request: new Request(`https://example.test/api/payments/get-active-subscription${scope ? `?scope=${scope}` : ''}`),
   env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { getCurrentSubscriptionExecution: mocks.owner } } } as any);

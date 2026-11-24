@@ -41,7 +41,8 @@ export const handleCatalogue: GatewayAction = async (ctx, payload) => {
       },
     };
   const secret = ctx.env.LTE_INTERNAL_SECRET;
-  if (!ctx.env.SP_DASH_CATALOG_URL || !secret || secret.length < 32)
+  const catalogUrl = ctx.env.SP_DASH_CATALOG_URL;
+  if (!catalogUrl || !secret || secret.length < 32)
     return {
       ok: false,
       error: {
@@ -49,7 +50,7 @@ export const handleCatalogue: GatewayAction = async (ctx, payload) => {
         message: "Managed catalogue source is not configured",
       },
     };
-  const url = new URL("/api/internal/lte/catalog", ctx.env.SP_DASH_CATALOG_URL);
+  const url = new URL("/api/internal/lte/catalog", catalogUrl);
   if (
     url.protocol !== "https:" &&
     !["localhost", "127.0.0.1"].includes(url.hostname)
