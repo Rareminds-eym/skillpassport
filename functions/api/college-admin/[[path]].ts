@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { presentCollegeAssessment } from '../../lib/college-assessments';
 
 async function handleAction(action: string, params: Record<string, any>, context: AuthenticatedContext): Promise<Response> {
   const env = context.env as Record<string, string>;
@@ -199,7 +200,7 @@ async function handleAction(action: string, params: Record<string, any>, context
       if (!org_id) return apiError(400, 'VALIDATION_ERROR', 'org_id required', context.request, { startTime });
       const { data, error } = await supabase.from('assessments').select('*').eq('college_id', org_id);
       if (error) return apiDbError(error, context.request, { startTime });
-      return apiSuccess({ data: data || [] }, context.request, { startTime });
+      return apiSuccess({ data: (data || []).map(presentCollegeAssessment) }, context.request, { startTime });
     }
 
     case 'get-exam-timetable': {

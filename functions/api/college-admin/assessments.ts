@@ -7,6 +7,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { CollegeAssessmentError, prepareCollegeAssessment, presentCollegeAssessment } from '../../lib/college-assessments';
 
 export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -16,16 +17,19 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
   const url = new URL(context.request.url);
   const limit = parseInt(url.searchParams.get('limit') || '50', 10);
   const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+  const account = await supabase.from('users').select('organizationId').eq('id', user.id).maybeSingle();
+  if (account.error) return apiDbError(account.error, context.request);
+  if (!account.data?.organizationId) return apiError(403, 'AFFILIATION_ERROR', 'A college affiliation is required.', context.request);
 
   const { data, error, count } = await supabase
     .from('assessments')
     .select('*', { count: 'exact' })
-    .eq('college_id', user.org_id)
+    .eq('college_id', account.data.organizationId)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) return apiDbError(error, context.request);
-  return apiSuccess({ assessments: data, total: count }, context.request);
+  return apiSuccess({ assessments: (data || []).map(presentCollegeAssessment), total: count }, context.request);
 });
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
@@ -44,28 +48,43 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
 
   try {
+    const account = await supabase.from('users').select('organizationId').eq('id', user.id).maybeSingle();
+    if (account.error) return apiDbError(account.error, context.request, { startTime });
+    const collegeId = account.data?.organizationId;
+    if (!collegeId) return apiError(403, 'AFFILIATION_ERROR', 'A college affiliation is required.', context.request, { startTime });
     // No action → original upsert on assessments
     if (!action) {
-      params.college_id = user.org_id;
-      params.created_by = user.id;
-      const { data, error } = await supabase.from('assessments').upsert(params).select().single();
+      let existing;
+      if (params.id) {
+        const found = await supabase.from('assessments').select('*').eq('id', params.id).eq('college_id', collegeId).maybeSingle();
+        if (found.error) return apiDbError(found.error, context.request, { startTime });
+        if (!found.data) return apiError(404, 'NOT_FOUND', 'Assessment not found in your college.', context.request, { startTime });
+        existing = found.data;
+      }
+      const prepared = await prepareCollegeAssessment(supabase, collegeId, params, existing);
+      const { data, error } = await supabase.from('assessments').upsert({ ...prepared, created_by: existing?.created_by || user.id }).select().single();
       if (error) return apiDbError(error, context.request);
-      return apiSuccess({ assessment: data }, context.request);
+      return apiSuccess({ assessment: presentCollegeAssessment(data) }, context.request);
     }
 
     switch (action) {
       case 'create-assessment': {
-        const { data, error } = await supabase.from('assessments').insert([{ ...params, status: 'draft', college_id: user.org_id, created_by: user.id }]).select().single();
+        const prepared = await prepareCollegeAssessment(supabase, collegeId, params);
+        const { data, error } = await supabase.from('assessments').insert([{ ...prepared, status: 'draft', created_by: user.id }]).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        return apiSuccess(presentCollegeAssessment(data), context.request, { startTime });
       }
 
       case 'update-assessment': {
         const { id, ...updates } = params;
         if (!id) return apiError(400, 'VALIDATION_ERROR', 'Missing id', context.request, { startTime });
-        const { data, error } = await supabase.from('assessments').update(updates).eq('id', id).select().single();
+        const found = await supabase.from('assessments').select('*').eq('id', id).eq('college_id', collegeId).maybeSingle();
+        if (found.error) return apiDbError(found.error, context.request, { startTime });
+        if (!found.data) return apiError(404, 'NOT_FOUND', 'Assessment not found in your college.', context.request, { startTime });
+        const prepared = await prepareCollegeAssessment(supabase, collegeId, updates, found.data);
+        const { data, error } = await supabase.from('assessments').update({ ...prepared, created_by: found.data.created_by }).eq('id', id).eq('college_id', collegeId).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data, context.request, { startTime });
+        return apiSuccess(presentCollegeAssessment(data), context.request, { startTime });
       }
 
       case 'submit-to-exam-cell': {
@@ -85,7 +104,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-assessments': {
-        let query = supabase.from('assessments').select('*').eq('college_id', user.org_id);
+        let query = supabase.from('assessments').select('*').eq('college_id', collegeId);
         if (params.type) query = query.eq('type', params.type);
         if (params.academic_year) query = query.eq('academic_year', params.academic_year);
         if (params.department_id) query = query.eq('department_id', params.department_id);
@@ -94,7 +113,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (params.status) query = query.eq('status', params.status);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess((data || []).map(presentCollegeAssessment), context.request, { startTime });
       }
 
       // ── Timetable ──
@@ -172,6 +191,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'VALIDATION_ERROR', `Unknown action: ${action}`, context.request, { startTime });
     }
   } catch (error: any) {
+    if (error instanceof CollegeAssessmentError) return apiError(error.status, error.status === 403 ? 'FORBIDDEN' : 'VALIDATION_ERROR', error.message, context.request, { startTime });
     console.error(`[assessments POST] action=${action || 'upsert'}:`, error?.message || error);
     return apiDbError(error, context.request, { startTime });
   }

@@ -6,6 +6,7 @@ export { default as AssignmentFileUpload } from './AssignmentFileUpload';
 export { default as BulkDeleteLearnersModal } from './modals/BulkDeleteLearnersModal';
 export { default as CollegeCurriculumBuilderUI } from './CollegeCurriculumBuilderUI';
 export { default as CollegeLessonPlanUI } from './CollegeLessonPlanUI';
+export { CollegeLessonPlanReviewDrawer } from './CollegeLessonPlanReviewDrawer';
 export { default as CourseMappingModal } from './CourseMappingModal';
 export { default as CreateCircularModal } from './CreateCircularModal';
 export { default as DeleteLearnerModal } from './modals/DeleteLearnerModal';

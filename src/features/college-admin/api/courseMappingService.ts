@@ -193,7 +193,7 @@ export async function deleteCourseMapping(id: string): Promise<void> {
     throw new Error('VALIDATION_ERROR: Mapping ID is required');
   }
 
-  const response = await apiPost('/college-admin/academic', { action: 'delete-course-mapping', id });
+  const response = await apiPost('/college-admin/academic', { action: 'delete-course-mapping', mapping_id: id });
   if (!response.success) throw new Error(response.error || 'Failed to delete course mapping');
 }
 

@@ -15,13 +15,28 @@ export async function getCollegeLearnerAcademicYear(db: SupabaseClient, learner:
   program_section_id?: string | null; college_class_id?: string | null;
 }, departmentId?: string | null): Promise<string | null> {
   if (learner.program_section_id) {
-    if (!departmentId) return null;
     const { data, error } = await db.from('program_sections').select('academic_year')
-      .eq('id', learner.program_section_id).eq('program_id', learner.program_id)
-      .eq('department_id', departmentId).eq('semester', learner.semester).eq('status', 'active').maybeSingle();
+      .eq('id', learner.program_section_id).eq('status', 'active').maybeSingle();
     if (error) throw error;
-    return academicYearVariants(data?.academic_year).length ? data.academic_year.trim() : null;
+    if (data?.academic_year && academicYearVariants(data.academic_year).length) {
+      return data.academic_year.trim();
+    }
   }
+
+  // Fallback: match active section by program_id and semester
+  if (learner.program_id && learner.semester) {
+    const { data } = await db.from('program_sections').select('academic_year')
+      .eq('program_id', learner.program_id)
+      .eq('semester', learner.semester)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (data?.academic_year && academicYearVariants(data.academic_year).length) {
+      return data.academic_year.trim();
+    }
+  }
+
   if (learner.college_class_id) {
     const { data, error } = await db.from('college_classes').select('academic_year')
       .eq('id', learner.college_class_id).eq('college_id', learner.college_id).eq('status', 'active').maybeSingle();

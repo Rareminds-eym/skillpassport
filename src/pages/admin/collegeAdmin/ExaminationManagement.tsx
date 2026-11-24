@@ -438,18 +438,36 @@ const ExaminationManagement: React.FC = () => {
     try {
       const { data: { user } } = { data: { user: useAuthStore.getState().user } };
 
-      await examinationService.assignInvigilator({
-        exam_timetable_id: slotId,
-        invigilator_id: facultyId,
-        invigilator_name: faculty.find(f => f.id === facultyId)?.users?.firstName || '',
-        invigilator_type: 'regular',
-        duty_date: new Date().toISOString().split('T')[0],
-        duty_start_time: '09:00',
-        duty_end_time: '12:00',
-        assigned_by: user?.id
+      // Update exam_timetable.invigilators array
+      const assignRes: any = await apiPost('/college-admin/assessments', {
+        action: 'assign-invigilator',
+        slot_id: slotId,
+        faculty_id: facultyId,
       });
+      if (assignRes && !assignRes.success && assignRes.error) {
+        throw new Error(assignRes.error?.message || 'Error assigning invigilator');
+      }
 
-      queryClient.invalidateQueries({ queryKey: ['examSlots'] });
+      // Also record in invigilator_assignments table for history/attendance
+      const facultyObj = faculty.find(f => f.id === facultyId);
+      const facName = facultyObj?.name || facultyObj?.users?.firstName || '';
+      try {
+        await examinationService.assignInvigilator({
+          exam_timetable_id: slotId,
+          invigilator_id: facultyId,
+          invigilator_name: facName,
+          invigilator_type: 'regular',
+          duty_date: new Date().toISOString().split('T')[0],
+          duty_start_time: '09:00',
+          duty_end_time: '12:00',
+          assigned_by: user?.id
+        });
+      } catch (e) {
+        logger.warn('Secondary invigilator_assignments record notice:', e);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['examSlots'] });
+      await queryClient.refetchQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
       logger.error('Error assigning invigilator:', error);
@@ -467,7 +485,8 @@ const ExaminationManagement: React.FC = () => {
 
       if (!res.success) throw new Error(res.error?.message || 'Error removing invigilator');
 
-      queryClient.invalidateQueries({ queryKey: ['examSlots'] });
+      await queryClient.invalidateQueries({ queryKey: ['examSlots'] });
+      await queryClient.refetchQueries({ queryKey: ['examSlots'] });
       return { success: true };
     } catch (error: any) {
       logger.error('Error removing invigilator:', error);
@@ -878,6 +897,8 @@ const ExaminationManagement: React.FC = () => {
             onClose={() => setShowInvigilatorModal(false)}
             examSlots={examSlots.filter((s: any) => s.assessment_id === selectedAssessmentForAction.id)}
             availableFaculty={faculty}
+            assessmentName={`${selectedAssessmentForAction.type || 'Examination'} - Semester ${selectedAssessmentForAction.semester || ''}`}
+            courses={courses}
             onAssign={handleAssignInvigilator}
             onRemove={handleRemoveInvigilator}
           />

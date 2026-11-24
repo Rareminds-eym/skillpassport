@@ -8,9 +8,10 @@ export function CurriculumNotificationLink({ notification, markRead, onClose }: 
 }) {
   const submitted = notification.type === 'curriculum_change_submitted';
   const decision = ['curriculum_change_approved', 'curriculum_change_rejected'].includes(notification.type);
-  const path = submitted ? '/college-admin/academics/curriculum?' : '/educator/browse-courses?';
-  if ((!submitted && !decision) || !notification.action_url?.startsWith(path)) return null;
-  return <Link to={notification.action_url} className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-sm !border-0 !bg-transparent !p-0 !text-sm !font-medium !text-indigo-700 !shadow-none underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+    const isCollegeAdminAction= submitted && (notification.action_url?.startsWith('/college-admin/academics/curriculum?') || notification.action_url?.startsWith('/college-admin/academics/lesson-plans?'));
+  const isEducatorAction = decision && notification.action_url?.startsWith('/educator/browse-courses?');
+  if (!isCollegeAdminAction && !isEducatorAction) return null;
+  return <Link to={notification.action_url!} className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-sm !border-0 !bg-transparent !p-0 !text-sm !font-medium !text-indigo-700 !shadow-none underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
     onClick={() => {
       if (!notification.read) void markRead(notification.id).catch(() => console.error('Could not mark curriculum notification as read.'));
       onClose();

@@ -113,7 +113,7 @@ function generateExcelTemplate(): void {
   XLSX.writeFile(wb, 'task-bulk-import-template.xlsx');
 }
 interface Props {
-  isOpen: boolean; onClose: () => void; onSuccess: () => void;
+  isOpen: boolean; onClose: () => void; onSuccess: (sectionId: string, autoAssign: boolean, assignmentIds: string[]) => void;
   educatorUserId: string; collegeId: string;
 }
 
@@ -135,13 +135,12 @@ export function TaskBulkImportModal({ isOpen, onClose, onSuccess, educatorUserId
   const [selectedProgram, setSelectedProgram] = useState('');
   const [selectedSection, setSelectedSection] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
-  const [autoAssign, setAutoAssign] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     setStep('target'); setFatal(''); setFileName(''); setValidatedRows([]);
-    setSelectedDept(''); setSelectedProgram(''); setSelectedSection(''); setSelectedCourse(''); setAutoAssign(true);
+    setSelectedDept(''); setSelectedProgram(''); setSelectedSection(''); setSelectedCourse('');
     setDepsLoading(true);
     collegeAssignmentService.fetchEducatorDepartments(educatorUserId)
       .then(r => setDepartments(r.data || [])).catch(() => setFatal('Failed to load departments')).finally(() => setDepsLoading(false));
@@ -192,14 +191,18 @@ export function TaskBulkImportModal({ isOpen, onClose, onSuccess, educatorUserId
         course_code: selectedCourseObj?.course_code || '', section_id: selectedSection,
         section: selectedSectionObj?.section || '', semester: selectedSectionObj?.semester || 1,
         academic_year: selectedSectionObj?.academic_year || '', college_id: collegeId,
-        auto_assign: autoAssign,
+        auto_assign: false,
         tasks: validRows.map(r => ({ title: r.title, due_date: r.due_date, assignment_type: r.assignment_type,
           total_points: r.total_points, description: r.description, instructions: r.instructions,
           skill_outcomes: r.skill_outcomes, allow_late_submission: r.allow_late_submission, instruction_files: r.instruction_files })),
       };
       const result = await collegeAssignmentService.bulkCreateCollegeAssignments(payload);
       if (result.error) { setFatal(result.error); }
-      else { toast.success((result.data?.count || validRows.length) + ' task(s) imported successfully!'); onSuccess(); onClose(); }
+      else { 
+        toast.success((result.data?.count || validRows.length) + ' task(s) imported successfully!'); 
+        onSuccess(selectedSection, false, result.data?.assignment_ids || []); 
+        onClose(); 
+      }
     } catch (err: any) { setFatal(err?.message || 'Import failed'); }
     finally { setBusy(false); }
   };
@@ -256,10 +259,6 @@ export function TaskBulkImportModal({ isOpen, onClose, onSuccess, educatorUserId
                       {sections.map((s: any) => <option key={s.id} value={s.id}>Sec {s.section} - Sem {s.semester} - {s.academic_year}</option>)}
                     </select>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <input type="checkbox" id="auto-assign-bulk" checked={autoAssign} onChange={e => setAutoAssign(e.target.checked)} className="h-4 w-4 text-green-600 rounded border-gray-300" />
-                  <label htmlFor="auto-assign-bulk" className="text-sm text-gray-700"><span className="font-medium">Auto-assign to learners</span> - automatically assign all tasks to enrolled learners in this section</label>
                 </div>
               </div>
             )}

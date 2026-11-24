@@ -99,6 +99,14 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!slotId || !facultyId) return apiError(400, 'VALIDATION_ERROR', 'Missing slotId or facultyId', context.request, { startTime });
         const { error } = await supabase.from('invigilator_assignments').delete().eq('exam_timetable_id', slotId).eq('invigilator_id', facultyId);
         if (error) return apiDbError(error, context.request, { startTime });
+
+        // Also remove from exam_timetable.invigilators array
+        const { data: slot } = await supabase.from('exam_timetable').select('invigilators').eq('id', slotId).maybeSingle();
+        if (slot && Array.isArray(slot.invigilators)) {
+          const updated = slot.invigilators.filter((id: string) => id !== facultyId);
+          await supabase.from('exam_timetable').update({ invigilators: updated }).eq('id', slotId);
+        }
+
         return apiSuccess(null, context.request, { startTime });
       }
 

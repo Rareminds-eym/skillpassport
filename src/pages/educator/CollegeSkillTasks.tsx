@@ -1072,18 +1072,30 @@ export default function CollegeSkillTasks() {
 
             logger.info('User IDs to assign', { userIds });
 
-            const { error } = await collegeAssignmentService.assignTaskTolearners(
-                selectedAssignment.assignment_id,
-                userIds
-            );
+            // Check if this is a bulk assignment (multiple assignment IDs stored)
+            const bulkAssignmentIds = (window as any).__bulkAssignmentIds;
+            const assignmentIds = bulkAssignmentIds && Array.isArray(bulkAssignmentIds) && bulkAssignmentIds.length > 0 
+                ? bulkAssignmentIds 
+                : [selectedAssignment.assignment_id];
+            
+            // Assign learners to all tasks (single or bulk)
+            for (const assignmentId of assignmentIds) {
+                const { error } = await collegeAssignmentService.assignTaskTolearners(
+                    assignmentId,
+                    userIds
+                );
 
-            if (error) {
-                logger.error('Assignment service error', error);
-                toast.error(error);
-                return;
+                if (error) {
+                    logger.error('Assignment service error for ID', assignmentId, error);
+                    toast.error(`Failed to assign task ${assignmentId}: ${error}`);
+                    // Continue with other assignments even if one fails
+                }
             }
+            
+            // Clear bulk assignment IDs
+            delete (window as any).__bulkAssignmentIds;
 
-            toast.success(`Task assigned to ${userIds.length} learner${userIds.length !== 1 ? 's' : ''}`);
+            toast.success(`Task${assignmentIds.length > 1 ? 's' : ''} assigned to ${userIds.length} learner${userIds.length !== 1 ? 's' : ''}`);
             setAssignlearnersModal(false);
             setSelectedLearnerIds([]);
             setAssignedLearnerIds([]);
@@ -2711,9 +2723,47 @@ export default function CollegeSkillTasks() {
             <TaskBulkImportModal
                 isOpen={bulkImportModal}
                 onClose={() => setBulkImportModal(false)}
-                onSuccess={() => {
+                onSuccess={async (sectionId: string, autoAssign: boolean, assignmentIds: string[]) => {
                     const user = useAuthStore.getState().user;
-                    if (user?.id) fetchAssignments(user.id);
+                    if (user?.id) {
+                        await fetchAssignments(user.id);
+                        await fetchStatistics(user.id);
+                        
+                        // Fetch learners for the section
+                        await fetchlearnersForSection(sectionId);
+                        
+                        // Fetch learners and get their IDs
+                        const { data: sectionLearners } = await collegeAssignmentService.fetchProgramSectionlearners(sectionId);
+                        const learnerIds = Array.isArray(sectionLearners) ? sectionLearners.map((l: any) => l.id) : [];
+                        
+                        // If auto-assign was checked, pre-select all learners, otherwise leave empty
+                        setSelectedLearnerIds(autoAssign ? learnerIds : []);
+                        
+                        // Set the first created assignment as the placeholder for the modal
+                        // The assignment modal will be used to manage learner assignments for all bulk tasks
+                        if (assignmentIds.length > 0) {
+                            setSelectedAssignment({
+                                assignment_id: assignmentIds[0], // Use first assignment ID
+                                title: `${assignmentIds.length} Bulk Imported Task${assignmentIds.length > 1 ? 's' : ''}`,
+                                description: '',
+                                course_name: '',
+                                course_code: '',
+                                due_date: '',
+                                assignment_type: 'homework',
+                                total_points: 100,
+                                skill_outcomes: [],
+                                status: 'active',
+                                created_date: new Date().toISOString(),
+                                program_section_id: sectionId
+                            } as TaskAssignment);
+                            
+                            // Store all assignment IDs for bulk assignment
+                            (window as any).__bulkAssignmentIds = assignmentIds;
+                            
+                            // Open assign learners modal
+                            setAssignlearnersModal(true);
+                        }
+                    }
                 }}
                 educatorUserId={actor?.id || ''}
                 collegeId={activeCollegeId || ''}

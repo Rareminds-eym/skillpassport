@@ -49,8 +49,16 @@ export const onRequestGet = withAuth(async context => {
     const years = academicYearVariants(year);
     const current = [...(curricula.data || [])].sort((a, b) => years.indexOf(a.academic_year) - years.indexOf(b.academic_year))
       .filter((curriculum, index, all) => all.findIndex(item => item.course_id === curriculum.course_id) === index);
+    const plans = current.length ? await db.from('college_lesson_plans')
+      .select('id,title,session_date,duration_minutes,course_id,curriculum_id,unit_id,session_objectives,teaching_methodology,required_materials,resource_files,resource_links,evaluation_criteria,evaluation_items,follow_up_activities,selected_learning_outcomes')
+      .eq('college_id', learner.college_id).eq('program_id', learner.program_id).eq('semester', learner.semester)
+      .eq('status', 'published').in('academic_year', years).in('course_id', current.map(item => item.course_id)).order('session_date')
+      : { data: [], error: null };
+    if (plans.error) return apiDbError(plans.error, context.request);
     const published = current.map(curriculum => ({
       ...curriculum, course: courses.data!.find(row => row.id === curriculum.course_id),
+      lesson_plans: (plans.data || []).filter(plan => (!plan.curriculum_id || plan.curriculum_id === curriculum.id) && plan.course_id === curriculum.course_id && curriculum.units.some(unit => unit.id === plan.unit_id))
+        .map(plan => ({ ...plan, curriculum_id: curriculum.id })),
       units: [...(curriculum.units || [])].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)),
       outcomes: [...(curriculum.outcomes || [])].sort((a, b) => a.id.localeCompare(b.id)),
     })).sort((a, b) => (a.course?.course_code || '').localeCompare(b.course?.course_code || ''));
