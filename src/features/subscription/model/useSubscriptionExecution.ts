@@ -24,12 +24,24 @@ function useRead<T>(read: (signal: AbortSignal) => Promise<T>): [LoadState<T>, (
 export function useSubscriptionDiscovery(cursor?: string) {
   return useRead(useCallback(signal => api.discover(signal, cursor), [cursor]));
 }
+/** PRD R16/R17: the only call that ever commits promo quota — explicit, user-triggered, never automatic. */
+export function useAcceptPromoOffer() {
+  const [state, setState] = useState<{ status: 'idle' | 'pending' | 'error'; message?: string }>({ status: 'idle' });
+  const accept = useCallback(async (signal?: AbortSignal) => {
+    setState({ status: 'pending' });
+    try { const offer = await api.acceptPromoOffer(signal); setState({ status: 'idle' }); return offer; }
+    catch (error) { setState({ status: 'error', message: errorMessage(error) }); return false; }
+  }, []);
+  return [state, accept] as const;
+}
 /** The owner cursor advances scanned records, including offers filtered out for this buyer.
  * Resolve the complete catalog so comparison and upgrade selectors never navigate to empty pages. */
 export function usePublishedCatalog() {
   return useRead<Catalog>(useCallback(async signal => {
     const first = await api.catalog(signal);
     const plans = [...first.plans];
+    let eligiblePlanId = first.eligiblePlanId;
+    let offerAccepted = first.offerAccepted;
     const ids = new Set(plans.map(plan => plan.plan.id));
     const cursors = new Set<string>();
     let cursor = first.nextCursor;
@@ -43,6 +55,11 @@ export function usePublishedCatalog() {
         || page.audience !== first.audience || page.subjectKind !== first.subjectKind
         || JSON.stringify(page.tax) !== JSON.stringify(first.tax)) throw new Error('Published catalog scope differs.');
       if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error('Published catalog cursor did not advance.');
+      if (page.eligiblePlanId !== null) {
+        if (eligiblePlanId !== null && eligiblePlanId !== page.eligiblePlanId) throw new Error('Promo offer changed while loading. Please refresh.');
+        eligiblePlanId = page.eligiblePlanId;
+        offerAccepted = page.offerAccepted;
+      }
       for (const plan of page.plans) {
         if (ids.has(plan.plan.id)) throw new Error('Published catalog repeated a plan.');
         ids.add(plan.plan.id);
@@ -51,7 +68,7 @@ export function usePublishedCatalog() {
       cursor = page.nextCursor;
     }
     // This is a complete presentation collection; the service response remains unchanged.
-    return { ...first, plans, nextCursor: null };
+    return { ...first, plans, nextCursor: null, eligiblePlanId, offerAccepted };
   }, []));
 }
 export function useCurrentSubscription(row: Discovery['items'][number], context: Discovery) {

@@ -2,7 +2,12 @@ import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onRequestPost } from '../../../api/subscriptions/commerce';
 import type { PagesFunction } from '../../types';
-const io = vi.hoisted(() => ({ authenticated: true, execute: vi.fn(), completePlanSelection: vi.fn() }));
+const io = vi.hoisted(() => ({ authenticated: true, execute: vi.fn(), completePlanSelection: vi.fn(), accepted: vi.fn(), projection: vi.fn() }));
+vi.mock('../../../api/payments/lib/promoCode', () => ({
+  getStoredReferralCodeAndRole: async () => ({ referralCode: 'TEST', role: 'learner' }),
+  getAcceptedOfferSnapshot: io.accepted,
+}));
+vi.mock('../publication', () => ({ readApplicationPlanProjectionByRevision: io.projection }));
 vi.mock('../../../shared/lib/org-subscription', () => ({ completePlanSelection: io.completePlanSelection }));
 vi.mock('../../supabase', async original => ({ ...(await original<object>()), getServiceClient: () => ({ synthetic: 'service-client' }) }));
 vi.mock('../../auth', () => ({ getAuthInstance: () => ({ authenticate: (handler: (request: Request, auth: unknown) => Promise<Response>) => (request: Request) => io.authenticated ? handler(request, { user: { sub: 'a0000000-0000-4000-8000-000000000001', is_email_verified: true, membership_status: 'active' } }) : Response.json({}, { status: 401 }) }) }));
@@ -108,3 +113,27 @@ vi.mock('../read-cache', async importOriginal => ({
 }));
 
 vi.mock('../catalog-inventory', () => ({ catalogInventoryDatabase: () => ({ synthetic: 'cache-database' }) }));
+
+
+describe('accepted promo pricing through the HTTP boundary', () => {
+  it.each(['purchase', 'upgrade'])('forwards the exact accepted fixed price for %s', async purpose => {
+    const result = receipt(); result.quote.amountMinor = 39900;
+    result.quote.purpose = purpose;
+    const body = command(); body.request.purpose = purpose;
+    io.execute.mockResolvedValue(result);
+    io.accepted.mockResolvedValue({ offer: { planId: id(7), revisionId: revision, priceId: id(6), amountMinor: 39900 } });
+    io.projection.mockResolvedValue({ projection: { bundle: { draft: { plan: { id: id(7) }, prices: [{ id: id(6), amountMinor: 100000 }] } } } });
+    expect((await run(body)).status).toBe(200);
+    expect(io.execute).toHaveBeenCalledWith('synthetic-token', product, operationId, { ...body.request, priceAdjustmentMinor: -60100 });
+  });
+  it('rejects a browser-supplied price adjustment before calling SSO', async () => {
+    const body = command();
+    expect((await run({ ...body, request: { ...body.request, priceAdjustmentMinor: -99999 } })).status).toBe(400);
+    expect(io.execute).not.toHaveBeenCalled();
+  });
+  it('does not apply an accepted price to a different revision', async () => {
+    io.accepted.mockResolvedValue({ offer: { revisionId: id(99), priceId: id(6), amountMinor: 39900 } });
+    expect((await run(command())).status).toBe(200);
+    expect(io.execute).toHaveBeenCalledWith('synthetic-token', product, operationId, command().request);
+  });
+});

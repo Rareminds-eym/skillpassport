@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { lifecycleOperation, lifecycleReferenceFields, type Catalog, type Current, type Discovery, type FeatureGrant, type LifecycleRequest } from '../api/subscriptionExecutionService';
-import { useCatalogPurchaseContext, useCreditHistory, useCreditUsage, useCurrentSubscription, useHistoricalCreditPools, usePublishedCatalog, useSubscriptionAudit, useSubscriptionCheckout, useSubscriptionDiscovery, useSubscriptionExecution, type LoadState } from '../model/useSubscriptionExecution';
+import { useAcceptPromoOffer, useCatalogPurchaseContext, useCreditHistory, useCreditUsage, useCurrentSubscription, useHistoricalCreditPools, usePublishedCatalog, useSubscriptionAudit, useSubscriptionCheckout, useSubscriptionDiscovery, useSubscriptionExecution, type LoadState } from '../model/useSubscriptionExecution';
 import SubscriptionCatalog, { SubscriptionCatalogFrame, SubscriptionAddOns } from './SubscriptionCatalog';
 import { enumLabel, featureName, featureValue, formatPrice, handleTabKeyDown } from '../lib/subscriptionPresentation';
 import styles from './SubscriptionWorkspace.module.css';
@@ -101,23 +101,32 @@ function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType
     {(state.stage === 'sdk' || state.stage === 'checkout') && <button onClick={checkout.stopCheckout}>
       {state.stage === 'sdk' ? 'Stop connecting' : 'Close payment window'}</button>}</div>;
 }
-function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenewal = false }: {
+function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenewal = false, retryCatalog }: {
   allowRenewal?: boolean; plan: Catalog['plans'][number]; catalog: Catalog;
-  checkout: ReturnType<typeof useSubscriptionCheckout>; current?: Current; operations?: Discovery['items'][number]['lifecycleOperations']
+  checkout: ReturnType<typeof useSubscriptionCheckout>; current?: Current; operations?: Discovery['items'][number]['lifecycleOperations'];
+  retryCatalog?: () => void;
 }) {
   const user = useUser();
   const { role } = useUserRole();
   const dashboardRoute = role ? ROLE_DASHBOARD_MAP[role] : undefined;
   const isCurrentPlan = current?.state.planId === plan.plan.id;
   const isCancelled = current?.state.status === 'cancelled';
-  const canEnterDashboard = current && current.access !== 'suspended';
+  const promoBlocksFreeAccess = catalog.eligiblePlanId != null && plan.purchaseMode === 'free';
+  const canEnterDashboard = current && current.access !== 'suspended' && !promoBlocksFreeAccess;
   const purpose = current ? isCurrentPlan ? 'renew' : 'upgrade' : 'purchase';
   const permitted = !isCancelled && (!current || operations?.includes(purpose as 'renew' | 'upgrade'));
+  // A payment click commits the server-owned promo snapshot before requesting a quote.
+  const needsPromoAcceptance = (purpose === 'purchase' || purpose === 'upgrade') && catalog.eligiblePlanId === plan.plan.id && !catalog.offerAccepted;
+  const [acceptState, acceptOffer] = useAcceptPromoOffer();
+  const startingPayment = useRef(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   // The owner fixes the buyer subject per audience: individuals buy for themselves, institutions for their organization.
   const subject = current ? current.state.subject : catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
   return <div className={styles.purchase}>
-    {isCancelled && isCurrentPlan ? <section aria-label="Cancelled plan access">
+    {(paymentError || acceptState.status === 'error') && <p role="alert">{paymentError || acceptState.message}</p>}
+    {promoBlocksFreeAccess ? <p>Complete payment for your promotional plan to continue.</p>
+      : isCancelled && isCurrentPlan ? <section aria-label="Cancelled plan access">
       <p className="font-semibold">Cancelled plan</p>
       <p>{current.access === 'read_only' ? 'Your existing subscription information remains available in read-only mode.'
         : current.access === 'suspended' ? 'Dashboard access is unavailable for this cancelled subscription.'
@@ -145,12 +154,30 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
               : plan.prices.map(price => <div key={price.id}>
                 {price.quantityBasis === 'seat' ? <p>Seat quantity requires an owner agreement. Purchasing is unavailable until the purchase owner provides executable terms.</p>
                   : price.amountMinor === 0 ? <p>Free activation requires configured duration and entry terms from the subscription owner.</p>
-                    : <button disabled={checkout.state.status !== 'idle'} onClick={() => void checkout.purchase({
-                      kind: 'quote', purpose,
-                      subscriptionId: current?.state.id ?? crypto.randomUUID(), subject, expectedVersion: current?.state.version ?? 0,
-                      expectedRevisionId: current?.state.revisionId ?? plan.revisionId, revisionId: plan.revisionId, priceId: price.id
-                    })}>
-                      {purpose === 'purchase' ? 'Buy Now' : purpose === 'renew' ? 'Renew Plan' : 'Change Plan'} · {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
+                    : <button disabled={checkout.state.status !== 'idle' || acceptState.status === 'pending'} onClick={async () => {
+                      if (startingPayment.current) return;
+                      startingPayment.current = true;
+                      setPaymentError(null);
+                      try {
+                        if (needsPromoAcceptance) {
+                          const accepted = await acceptOffer();
+                          if (!accepted) return;
+                          if (accepted.planId !== plan.plan.id || accepted.revisionId !== plan.revisionId || accepted.priceId !== price.id
+                            || accepted.amountMinor !== price.amountMinor || accepted.currency !== price.currency
+                            || accepted.minorUnit !== price.minorUnit || accepted.intervalUnit !== price.intervalUnit || accepted.intervalCount !== price.intervalCount) {
+                            setPaymentError('Your plan price changed. Review the updated price before continuing.');
+                            retryCatalog?.();
+                            return;
+                          }
+                        }
+                        await checkout.purchase({
+                          kind: 'quote', purpose,
+                          subscriptionId: current?.state.id ?? crypto.randomUUID(), subject, expectedVersion: current?.state.version ?? 0,
+                          expectedRevisionId: current?.state.revisionId ?? plan.revisionId, revisionId: plan.revisionId, priceId: price.id,
+                        });
+                      } finally { startingPayment.current = false; }
+                    }}>
+                      Pay {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
               </div>)}
   </div>;
 }
@@ -165,14 +192,14 @@ function CatalogPrices({ plan, catalog }: { plan: Catalog['plans'][number]; cata
     {taxLabel(catalog.tax, plan.presentation.taxInclusive) && <span className={styles.tax}> {taxLabel(catalog.tax, plan.presentation.taxInclusive)}</span>}
     <small>For {price.audiences.map(audience => audience === 'individual' ? 'individuals' : enumLabel(audience)).join(', ')}</small></li>)}</ul>;
 }
-function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, onPaymentConfirmed, managedSubscriptionId, catalogMode }: { catalog: Catalog; selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed } & CatalogSelection) {
+function PurchaseCatalog({ catalog, selectedRevisionId, qaPresentation = false, onPaymentConfirmed, managedSubscriptionId, catalogMode, retryCatalog }: { catalog: Catalog; selectedRevisionId?: string; qaPresentation?: boolean; onPaymentConfirmed?: PaymentConfirmed; retryCatalog?: () => void } & CatalogSelection) {
   const checkout = useSubscriptionCheckout(catalog);
   const user = useUser();
   const subject = catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
   const [context, retryContext] = useCatalogPurchaseContext(catalog, subject, managedSubscriptionId);
   const purchase = (plan: Catalog['plans'][number]) => <ReadPanel state={context} retry={retryContext}>{value =>
-    <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} allowRenewal={catalogMode === 'renew'} />
+    <PlanPurchase plan={plan} catalog={catalog} current={value.current ?? undefined} operations={value.operations} checkout={checkout} allowRenewal={catalogMode === 'renew'} retryCatalog={retryCatalog} />
   }</ReadPanel>;
   if (qaPresentation) return <><CheckoutStatus checkout={checkout} onPaymentConfirmed={onPaymentConfirmed} /><SubscriptionCatalog catalog={catalog} selectedRevisionId={selectedRevisionId}
     currentPlanId={context.status === 'ready' && context.data.current?.state.status !== 'cancelled' ? context.data.current?.state.planId : undefined}
@@ -193,7 +220,7 @@ function PublishedPlans({ selectedRevisionId, qaPresentation = false, onPaymentC
   const [state, retry] = usePublishedCatalog();
   return <section aria-label={qaPresentation ? "Published plans" : undefined} aria-labelledby={qaPresentation ? undefined : "published-plans"}>{!qaPresentation && <div className={styles.sectionHeading}><span>02 / Explore</span><h2 id="published-plans">Published plans</h2></div>}
     <ReadPanel state={state} retry={retry}>{catalog => <>
-      {catalog.plans.length === 0 ? <p className={styles.notice}>{catalog.audience === null ? 'No plans are offered for your account type. Contact the subscription owner if this looks wrong.' : 'No published plans are available.'}</p> : <PurchaseCatalog key={`${catalog.actorId}:${catalog.productId}`} catalog={catalog} selectedRevisionId={selectedRevisionId} qaPresentation={qaPresentation} onPaymentConfirmed={onPaymentConfirmed} managedSubscriptionId={managedSubscriptionId} catalogMode={catalogMode} />}
+      {catalog.plans.length === 0 ? <p className={styles.notice}>{catalog.audience === null ? 'No plans are offered for your account type. Contact the subscription owner if this looks wrong.' : 'No published plans are available.'}</p> : <PurchaseCatalog key={`${catalog.actorId}:${catalog.productId}`} catalog={catalog} selectedRevisionId={selectedRevisionId} qaPresentation={qaPresentation} onPaymentConfirmed={onPaymentConfirmed} managedSubscriptionId={managedSubscriptionId} catalogMode={catalogMode} retryCatalog={retry} />}
     </>}</ReadPanel>
   </section>;
 }

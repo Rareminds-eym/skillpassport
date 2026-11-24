@@ -191,12 +191,12 @@ describe('customer and administrative catalog route integration', () => {
     const response = await run();
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(await response.json()).toEqual(page);
+    expect(await response.json()).toEqual(admin ? page : { ...page, eligiblePlanId: null, offerAccepted: false });
     expect(owner).toHaveBeenCalledTimes(1);
     expect(f.transport).toHaveBeenCalledTimes(admin ? 3 : 5);
     if (!admin) {
       const hit = await run();
-      expect(hit.status).toBe(200); expect(await hit.json()).toEqual(page);
+      expect(hit.status).toBe(200); expect(await hit.json()).toEqual(admin ? page : { ...page, eligiblePlanId: null, offerAccepted: false });
       expect(owner).toHaveBeenCalledTimes(1); expect(f.transport).toHaveBeenCalledTimes(6);
     }
   });

@@ -355,6 +355,16 @@ const SubscriptionProtectedRoute = ({
   const role = allowedRoles.find(allowed => user?.roles?.includes(allowed)) ?? primaryRole;
   const location = useLocation();
 
+  // Relays a referral code lost when post-signup navigation bypassed the
+  // referralCode-bearing route (see UnifiedSignup.tsx) into the subscription
+  // fallback redirect below, for every role. Read once per mount, then
+  // cleared so it never leaks into an unrelated later subscription-required
+  // redirect for the same browser session.
+  const [pendingReferralCode] = useState(() => sessionStorage.getItem('pending_referral_code') || '');
+  useEffect(() => {
+    if (pendingReferralCode) sessionStorage.removeItem('pending_referral_code');
+  }, [pendingReferralCode]);
+
   // Debug logging for redirect loop investigation
   useEffect(() => {
     if (DEBUG) {
@@ -405,14 +415,20 @@ const SubscriptionProtectedRoute = ({
 
   // Build subscription fallback URL
   const getSubscriptionFallbackUrl = useCallback(() => {
-    if (subscriptionFallbackPath.includes('type=')) {
-      return subscriptionFallbackPath;
+    let url = subscriptionFallbackPath;
+    if (!url.includes('type=')) {
+      const userType = getUserTypeFromPath(location.pathname);
+      if (userType) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}type=${userType}`;
+      }
     }
-    const userType = getUserTypeFromPath(location.pathname);
-    if (!userType) return subscriptionFallbackPath;
-    const separator = subscriptionFallbackPath.includes('?') ? '&' : '?';
-    return `${subscriptionFallbackPath}${separator}type=${userType}`;
-  }, [subscriptionFallbackPath, location.pathname]);
+    if (pendingReferralCode) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}referralCode=${encodeURIComponent(pendingReferralCode)}`;
+    }
+    return url;
+  }, [subscriptionFallbackPath, location.pathname, pendingReferralCode]);
 
   // Build redirect state for subscription plans
   const buildRedirectState = useCallback((message) => ({

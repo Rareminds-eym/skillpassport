@@ -71,7 +71,7 @@ describe('subscription discovery and published catalog HTTP owner contracts', ()
     expect(response.status).toBe(200);
     expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', productId,
       [{ key: 'synthetic', type: 'boolean' }], null);
-    expect(await response.json()).toEqual(page);
+    expect(await response.json()).toEqual({ ...page, eligiblePlanId: null, offerAccepted: false });
   });
   it('still rejects a catalog from another product', async () => {
     io.catalog.mockResolvedValue({ ...catalogPage(), productId: actor });
@@ -118,7 +118,7 @@ describe('subscription discovery and published catalog HTTP owner contracts', ()
   });
   it('returns complete published terms only after independent app projection verification', async () => {
     const response = await run(catalog);
-    expect(response.status).toBe(200); expect(await response.json()).toEqual(catalogPage());
+    expect(response.status).toBe(200); expect(await response.json()).toEqual({ ...catalogPage(), eligiblePlanId: null, offerAccepted: false });
     expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', product, [{ key: 'synthetic', type: 'boolean' }], null);
     expect(io.projection).toHaveBeenCalledExactlyOnceWith({}, [{ planId: plan, revisionId: revision }], product, [{ key: 'synthetic', type: 'boolean' }]);
     expect(io.inventory).toHaveBeenCalledTimes(1);

@@ -1,3 +1,4 @@
+import { promoPaymentRequired } from './promo-access';
 import { SKILLPASSPORT_PRODUCT_ID } from '../../lib/subscription-config';
 import { z } from 'zod';
 import { apiError } from '../../lib/response';
@@ -70,6 +71,10 @@ export async function requireSubscriptionAccess(input: AccessRequest) {
       if (forbidden.safeParse(raw).success) return subscriptionFailure(403);
       const binding = z.object({ state: z.object({ planId: uuid, revisionId: uuid }) }).passthrough().parse(raw);
       const stored = await readApplicationPlanProjection(catalogInventoryDatabase(input.env), binding.state.planId, binding.state.revisionId, productId);
+      if (stored.projection.bundle.draft.purchaseMode === 'free'
+        && await promoPaymentRequired(catalogInventoryDatabase(input.env), actorId)) {
+        return accessFailure(input, 402, 'PROMO_PAYMENT_REQUIRED', 'Complete your promotional plan payment to continue.');
+      }
       const authorized = authorizeSubscriptionAction(raw, stored.projection, {
         actorId, productId, subject: scopedSubject, mode: input.mode, actionKey: input.actionKey,
         ...(input.assessmentCategory === undefined ? {} : { assessmentCategory: input.assessmentCategory }),
@@ -83,11 +88,14 @@ export async function requireSubscriptionAccess(input: AccessRequest) {
     if (current.actorId !== actorId || current.state.id !== ids[0] || current.state.productId !== productId
       || current.state.subject.kind !== scopedSubject.kind || current.state.subject.id !== scopedSubject.id) throw new Error('Subscription current scope differs');
     if (current.access === 'suspended' || (input.mode === 'write' && current.access !== 'full')) return subscriptionFailure(403);
+    const stored = await readApplicationPlanProjection(catalogInventoryDatabase(input.env), current.state.planId, current.state.revisionId, productId);
+    if (stored.projection.bundle.draft.purchaseMode === 'free'
+      && await promoPaymentRequired(catalogInventoryDatabase(input.env), actorId)) {
+      return accessFailure(input, 402, 'PROMO_PAYMENT_REQUIRED', 'Complete your promotional plan payment to continue.');
+    }
     if (input.feature) {
       const { key, acceptedValues } = input.feature;
       if (!key || !acceptedValues.length || new Set(acceptedValues).size !== acceptedValues.length) throw new Error('Invalid feature requirement');
-      const stored = await readApplicationPlanProjection(catalogInventoryDatabase(input.env),
-        current.state.planId, current.state.revisionId, productId);
       const draft = stored.projection.bundle.draft;
       if (!draft.audiences.includes(current.audience)) throw new Error('Opportunity audience differs');
       const grants = draft.features.filter(grant => grant.key === key);
