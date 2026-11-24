@@ -452,7 +452,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data: educatorUsers } = await supabase
           .from('users')
           .select('id, firstName, lastName, email')
-          .eq('role', 'college_educator');
+          .eq('role', 'college_educator')
+          .eq('organizationId', collegeId);
 
         const facultyMap = new Map<string, any>();
 
@@ -467,6 +468,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
                 id: lec.user_id,
                 name,
                 email: lec.email || '',
+                department: lec.department || '',
                 maxWorkload: 18,
                 currentWorkload: 0,
               });

@@ -897,7 +897,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-classmates': {
-        const { program_id, semester, program_section_id, current_learner_id } = params;
+        const program_id = params.program_id || params.programId;
+        const semester = params.semester;
+        const program_section_id = params.program_section_id || params.programSectionId;
+        const current_learner_id = params.current_learner_id || params.currentLearnerId;
         if (!program_id) {
           return apiError(400, 'VALIDATION_ERROR', 'Missing program_id', context.request, { startTime });
         }

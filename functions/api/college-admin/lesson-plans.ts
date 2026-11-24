@@ -53,7 +53,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (created_by) query = query.eq('created_by', created_by);
         const { data, error } = await query.order('created_at', { ascending: false });
         if (error) return apiDbError(error, context.request, { startTime });
-        const result = (data || []).map((p: any) => ({
+        const result = (data || []).filter((p: any) => {
+          // If a draft was submitted by an educator and is pending approval, hide from main list until approved
+          if (p.status === 'draft' && p.metadata?.pending_approval?.status === 'pending' && p.created_by !== user.id) {
+            return false;
+          }
+          return true;
+        }).map((p: any) => ({
           ...p,
           course_code: p.course?.course_code,
           course_name: p.course?.course_name,
@@ -62,6 +68,183 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           unit_name: p.unit?.name,
         }));
         return apiSuccess(result, context.request, { startTime });
+      }
+
+      case 'get-educator-changes': {
+        const { data, error } = await supabase
+          .from('college_lesson_plans')
+          .select(`
+            *,
+            course:college_courses!college_lesson_plans_course_id_fkey(course_code, course_name),
+            department:departments!college_lesson_plans_department_id_fkey(name),
+            program:programs!college_lesson_plans_program_id_fkey(name),
+            unit:college_curriculum_units!college_lesson_plans_unit_id_fkey(name)
+          `)
+          .eq('college_id', adminCollegeId);
+
+        if (error) return apiDbError(error, context.request, { startTime });
+
+        const pending: any[] = [];
+        const approved: any[] = [];
+        const rejected: any[] = [];
+
+        for (const p of data || []) {
+          const meta = p.metadata || {};
+          const pendingApproval = meta.pending_approval;
+          if (pendingApproval && pendingApproval.status === 'pending') {
+            pending.push({
+              id: pendingApproval.id,
+              plan_id: p.id,
+              course_id: p.course_id,
+              course_name: p.course?.course_name || '',
+              course_code: p.course?.course_code || '',
+              department_name: p.department?.name || '',
+              program_name: p.program?.name || '',
+              unit_name: p.unit?.name || '',
+              academic_year: p.academic_year,
+              semester: p.semester,
+              action: pendingApproval.action || 'edit',
+              requester_email: pendingApproval.requester_name || '',
+              requested_by: pendingApproval.requested_by,
+              requested_at: pendingApproval.requested_at || p.updated_at || p.created_at,
+              proposed_data: pendingApproval.proposed_plan || {},
+              before_data: pendingApproval.existing_plan || {
+                title: p.title,
+                session_date: p.session_date,
+                duration_minutes: p.duration_minutes,
+                session_objectives: p.session_objectives,
+                teaching_methodology: p.teaching_methodology,
+                required_materials: p.required_materials,
+                evaluation_criteria: p.evaluation_criteria,
+                follow_up_activities: p.follow_up_activities,
+              },
+            });
+          }
+
+          const history = Array.isArray(meta.review_history) ? meta.review_history : [];
+          for (const h of history) {
+            const entry = {
+              id: h.id,
+              plan_id: p.id,
+              course_name: p.course?.course_name || '',
+              course_code: p.course?.course_code || '',
+              academic_year: p.academic_year,
+              status: h.status,
+              action: h.action,
+              requester_email: h.requester_name || '',
+              reviewed_at: h.reviewed_at,
+              review_notes: h.review_notes || '',
+              proposed_data: h.proposed_plan || {},
+            };
+            if (h.status === 'approved') approved.push(entry);
+            else if (h.status === 'rejected') rejected.push(entry);
+          }
+        }
+
+        pending.sort((a, b) => (b.requested_at || '').localeCompare(a.requested_at || ''));
+        approved.sort((a, b) => (b.reviewed_at || '').localeCompare(a.reviewed_at || ''));
+        rejected.sort((a, b) => (b.reviewed_at || '').localeCompare(a.reviewed_at || ''));
+
+        return apiSuccess({ pending, approved, rejected }, context.request, { startTime });
+      }
+
+      case 'review-educator-change': {
+        const { requestId, decision, notes } = params;
+        if (!requestId || !['approved', 'rejected'].includes(decision)) {
+          return apiError(400, 'VALIDATION_ERROR', 'requestId and valid decision (approved/rejected) are required', context.request, { startTime });
+        }
+
+        const { data: plans, error: planErr } = await supabase
+          .from('college_lesson_plans')
+          .select('*')
+          .eq('college_id', adminCollegeId);
+
+        if (planErr) return apiDbError(planErr, context.request, { startTime });
+
+        let targetPlan: any = null;
+        for (const p of plans || []) {
+          if (p.metadata?.pending_approval?.id === requestId) {
+            targetPlan = p;
+            break;
+          }
+        }
+
+        if (!targetPlan) {
+          return apiError(404, 'NOT_FOUND', 'Approval request is no longer pending', context.request, { startTime });
+        }
+
+        const pendingReq = targetPlan.metadata.pending_approval;
+        const currentMeta = targetPlan.metadata || {};
+        const currentHistory = Array.isArray(currentMeta.review_history) ? currentMeta.review_history : [];
+
+        const historyEntry = {
+          id: requestId,
+          action: pendingReq.action || 'edit',
+          status: decision,
+          reviewed_by: user.id,
+          reviewed_at: new Date().toISOString(),
+          review_notes: notes || '',
+          requested_by: pendingReq.requested_by,
+          requester_name: pendingReq.requester_name,
+          proposed_plan: pendingReq.proposed_plan,
+          existing_plan: pendingReq.existing_plan,
+        };
+
+        const updatedMetadata = {
+          ...currentMeta,
+          pending_approval: null,
+          review_history: [historyEntry, ...currentHistory],
+        };
+
+        if (decision === 'approved') {
+          const proposed = pendingReq.proposed_plan || {};
+          const updatePayload: any = {
+            ...proposed,
+            metadata: updatedMetadata,
+            status: 'published',
+            published_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            updated_by: user.id,
+          };
+          delete updatePayload.id;
+
+          const { error: updErr } = await supabase
+            .from('college_lesson_plans')
+            .update(updatePayload)
+            .eq('id', targetPlan.id);
+
+          if (updErr) return apiDbError(updErr, context.request, { startTime });
+        } else {
+          const { error: updErr } = await supabase
+            .from('college_lesson_plans')
+            .update({
+              metadata: updatedMetadata,
+              updated_at: new Date().toISOString(),
+              updated_by: user.id,
+            })
+            .eq('id', targetPlan.id);
+
+          if (updErr) return apiDbError(updErr, context.request, { startTime });
+        }
+
+        await supabase
+          .from('notifications')
+          .update({ read: true, read_at: new Date().toISOString() })
+          .eq('curriculum_change_id', requestId);
+
+        if (pendingReq.requested_by) {
+          await supabase.from('notifications').insert({
+            recipient_id: pendingReq.requested_by,
+            type: decision === 'approved' ? 'curriculum_change_approved' : 'curriculum_change_rejected',
+            title: `Session plan ${decision}`,
+            message: `Your session plan submission for "${targetPlan.title}" was ${decision}.${notes ? ' Review note: ' + notes : ''}`,
+            read: false,
+            curriculum_change_id: requestId,
+            action_url: `/educator/browse-courses?courseId=${targetPlan.course_id}&programId=${targetPlan.program_id}&reviewChange=${requestId}`,
+          });
+        }
+
+        return apiSuccess({ success: true, decision }, context.request, { startTime });
       }
 
       case 'get-lesson-plan': {

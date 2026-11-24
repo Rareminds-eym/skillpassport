@@ -1,11 +1,78 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
+import * as Dialog from '@radix-ui/react-dialog';
+import { ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getLogger } from '@/shared/config/logging';
 
 // Import the college lesson plan UI
 import { CollegeLessonPlanUI } from '@/features/college-admin';
 import { lessonPlanService, type CollegeLessonPlan } from '@/features/college-admin';
+import { CollegeLessonPlanReviewDrawer } from '@/features/college-admin/ui';
+
+function SessionPlanToolDialog({
+  title,
+  description,
+  children,
+  icon,
+  drawer = false,
+  reviewNotifications = false,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  icon: React.ReactNode;
+  drawer?: boolean;
+  reviewNotifications?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeOpen = reviewNotifications && Boolean(searchParams.get('reviewChange'));
+
+  return (
+    <Dialog.Root
+      open={open || routeOpen}
+      onOpenChange={value => {
+        setOpen(value);
+        if (!value && routeOpen) {
+          const next = new URLSearchParams(searchParams);
+          next.delete('reviewChange');
+          setSearchParams(next, { replace: true });
+        }
+      }}
+    >
+      <Dialog.Trigger className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">
+        {icon}
+        {title}
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-gray-900/60" />
+        <Dialog.Content
+          className={
+            drawer
+              ? 'fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-2xl flex-col overflow-hidden bg-white shadow-xl focus:outline-none'
+              : 'fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl focus:outline-none'
+          }
+        >
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-4 py-5 sm:px-6">
+            <div>
+              <Dialog.Title className="text-xl font-semibold text-gray-900">{title}</Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-gray-600">{description}</Dialog.Description>
+            </div>
+            <Dialog.Close
+              aria-label={`Close ${title}`}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </Dialog.Close>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
 
 /**
  * CollegeLessonPlanManagement - Lesson plan management for college faculty
@@ -427,6 +494,17 @@ const CollegeLessonPlanManagement: React.FC = () => {
     {loadError && <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"><p>Session plans could not be loaded: {loadError}</p><button type="button" disabled={loading} className="mt-2 min-h-11 rounded-lg px-3 font-semibold underline disabled:opacity-50" onClick={() => { void loadLessonPlans(); }}>Retry loading plans</button></div>}
     {(!loadError || lessonPlans.length > 0) &&
     <CollegeLessonPlanUI
+      headerActions={
+        <SessionPlanToolDialog
+          drawer
+          reviewNotifications
+          title="Educator changes"
+          description="Review proposed session plan changes. Content is updated only after approval."
+          icon={<ClipboardDocumentCheckIcon className="h-5 w-5" />}
+        >
+          <CollegeLessonPlanReviewDrawer onReviewed={() => { void loadLessonPlans(); }} />
+        </SessionPlanToolDialog>
+      }
       // College-specific selections
       selectedCourse={selectedCourse}
       setSelectedCourse={setSelectedCourse}

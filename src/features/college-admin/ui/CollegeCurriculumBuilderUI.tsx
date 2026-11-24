@@ -2423,8 +2423,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
         {/* MAIN CONTENT */}
         <main className="flex-1 space-y-6">
-          {/* Pending Changes Panel - Placement Readiness Style */}
-          {pendingChanges.length > 0 && (
+          {/* Pending changes are reviewed inside the "Educator changes" drawer */}
+          {false && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 p-6">
                 <div className="flex items-center justify-between">

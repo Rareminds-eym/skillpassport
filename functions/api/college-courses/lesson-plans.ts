@@ -19,7 +19,7 @@ const planSchema = z.object({
   resource_files: z.array(z.object({ id: z.string().max(100), name: z.string().max(255), size: z.number().nonnegative(), type: z.string().max(255), url }).strict()).max(50),
   evaluation_items: z.array(z.object({ id: z.string().max(100), criterion: z.string().trim().min(1).max(1000), percentage: z.number().min(0).max(100) }).strict()).max(50),
 }).strict();
-const fields = 'id,title,session_date,duration_minutes,college_id,department_id,program_id,course_id,semester,academic_year,curriculum_id,unit_id,selected_learning_outcomes,session_objectives,teaching_methodology,required_materials,resource_files,resource_links,evaluation_criteria,evaluation_items,follow_up_activities,additional_notes,status,updated_at';
+const fields = 'id,title,session_date,duration_minutes,college_id,department_id,program_id,course_id,semester,academic_year,curriculum_id,unit_id,selected_learning_outcomes,session_objectives,teaching_methodology,required_materials,resource_files,resource_links,evaluation_criteria,evaluation_items,follow_up_activities,additional_notes,status,updated_at,metadata';
 
 const handle = withAuth(async context => {
   const actor = getContextUser(context);
@@ -50,7 +50,7 @@ const handle = withAuth(async context => {
     if (context.request.method === 'GET') {
       const plans = await db.from('college_lesson_plans').select(fields).eq('college_id', collegeId)
         .eq('course_id', scope.courseId).eq('program_id', scope.programId).eq('semester', scope.semester)
-        .in('status', ['draft', 'published']).order('session_date');
+        .in('status', ['draft', 'published', 'rejected']).order('session_date');
       if (plans.error) return apiDbError(plans.error, context.request);
       const curricula = await db.from('college_curriculums').select('id,academic_year,units:college_curriculum_units(id,name),outcomes:college_curriculum_outcomes(id,unit_id,outcome_text)')
         .eq('college_id', collegeId).eq('course_id', scope.courseId).eq('program_id', scope.programId);
@@ -61,13 +61,15 @@ const handle = withAuth(async context => {
     const input = planSchema.safeParse(body.plan);
     if (!input.success) return apiError(400, 'VALIDATION_ERROR', input.error.issues[0]?.message || 'Check the lesson plan fields.', context.request);
     const { id, ...plan } = input.data;
+    let existingRecord: any = null;
     let existingFiles: { id: string; url: string }[] = [];
     if (id) {
-      const existing = await db.from('college_lesson_plans').select('resource_files').eq('id', id).eq('college_id', collegeId)
+      const existing = await db.from('college_lesson_plans').select('*').eq('id', id).eq('college_id', collegeId)
         .eq('course_id', scope.courseId).eq('program_id', scope.programId).eq('semester', scope.semester).maybeSingle();
       if (existing.error) return apiDbError(existing.error, context.request);
       if (!existing.data) return apiError(404, 'NOT_FOUND', 'Lesson plan is unavailable.', context.request);
-      existingFiles = Array.isArray(existing.data.resource_files) ? existing.data.resource_files : [];
+      existingRecord = existing.data;
+      existingFiles = Array.isArray(existingRecord.resource_files) ? existingRecord.resource_files : [];
     }
     for (const file of plan.resource_files) {
       if (existingFiles.some(existing => existing.id === file.id && existing.url === file.url)) continue;
@@ -89,16 +91,110 @@ const handle = withAuth(async context => {
     }
     if (plan.evaluation_items.length && Math.abs(plan.evaluation_items.reduce((sum, item) => sum + item.percentage, 0) - 100) > 0.01)
       return apiError(400, 'VALIDATION_ERROR', 'Evaluation weightages must total 100%.', context.request);
-    // Publication and ownership fields are server-owned. Edits preserve status.
     const values = { ...plan, academic_year: curriculum.data.academic_year, department_id: curriculum.data.department_id,
       college_id: collegeId, course_id: scope.courseId, program_id: scope.programId, semester: scope.semester, updated_by: actor.id };
-    const saved = id
-      ? await db.from('college_lesson_plans').update(values).eq('id', id).eq('college_id', collegeId).eq('course_id', scope.courseId)
-          .eq('program_id', scope.programId).eq('semester', scope.semester).in('status', ['draft', 'published']).select('id').maybeSingle()
-      : await db.from('college_lesson_plans').insert({ ...values, status: 'draft', created_by: actor.id }).select('id').single();
-    if (saved.error) return apiDbError(saved.error, context.request);
-    if (!saved.data) return apiError(404, 'NOT_FOUND', 'Lesson plan is no longer available.', context.request);
-    return apiSuccess(saved.data, context.request);
+
+    const requestId = crypto.randomUUID();
+    let savedId = id;
+
+    if (id && existingRecord) {
+      const existingMeta = (typeof existingRecord.metadata === 'object' && existingRecord.metadata) ? existingRecord.metadata : {};
+      const pendingApproval = {
+        id: requestId,
+        action: 'edit',
+        status: 'pending',
+        requested_by: actor.id,
+        requester_name: account.data?.email || actor.email || 'An educator',
+        requested_at: new Date().toISOString(),
+        proposed_plan: values,
+        existing_plan: {
+          title: existingRecord.title,
+          session_date: existingRecord.session_date,
+          duration_minutes: existingRecord.duration_minutes,
+          curriculum_id: existingRecord.curriculum_id,
+          unit_id: existingRecord.unit_id,
+          session_objectives: existingRecord.session_objectives,
+          teaching_methodology: existingRecord.teaching_methodology,
+          required_materials: existingRecord.required_materials,
+          evaluation_criteria: existingRecord.evaluation_criteria,
+          follow_up_activities: existingRecord.follow_up_activities,
+          additional_notes: existingRecord.additional_notes,
+          selected_learning_outcomes: existingRecord.selected_learning_outcomes,
+          resource_files: existingRecord.resource_files,
+          resource_links: existingRecord.resource_links,
+          evaluation_items: existingRecord.evaluation_items,
+        },
+      };
+
+      const { data: updated, error: updErr } = await db
+        .from('college_lesson_plans')
+        .update({
+          metadata: { ...existingMeta, pending_approval: pendingApproval },
+          updated_at: new Date().toISOString(),
+          updated_by: actor.id,
+        })
+        .eq('id', id)
+        .eq('college_id', collegeId)
+        .select('id')
+        .maybeSingle();
+
+      if (updErr) return apiDbError(updErr, context.request);
+      if (!updated) return apiError(404, 'NOT_FOUND', 'Lesson plan is no longer available.', context.request);
+      savedId = updated.id;
+    } else {
+      const pendingApproval = {
+        id: requestId,
+        action: 'create',
+        status: 'pending',
+        requested_by: actor.id,
+        requester_name: account.data?.email || actor.email || 'An educator',
+        requested_at: new Date().toISOString(),
+        proposed_plan: values,
+      };
+
+      const { data: inserted, error: insErr } = await db
+        .from('college_lesson_plans')
+        .insert({
+          ...values,
+          status: 'draft',
+          created_by: actor.id,
+          metadata: { pending_approval: pendingApproval },
+        })
+        .select('id')
+        .single();
+
+      if (insErr) return apiDbError(insErr, context.request);
+      savedId = inserted.id;
+    }
+
+    try {
+      const { data: adminUsers } = await db
+        .from('users')
+        .select('id')
+        .eq('organizationId', collegeId)
+        .eq('isActive', true);
+
+      const actionTitle = id ? 'Session plan edit awaiting review' : 'New session plan awaiting review';
+      const actionMsg = `${account.data?.email || 'An educator'} submitted ${id ? 'an edit for session plan "' + plan.title + '"' : 'a new session plan "' + plan.title + '"'} for your approval.`;
+
+      for (const admin of adminUsers || []) {
+        if (admin.id !== actor.id) {
+          await db.from('notifications').insert({
+            recipient_id: admin.id,
+            type: 'curriculum_change_submitted',
+            title: actionTitle,
+            message: actionMsg,
+            read: false,
+            curriculum_change_id: requestId,
+            action_url: `/college-admin/academics/lesson-plans?reviewChange=${requestId}`,
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('Failed to notify admins of session plan change:', notifErr);
+    }
+
+    return apiSuccess({ id: savedId, requestId, status: 'pending_approval' }, context.request);
   } catch (error) { return apiDbError(error, context.request); }
 });
 export const onRequestGet = handle;

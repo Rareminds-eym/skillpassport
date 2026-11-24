@@ -41,7 +41,7 @@ function Editor({ draft: initial, curricula, pending, error, onSave, onCancel }:
   ] as const;
   return <form aria-label="College lesson plan" className="space-y-5 rounded-xl border border-gray-200 bg-white p-4" onSubmit={event => { event.preventDefault(); if (!busy) onSave(draft); }}>
     <h3 className="!text-lg !font-semibold text-gray-900">{draft.id ? 'Edit lesson plan' : 'New lesson plan'}</h3>
-    <p className="!text-sm !leading-6 text-gray-500">New plans are drafts until your administrator publishes them. Edits to published plans are visible to learners.</p>
+    <p className="!text-sm !leading-6 text-gray-500">New plans and edits require administrator approval before becoming live.</p>
     <fieldset disabled={busy} className="space-y-4">
       <label className="block text-sm font-medium text-gray-700">Session title *<input autoFocus required maxLength={255} className={control} value={draft.title} onChange={event => setDraft({ ...draft, title: event.target.value })} /></label>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -85,7 +85,7 @@ function Editor({ draft: initial, curricula, pending, error, onSave, onCancel }:
     </fieldset>
     {uploading && <p role="status" className="text-sm text-gray-500">Uploading resource...</p>}
     {(error || fileError) && <p role="alert" className="text-sm text-red-700">{error || fileError}</p>}
-    <div className="flex justify-end gap-3 border-t border-gray-200 pt-4"><button type="button" disabled={busy} className={button} onClick={onCancel}>Cancel</button><button disabled={busy} className="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">{pending ? 'Saving...' : 'Save lesson plan'}</button></div>
+    <div className="flex justify-end gap-3 border-t border-gray-200 pt-4"><button type="button" disabled={busy} className={button} onClick={onCancel}>Cancel</button><button disabled={busy} className="min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50">{pending ? 'Submitting...' : 'Submit for approval'}</button></div>
   </form>;
 }
 
@@ -110,13 +110,15 @@ export function EducatorLessonPlansPanel(scope: Scope) {
     {result.isPending && <p role="status" className="text-sm text-gray-500">Loading lesson plans...</p>}
     {result.error && <p role="alert" className="text-sm text-red-700">{result.error.message} <button type="button" className={button} onClick={() => result.refetch()}>Retry</button></p>}
     {result.data && !result.error && <>
-      {save.isSuccess && !draft && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Lesson plan saved.</p>}
+      {save.isSuccess && !draft && <p role="status" className="rounded-lg bg-green-50 p-3 text-sm text-green-800">Lesson plan submitted for administrator approval.</p>}
       {draft && result.data.canEdit ? <Editor key={draft.id || 'new'} draft={draft} curricula={result.data.curricula} pending={save.isPending} error={save.error?.message} onSave={plan => save.mutate(plan)} onCancel={finish} /> : <>
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="!text-base !font-semibold text-gray-900">Lesson plans</h3><p className="mt-1 !text-sm !leading-6 text-gray-500">{result.data.canEdit ? 'You can create and edit plans. Your administrator manages publishing.' : 'Read-only access. Your administrator controls editing permissions.'}</p></div>{result.data.canEdit && <button type="button" disabled={!result.data.curricula.some(item => item.units.length)} className={button} onClick={() => edit()}>Add lesson plan</button>}</div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="!text-base !font-semibold text-gray-900">Lesson plans</h3><p className="mt-1 !text-sm !leading-6 text-gray-500">{result.data.canEdit ? 'You can propose new plans and edits. Your administrator reviews and approves them.' : 'Read-only access. Your administrator controls editing permissions.'}</p></div>{result.data.canEdit && <button type="button" disabled={!result.data.curricula.some(item => item.units.length)} className={button} onClick={() => edit()}>Add lesson plan</button>}</div>
         {!result.data.plans.length && <p className="rounded-lg border border-dashed border-gray-200 p-5 !text-sm !leading-6 text-gray-500">{result.data.curricula.some(item => item.units.length) ? 'No lesson plans have been added for this mapped course yet.' : 'Add curriculum units before creating lesson plans.'}</p>}
-        {result.data.plans.map(plan => <article key={plan.id} className="rounded-xl border border-gray-200 bg-white p-4"><div className="mb-3 flex items-start justify-between gap-3"><div><h4 className="!text-base !font-semibold text-gray-900">{plan.title}</h4><p className="mt-1 !text-xs text-gray-500">{plan.academic_year} · {plan.status === 'published' ? 'Published' : 'Draft — visible to staff only'}</p></div>{result.data.canEdit && <button type="button" className={button} aria-label={`Edit ${plan.title}`} onClick={() => edit(plan)}>Edit</button>}</div>
+        {result.data.plans.map(plan => {
+          const isPending = (plan as any).metadata?.pending_approval?.status === 'pending';
+          return <article key={plan.id} className="rounded-xl border border-gray-200 bg-white p-4"><div className="mb-3 flex items-start justify-between gap-3"><div><div className="flex items-center gap-2"><h4 className="!text-base !font-semibold text-gray-900">{plan.title}</h4>{isPending && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">Pending review</span>}</div><p className="mt-1 !text-xs text-gray-500">{plan.academic_year} · {plan.status === 'published' ? 'Published' : 'Draft — visible to staff only'}</p></div>{result.data.canEdit && <button type="button" className={button} aria-label={`Edit ${plan.title}`} onClick={() => edit(plan)}>Edit</button>}</div>
           <details><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-indigo-700">View lesson plan</summary><LessonPlanDetails plan={plan} outcomes={result.data.curricula.find(item => item.id === plan.curriculum_id)?.outcomes} />{plan.additional_notes && <section className="mt-4"><h4 className="!text-sm !font-semibold text-gray-900">Staff notes</h4><p className="mt-1 whitespace-pre-wrap !text-sm !leading-6 text-gray-600">{plan.additional_notes}</p></section>}</details>
-        </article>)}
+        </article>;})}
       </>}
       {!result.data.canEdit && draft && <p role="alert" className="text-sm text-amber-700">Editing access was removed. Your unsaved changes cannot be submitted.</p>}
     </>}

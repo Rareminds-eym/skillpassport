@@ -3,6 +3,7 @@ import { getServiceClient } from '../../lib/supabase';
 import { hasFeatureEntitlement } from '../../lib/entitlements';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { syncApprovedCurriculumChanges } from '../../lib/curriculum-sync';
 
 export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
@@ -147,6 +148,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('program_id', curriculum.program_id)
           .eq('course_id', curriculum.course_id)
           .limit(1);
+
+        await syncApprovedCurriculumChanges(supabase, id);
 
         const { data: units, error: unitsError } = await supabase
           .from('college_curriculum_units')
@@ -643,6 +646,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .eq('program_id', curriculum.program_id)
           .eq('course_id', curriculum.course_id)
           .limit(1);
+
+        await syncApprovedCurriculumChanges(supabase, id);
 
         const { data: units, error: unitsError } = await supabase
           .from('college_curriculum_units')
