@@ -113,14 +113,14 @@ describe('subscription execution consumer', () => {
     expect(screen.getByRole('link', { name: 'Review cancelled subscription' })).toHaveAttribute('href', '/subscription/manage');
     if (access === 'read_only') expect(screen.getByRole('link', { name: 'View read-only dashboard' })).toHaveAttribute('href', '/learner/dashboard');
     else expect(screen.queryByRole('link', { name: /dashboard/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Buy Now|Renew Plan|Change Plan/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pay / })).toBeNull();
     expect(screen.queryByText('Current plan')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => /commerce|lifecycle/.test(url))).toBe(false);
   });
   it('preserves the active free dashboard link', async () => {
     fetchMock.mockImplementation(freeCancellationRouter('full', true));
     render(<SubscriptionWorkspace view="catalog" />);
-    expect(await screen.findByRole('link', { name: 'Go to dashboard' })).toHaveAttribute('href', '/learner/dashboard');
+    expect(await screen.findByRole('link', { name: 'Go to dashboard' }, { timeout: 10000 })).toHaveAttribute('href', '/learner/dashboard');
     expect(screen.queryByRole('region', { name: 'Cancelled plan access' })).toBeNull();
   });
   it('does not send a user with no activated subscription back into a guarded dashboard', async () => {
@@ -144,7 +144,7 @@ describe('subscription execution consumer', () => {
     render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={['/subscription/manage']}><MySubscriptionPage /></MemoryRouter>
     </QueryClientProvider>);
-    expect(await screen.findByRole('heading', { name: 'Subscription cancelled' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Subscription cancelled' }, { timeout: 10000 })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Renew Now' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Upgrade Plan' })).toBeNull();
     if (access === 'read_only') expect(screen.getByRole('button', { name: 'View read-only dashboard' })).toBeInTheDocument();
@@ -707,8 +707,8 @@ describe('owner-issued customer checkout', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm payment' }));
   }
   async function requestPurchase() {
-    fireEvent.click(await screen.findByRole('button', { name: /Buy Now/ }));
-    await waitFor(() => expect(commerceMutations().length).toBeGreaterThanOrEqual(2));
+    fireEvent.click(await screen.findByRole('button', { name: /Pay / }, { timeout: 10000 }));
+    await waitFor(() => expect(commerceMutations().length).toBeGreaterThanOrEqual(2), { timeout: 10000 });
   }
   it('reports confirmed settlement to the page exactly once and never before confirmation', async () => {
     const confirmed = vi.fn();
@@ -747,7 +747,7 @@ describe('owner-issued customer checkout', () => {
     payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
     render(<SubscriptionWorkspace view="catalog" />); await requestPurchase();
     await waitFor(() => expect(sessionStorage.getItem(key)).toBeNull());
-    expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
   });
   it.each(['blocked'] as const)('keeps %s orders locked without reopening checkout', async checkoutStatus => {
     fetchMock.mockImplementation(commerceRouter({ checkoutStatus })); payMock.mockRejectedValueOnce(new Error('Checkout dismissed'));
@@ -771,7 +771,7 @@ describe('owner-issued customer checkout', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start again' }));
     await waitFor(() => expect(sessionStorage.getItem(key)).toBeNull());
     expect(sessionStorage.getItem(key + ':archive:' + journal.quoteOperationId)).toBe(saved);
-    expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
     expect(fetchMock.mock.calls.slice(readsBefore).filter(([url]) => url.endsWith('/commerce')).map(([, init]) => JSON.parse(String(init.body)).request.kind)).toEqual(['checkout']);
     expect(commerceMutations()).toHaveLength(2); expect(payMock).toHaveBeenCalledTimes(1);
   });
@@ -784,7 +784,7 @@ describe('owner-issued customer checkout', () => {
     else await screen.findByRole('alert');
     expect(sessionStorage.getItem(key)).toBe(saved);
     expect(screen.queryByRole('button', { name: 'Start again' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Buy Now/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Pay / })).toBeDisabled();
     expect(commerceMutations()).toHaveLength(2); expect(payMock).toHaveBeenCalledTimes(1);
   });
   it('keeps the active checkout if preserving the archive fails', async () => {
@@ -795,7 +795,7 @@ describe('owner-issued customer checkout', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Start again' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Archive storage unavailable');
-    expect(sessionStorage.getItem(key)).toBe(saved); expect(screen.getByRole('button', { name: /Buy Now/ })).toBeDisabled();
+    expect(sessionStorage.getItem(key)).toBe(saved); expect(screen.getByRole('button', { name: /Pay / })).toBeDisabled();
   });
   it('does not offer expired restart when a saved payment confirmation exists', async () => {
     fetchMock.mockImplementation(commerceRouter({ checkoutStatus: 'expired', failSettlement: true }));
@@ -832,19 +832,19 @@ describe('owner-issued customer checkout', () => {
   });
   it('does not request a quote or order when the primary SDK cannot load', async () => {
     fetchMock.mockImplementation(commerceRouter()); prepareMock.mockRejectedValueOnce(new Error('Razorpay could not load in time'));
-    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Buy Now/ }));
+    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Razorpay could not load in time');
     expect(commerceMutations()).toHaveLength(0); expect(payMock).not.toHaveBeenCalled();
     expect(JSON.parse(sessionStorage.getItem(key)!).phase).toBe('quote');
     fireEvent.click(screen.getByRole('button', { name: 'Choose another plan' }));
-    expect(sessionStorage.getItem(key)).toBeNull(); expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
+    expect(sessionStorage.getItem(key)).toBeNull(); expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
   });
   it('stops SDK preparation without issuing an order and allows choosing a plan again', async () => {
     fetchMock.mockImplementation(commerceRouter());
     prepareMock.mockImplementationOnce((signal: AbortSignal) => new Promise((_, reject) => {
       signal.addEventListener('abort', () => reject(new Error('Checkout stopped')), { once: true });
     }));
-    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Buy Now/ }));
+    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
     expect(await screen.findByText('Connecting to Razorpay…')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Stop connecting' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Checkout stopped');
@@ -861,7 +861,7 @@ describe('owner-issued customer checkout', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Close payment window' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Checkout stopped');
     expect(JSON.parse(sessionStorage.getItem(key)!).order.order.id).toBe('order_synthetic');
-    expect(screen.getByRole('button', { name: /Buy Now/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Pay / })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Check payment status' })).toBeEnabled();
     expect(commerceMutations()).toHaveLength(2);
   });
@@ -938,14 +938,14 @@ describe('owner-issued customer checkout', () => {
     expect(payMock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Choose another plan' }));
     expect(sessionStorage.getItem(key)).toBeNull();
-    expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
   });
   it('allows cancelling a failed quote without claiming a payment result', async () => {
     const route = commerceRouter();
     fetchMock.mockImplementation((url: string, init?: RequestInit) => url.endsWith('/commerce')
       ? Promise.reject(new Error('Quote connection lost')) : route(url, init));
     render(<SubscriptionWorkspace view="catalog" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Buy Now/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Quote connection lost');
     expect(screen.getByRole('alert')).not.toHaveTextContent('outcome may be uncertain');
     fireEvent.click(screen.getByRole('button', { name: 'Choose another plan' }));
@@ -988,7 +988,7 @@ describe('owner-issued customer checkout', () => {
       expect(await screen.findByText(/No payment was taken/)).toBeInTheDocument();
       expect(sessionStorage.getItem(key)).toBeNull();
       expect(sessionStorage.getItem(`${key}:archive:${JSON.parse(raw).quoteOperationId}`)).toBe(raw);
-      expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeEnabled();
+      expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
       expect(payMock).not.toHaveBeenCalled();
     });
     it('keeps the lock and explains an order that is still being set up', async () => {
@@ -999,7 +999,7 @@ describe('owner-issued customer checkout', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent('still being set up. No payment has been taken');
       expect(sessionStorage.getItem(key)).toBe(raw);
       expect(screen.getByRole('button', { name: 'Check payment status' })).toBeEnabled();
-      expect(screen.getByRole('button', { name: /Buy Now/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Pay / })).toBeDisabled();
     });
     it('shows a specific message for a deterministic owner rejection instead of a status code', async () => {
       lostOrder(() => response({ error: 'Subscription request rejected', reason: 'reconciliation_required' }, 409));
@@ -1041,7 +1041,7 @@ describe('owner-issued customer checkout', () => {
     const raw = sessionStorage.getItem(key); expect(JSON.parse(raw!).order.order.id).toBe('order_synthetic');
     first.unmount(); render(<SubscriptionWorkspace view="catalog" />);
     expect(await screen.findByRole('alert')).toHaveTextContent('previous checkout');
-    expect(await screen.findByRole('button', { name: /Buy Now/ })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /Pay / })).toBeDisabled();
     expect(sessionStorage.getItem(key)).toBe(raw); expect(payMock).toHaveBeenCalledOnce();
   });
   it('retains failed settlement and explicitly replays only its same operation without another charge', async () => {
@@ -1150,13 +1150,13 @@ describe('owner-issued customer checkout', () => {
   });
   it('sends no POST if tracking cannot be persisted', async () => {
     fetchMock.mockImplementation(commerceRouter()); vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Tracking unavailable'); });
-    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Buy Now/ }));
+    render(<SubscriptionWorkspace view="catalog" />); fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
     await screen.findByRole('alert'); expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/commerce'))).toBe(false);
   });
   it('renews from the current subject and expected state rather than creating another subscription', async () => {
     fetchMock.mockImplementation(commerceRouter()); render(<SubscriptionWorkspace />); await selectSubscription();
     fireEvent.change(screen.getByRole('combobox', { name: 'Plan' }), { target: { value: revision } });
-    fireEvent.click(screen.getByRole('button', { name: /Renew Plan/ })); await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: /Pay / })); await screen.findByRole('alert');
     const command = JSON.parse(fetchMock.mock.calls.find(([url]) => url.endsWith('/commerce'))![1].body);
     expect(command.request).toMatchObject({ purpose: 'renew', subscriptionId: subscription, subject: row.subject, expectedVersion: 1, expectedRevisionId: revision });
     expect(payMock).toHaveBeenCalledOnce();

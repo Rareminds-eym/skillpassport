@@ -111,19 +111,22 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
   const dashboardRoute = role ? ROLE_DASHBOARD_MAP[role] : undefined;
   const isCurrentPlan = current?.state.planId === plan.plan.id;
   const isCancelled = current?.state.status === 'cancelled';
-  const canEnterDashboard = current && current.access !== 'suspended';
+  const promoBlocksFreeAccess = catalog.eligiblePlanId != null && plan.purchaseMode === 'free';
+  const canEnterDashboard = current && current.access !== 'suspended' && !promoBlocksFreeAccess;
   const purpose = current ? isCurrentPlan ? 'renew' : 'upgrade' : 'purchase';
   const permitted = !isCancelled && (!current || operations?.includes(purpose as 'renew' | 'upgrade'));
-  // PRD R16/R17: this is the one plan a promo code maps the buyer to, at a locked campaign price.
-  // Purchasing it requires explicit acceptance first — a distinct confirmation step, never implied
-  // by browsing the catalog or by starting checkout.
+  // A payment click commits the server-owned promo snapshot before requesting a quote.
   const needsPromoAcceptance = (purpose === 'purchase' || purpose === 'upgrade') && catalog.eligiblePlanId === plan.plan.id && !catalog.offerAccepted;
   const [acceptState, acceptOffer] = useAcceptPromoOffer();
+  const startingPayment = useRef(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   // The owner fixes the buyer subject per audience: individuals buy for themselves, institutions for their organization.
   const subject = current ? current.state.subject : catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
     : catalog.subjectKind === 'organization' && user?.id === catalog.actorId && user.orgId ? { kind: 'organization' as const, id: user.orgId } : null;
   return <div className={styles.purchase}>
-    {isCancelled && isCurrentPlan ? <section aria-label="Cancelled plan access">
+    {(paymentError || acceptState.status === 'error') && <p role="alert">{paymentError || acceptState.message}</p>}
+    {promoBlocksFreeAccess ? <p>Complete payment for your promotional plan to continue.</p>
+      : isCancelled && isCurrentPlan ? <section aria-label="Cancelled plan access">
       <p className="font-semibold">Cancelled plan</p>
       <p>{current.access === 'read_only' ? 'Your existing subscription information remains available in read-only mode.'
         : current.access === 'suspended' ? 'Dashboard access is unavailable for this cancelled subscription.'
@@ -148,22 +151,33 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
         : plan.purchaseMode === 'contact_sales' ? <p>Contact our team to arrange your plan.</p>
           : !permitted ? <p>{isCancelled ? 'Contact support to restore or change your cancelled subscription.' : 'This change is unavailable for your configured role.'}</p>
             : plan.prices.length === 0 ? <p>Purchasing is unavailable until the purchase owner provides executable terms.</p>
-              : needsPromoAcceptance ? <section aria-label="Accept promo offer">
-                <p>Your promo code unlocks this plan at the price shown. Review and accept this offer before checkout — the price is then locked in and used for your purchase.</p>
-                {acceptState.status === 'error' && <p role="alert">{acceptState.message}</p>}
-                <button disabled={acceptState.status === 'pending'} onClick={async () => { if (await acceptOffer()) retryCatalog?.(); }}>
-                  {acceptState.status === 'pending' ? 'Accepting…' : 'Accept this offer'}
-                </button>
-              </section>
               : plan.prices.map(price => <div key={price.id}>
                 {price.quantityBasis === 'seat' ? <p>Seat quantity requires an owner agreement. Purchasing is unavailable until the purchase owner provides executable terms.</p>
                   : price.amountMinor === 0 ? <p>Free activation requires configured duration and entry terms from the subscription owner.</p>
-                    : <button disabled={checkout.state.status !== 'idle'} onClick={() => void checkout.purchase({
-                      kind: 'quote', purpose,
-                      subscriptionId: current?.state.id ?? crypto.randomUUID(), subject, expectedVersion: current?.state.version ?? 0,
-                      expectedRevisionId: current?.state.revisionId ?? plan.revisionId, revisionId: plan.revisionId, priceId: price.id
-                    })}>
-                      {purpose === 'purchase' ? 'Buy Now' : purpose === 'renew' ? 'Renew Plan' : 'Change Plan'} · {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
+                    : <button disabled={checkout.state.status !== 'idle' || acceptState.status === 'pending'} onClick={async () => {
+                      if (startingPayment.current) return;
+                      startingPayment.current = true;
+                      setPaymentError(null);
+                      try {
+                        if (needsPromoAcceptance) {
+                          const accepted = await acceptOffer();
+                          if (!accepted) return;
+                          if (accepted.planId !== plan.plan.id || accepted.revisionId !== plan.revisionId || accepted.priceId !== price.id
+                            || accepted.amountMinor !== price.amountMinor || accepted.currency !== price.currency
+                            || accepted.minorUnit !== price.minorUnit || accepted.intervalUnit !== price.intervalUnit || accepted.intervalCount !== price.intervalCount) {
+                            setPaymentError('Your plan price changed. Review the updated price before continuing.');
+                            retryCatalog?.();
+                            return;
+                          }
+                        }
+                        await checkout.purchase({
+                          kind: 'quote', purpose,
+                          subscriptionId: current?.state.id ?? crypto.randomUUID(), subject, expectedVersion: current?.state.version ?? 0,
+                          expectedRevisionId: current?.state.revisionId ?? plan.revisionId, revisionId: plan.revisionId, priceId: price.id,
+                        });
+                      } finally { startingPayment.current = false; }
+                    }}>
+                      Pay {formatPrice(price.amountMinor, price.minorUnit, price.currency)}</button>}
               </div>)}
   </div>;
 }

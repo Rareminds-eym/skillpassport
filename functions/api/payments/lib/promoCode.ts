@@ -1,3 +1,4 @@
+import { promoQuotaAvailable } from '../../../shared/lib/promo-quota';
 /**
  * DIDAC 2026 promo-code lookups for the subscription/payment handlers.
  *
@@ -159,17 +160,8 @@ export async function getStoredReferralCodeAndRole(
 }
 
 /**
- * Read-only eligibility preview: is this code currently active, in its date
- * window, and does it cover this role — WITHOUT committing a redemption or
- * consuming a quota slot. Used to decide whether to compute a bounded price
- * adjustment for an in-progress checkout quote; the atomic, race-safe enforcement
- * of quota (overall and per-role) still happens only in redeem_promo_code(),
- * called via confirmPromoRedemption() at actual checkout settlement. A
- * narrow race is possible (eligible here, quota exhausted by the time
- * settlement calls confirmPromoRedemption()) — accepted as a known, rare
- * edge case rather than blocking checkout on a second atomic check; the
- * resulting purchase just keeps a discount that technically arrived a moment
- * too late for the bookkeeping, never a double-redeemed or over-quota state.
+ * Read-only campaign and quota preview. No slot is reserved by browsing.
+ * The redemption RPC revalidates the limits atomically when the payment button locks the price.
  */
 export async function checkPromoEligibility(
   supabase: ReturnType<typeof getServiceClient>,
@@ -189,6 +181,7 @@ export async function checkPromoEligibility(
     if (now < new Date(promo.starts_at as string).getTime() || now > new Date(promo.expires_at as string).getTime()) return null;
     const roleQuotas = (promo.role_quotas || {}) as Record<string, unknown>;
     if (!(role in roleQuotas)) return null;
+    if (!await promoQuotaAvailable(supabase, promo.id as string, role, Number(promo.overall_max_uses), Number(roleQuotas[role]))) return null;
     return {
       promoCodeId: promo.id as string,
       priceAdjustment: Number(promo.price_adjustment ?? 0),

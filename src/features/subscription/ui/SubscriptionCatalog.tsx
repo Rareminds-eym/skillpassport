@@ -97,8 +97,8 @@ export function SubscriptionCatalogFrame({ children, type = 'learner' }: { child
   </div>;
 }
 
-function PublishedPlanCard({ plan, selected, current, organization, prices, purchase, promoLocked }: {
-  current: boolean; plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode; promoLocked: boolean;
+function PublishedPlanCard({ plan, selected, current, organization, prices, purchase, promoLocked, upgrading }: {
+  current: boolean; plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode; promoLocked: boolean; upgrading: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   // Preserve QA's action palette; commercial eligibility remains in the purchase owner.
@@ -106,7 +106,7 @@ function PublishedPlanCard({ plan, selected, current, organization, prices, purc
     ? '[&_button]:bg-gradient-to-r [&_button]:from-purple-600 [&_button]:to-purple-700 [&_button]:text-white [&_button:hover]:from-purple-700 [&_button:hover]:to-purple-800'
     : plan.purchaseMode === 'free'
       ? '[&_button]:bg-gradient-to-r [&_button]:from-emerald-700 [&_button]:to-emerald-800 [&_button]:text-white [&_button:hover]:from-emerald-600 [&_button:hover]:to-emerald-700'
-      : plan.presentation.badge
+      : plan.presentation.badge || upgrading
         ? '[&_button]:bg-black [&_button]:text-white [&_button:hover]:bg-gray-900'
         : '[&_button]:bg-slate-100 [&_button]:text-slate-900 [&_button]:border-2 [&_button]:border-slate-300 [&_button:hover]:bg-slate-200';
   return <article aria-current={selected ? 'true' : undefined} aria-label={plan.name} aria-disabled={promoLocked ? 'true' : undefined}
@@ -175,8 +175,9 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, curre
     </div>}
     <div className={`${styles.planGrid} grid md:grid-cols-2 gap-6 ${plans.length >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
       {plans.map(plan => <PublishedPlanCard key={plan.revisionId} plan={plan} selected={plan.revisionId === selectedRevisionId} current={plan.plan.id === currentPlanId} organization={catalog.subjectKind === 'organization'}
+        upgrading={currentPlanId !== undefined && currentPlanId !== plan.plan.id}
         promoLocked={catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId}
-        prices={renderPrices(plan)} purchase={renderPurchase(plan)} />)}
+        prices={catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId ? null : renderPrices(plan)} purchase={renderPurchase(plan)} />)}
     </div>
     <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
       {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map(item => <div key={item} className="flex items-center gap-3 group">
@@ -200,7 +201,7 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, curre
               <th scope="col" className="p-8 font-light text-xl text-left" style={headingFont}>Features</th>
               {plans.map(plan => <th scope="col" key={plan.revisionId} className="p-8 text-center border-l border-white/10">
                 <div className="font-semibold text-xl mb-2" style={headingFont}>{plan.name}</div>
-                <div className="text-sm text-white/70 font-medium">{renderPrices(plan)}</div>
+                <div className="text-sm text-white/70 font-medium">{catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId ? null : renderPrices(plan)}</div>
               </th>)}
             </tr></thead>
             {[...categories].map(([category, features]) => <tbody key={category} className="border-t-2 border-slate-100">

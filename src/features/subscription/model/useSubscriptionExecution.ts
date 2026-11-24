@@ -29,7 +29,7 @@ export function useAcceptPromoOffer() {
   const [state, setState] = useState<{ status: 'idle' | 'pending' | 'error'; message?: string }>({ status: 'idle' });
   const accept = useCallback(async (signal?: AbortSignal) => {
     setState({ status: 'pending' });
-    try { await api.acceptPromoOffer(signal); setState({ status: 'idle' }); return true; }
+    try { const offer = await api.acceptPromoOffer(signal); setState({ status: 'idle' }); return offer; }
     catch (error) { setState({ status: 'error', message: errorMessage(error) }); return false; }
   }, []);
   return [state, accept] as const;
