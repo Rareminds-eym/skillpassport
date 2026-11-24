@@ -912,7 +912,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
 
-        return apiSuccess({ count: inserted?.length || 0 }, context.request, { startTime });
+        return apiSuccess({ count: inserted?.length || 0, assignment_ids: (inserted || []).map((a: any) => a.assignment_id) }, context.request, { startTime });
       }
 
       default:
