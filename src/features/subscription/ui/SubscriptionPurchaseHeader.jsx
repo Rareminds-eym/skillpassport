@@ -1,8 +1,8 @@
-import gsap from 'gsap';
 import { LogOut } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useEffect, useRef } from 'react';
+import gsap from 'gsap';
 
 import { useAuthActions } from '@/shared/model/authStore';
 
