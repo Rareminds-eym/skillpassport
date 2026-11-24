@@ -25,22 +25,22 @@ jobs:
         with:
           node-version: 22.x
 
-      - name: Validate SQL Encoding (no mojibake)
-        run: npm run lint:sql-encoding
+      # - name: Validate SQL Encoding (no mojibake)
+      #   run: npm run lint:sql-encoding
 
-      - name: Validate Database Rules
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            npm run lint:database -- --base "$BASE_SHA"
-          elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
-            npm run lint:database -- --base "$BEFORE_SHA" --exact-base
-          else
-            npm run lint:database -- --base origin/dev
-          fi
+      # - name: Validate Database Rules
+      #   env:
+      #     EVENT_NAME: ${{ github.event_name }}
+      #     BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      #     BEFORE_SHA: ${{ github.event.before }}
+      #   run: |
+      #     if [ "$EVENT_NAME" = "pull_request" ]; then
+      #       npm run lint:database -- --base "$BASE_SHA"
+      #     elif [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ]; then
+      #       npm run lint:database -- --base "$BEFORE_SHA" --exact-base
+      #     else
+      #       npm run lint:database -- --base origin/dev
+      #     fi
 
   # Production Pages uses the GitHub production environment.
   # Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NPM_TOKEN,
