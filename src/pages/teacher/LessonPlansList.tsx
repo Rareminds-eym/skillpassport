@@ -2,6 +2,8 @@ import { AlertCircle, BookOpen, CheckCircle, Clock, Edit, Eye, Plus, Trash2, XCi
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useLessonPlans } from "@/features/courses";
+import { useUser } from '@/shared/model/authStore';
+import { EducatorMappedCourses } from '@/features/college-course-workflow';
 
 interface LessonPlan {
   id: string;
@@ -16,7 +18,7 @@ interface LessonPlan {
   created_at: string;
 }
 
-const LessonPlansList: React.FC = () => {
+const SchoolLessonPlansList: React.FC = () => {
   const navigate = useNavigate();
   const { lessonPlans, loading, filter, setFilter, deleteLessonPlan, filteredPlans } = useLessonPlans();
 
@@ -217,4 +219,10 @@ const LessonPlansList: React.FC = () => {
   );
 };
 
-export default LessonPlansList;
+export default function LessonPlansList() {
+  const user = useUser();
+  if (user?.role === 'college_educator' || user?.roles?.includes('college_educator')) {
+    return <div className="space-y-6 p-4 sm:p-6"><header><h1 className="text-2xl font-semibold text-gray-900">College lesson plans</h1><p className="mt-2 text-sm text-gray-600">Open a mapped college course to read or edit its lesson plans.</p></header><EducatorMappedCourses embedded lessonPlans /></div>;
+  }
+  return <SchoolLessonPlansList />;
+}

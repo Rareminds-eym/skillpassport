@@ -288,7 +288,7 @@ export interface BulkCreatePayload {
 
 export const bulkCreateCollegeAssignments = async (
   payload: BulkCreatePayload
-): Promise<ServiceResponse<{ count: number }>> => {
+): Promise<ServiceResponse<{ count: number; assignment_ids?: string[] }>> => {
   try {
     const result: any = await apiPost('/college-admin/assignments', {
       action: 'bulk-create-assignments',

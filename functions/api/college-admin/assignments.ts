@@ -891,16 +891,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           if (sectionData) {
             const { data: learnerRows } = await supabase
               .from('learners')
-              .select('id')
+              .select('id, user_id')
               .eq('program_id', sectionData.program_id)
               .eq('section', sectionData.section)
               .eq('semester', sectionData.semester)
               .eq('is_deleted', false);
             if (learnerRows && learnerRows.length > 0) {
               const learnerAssignments = inserted.flatMap((a: any) =>
-                learnerRows.map((l: any) => ({
+                learnerRows.filter((l: any) => l.user_id).map((l: any) => ({
                   assignment_id: a.assignment_id,
-                  learner_id: l.id,
+                  learner_id: l.user_id,
                   status: 'todo',
                   priority: 'medium',
                 }))
@@ -912,7 +912,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           }
         }
 
-        return apiSuccess({ count: inserted?.length || 0 }, context.request, { startTime });
+        return apiSuccess({ count: inserted?.length || 0, assignment_ids: (inserted || []).map((a: any) => a.assignment_id) }, context.request, { startTime });
       }
 
       default:

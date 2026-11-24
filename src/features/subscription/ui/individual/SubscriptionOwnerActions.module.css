@@ -1,0 +1,14 @@
+.controls { --line: #e2e8f0; color: #0f172a; font-size: .875rem; overflow-wrap: anywhere; }
+.controls > * + * { margin-top: 1.25rem; }
+.controls section, .controls article { border: 0; margin: 0; padding: 0; background: transparent; }
+.controls h3 { font-size: 1rem; font-weight: 600; margin-bottom: .75rem; }
+.controls p { margin: .75rem 0; }
+.controls label { display: block; font-weight: 500; }
+.controls select, .controls textarea, .controls input { display: block; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: .75rem; padding: .75rem; margin: .5rem 0 1rem; background: white; }
+.controls button { min-height: 44px; border: 1px solid #cbd5e1; border-radius: 1rem; padding: .75rem 1rem; font-weight: 600; background: #f1f5f9; color: #0f172a; margin-top: .5rem; }
+.controls button:hover { background: #e2e8f0; }
+.controls button:disabled { opacity: .5; cursor: not-allowed; }
+.controls :is(button, input, select, textarea, summary):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.controls summary { cursor: pointer; font-weight: 600; padding: .75rem 0; }
+.controls dt { font-weight: 600; }
+.controls dd { margin: 0 0 .75rem; }

@@ -128,7 +128,8 @@ it('aligns evaluated feedback and removes automatic wording from saved results',
  expect(screen.queryByRole('button',{name:'View result'})).not.toBeInTheDocument();
  const feedback=screen.getByRole('region',{name:'Evaluation feedback'});
  expect(within(feedback).getByText('Evaluation complete')).toBeInTheDocument();
- expect(within(feedback).getByText('8/10')).toBeInTheDocument();
+ expect(within(within(feedback).getByLabelText('Assignment scores')).getAllByText('8/10')).toHaveLength(2);
+ expect(within(feedback).getByText('Not reviewed')).toBeInTheDocument();
  expect(within(feedback).getByText('Good planning.')).toBeInTheDocument();
  expect(feedback.textContent).not.toMatch(/automatic/i);
  expect(screen.queryByText('Evaluation: released')).not.toBeInTheDocument();
@@ -139,6 +140,26 @@ it('aligns evaluated feedback and removes automatic wording from saved results',
  expect(screen.getByRole('region',{name:'Evaluation feedback'})).toBeInTheDocument();
  fireEvent.click(screen.getByRole('button',{name:'Close result'}));
  await waitFor(()=>expect(screen.getByRole('button',{name:'View result'})).toHaveFocus());
+});
+
+it('distinguishes an educator total adjustment from original question scores',()=>{
+ const row={id:'adjusted',due_at:'2099-01-01',assignment:{id:'a',title:'Worksheet',content:{questions:[]}},submissions:[{id:'s',results:[{status:'released',total_marks:0,maximum_marks:100,question_results:{educator_override:{marks:0},review:[]}}]}]};
+ render(<QueryClientProvider client={new QueryClient()}><SubmissionCard row={row} courseId="course" educator={false}/></QueryClientProvider>);
+ fireEvent.click(screen.getByRole('button',{name:'View result'}));
+ expect(screen.getByText('Total adjusted by your educator. Question scores below show the original evaluation.')).toBeInTheDocument();
+ expect(screen.getByRole('region',{name:'Evaluation feedback'})).toHaveTextContent('0/100');
+});
+
+it('shows original AI marks, educator marks and final marks on the learner card',()=>{
+ const row={id:'reviewed',due_at:'2099-01-01',assignment:{id:'a',title:'Worksheet',content:{questions:[]}},submissions:[{id:'s',results:[{status:'released',total_marks:87,maximum_marks:100,reviewed_by:'teacher',question_results:{ai:[{marks:40},{marks:40}],educator_override:{marks:87},review:[]}}]}]};
+ render(<QueryClientProvider client={new QueryClient()}><SubmissionCard row={row} courseId="course" educator={false}/></QueryClientProvider>);
+ const scores=screen.getByLabelText('Assignment scores');
+ expect(screen.getByRole('button',{name:'Download Word'})).toBeInTheDocument();
+ expect(screen.getByRole('button',{name:'Download submitted document'})).toBeInTheDocument();
+ expect(scores).toHaveTextContent('AI score80/100');
+ expect(scores).toHaveTextContent('Educator score87/100');
+ expect(scores).toHaveTextContent('Final score87/100');
+ expect(screen.queryByText('Not reviewed')).not.toBeInTheDocument();
 });
 
 it('opens educator learner details directly from an assignment notification',()=>{

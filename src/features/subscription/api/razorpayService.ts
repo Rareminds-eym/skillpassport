@@ -18,25 +18,55 @@
 
 import { confirmedPaymentSubscription } from '../lib/paymentActivation';
 import paymentsApiService from './paymentsApiService';
+import { DEFAULT_TIMEOUT } from '@/shared/api/httpClient';
+
+let sdkLoad: Promise<boolean> | undefined;
 
 /**
  * Load Razorpay checkout script dynamically
  * @returns {Promise<boolean>} True if script loaded successfully
  */
 export const loadRazorpayScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if ((window as RazorpayWindow).Razorpay) {
-      resolve(true);
-      return;
-    }
-
+  if (typeof (window as RazorpayWindow).Razorpay === 'function') return Promise.resolve(true);
+  if (sdkLoad) return sdkLoad;
+  sdkLoad = new Promise<boolean>((resolve, reject) => {
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
+    script.async = true;
+    const finish = (loaded: boolean, error?: Error) => {
+      clearTimeout(timer);
+      script.onload = null; script.onerror = null;
+      if (!loaded) script.remove();
+      if (error) reject(error); else resolve(loaded);
+    };
+    const timer = setTimeout(() => finish(false, new Error('Razorpay could not load in time. Check your connection and try again.')), DEFAULT_TIMEOUT);
+    script.onload = () => finish(typeof (window as RazorpayWindow).Razorpay === 'function');
+    script.onerror = () => finish(false);
+    try { document.body.appendChild(script); }
+    catch (error) { finish(false, error instanceof Error ? error : new Error('Razorpay script could not be requested.')); }
+  }).finally(() => { sdkLoad = undefined; });
+  return sdkLoad;
 };
+
+/** Validate the primary SDK before issuing an order; cancellation never creates a replacement. */
+export async function prepareSubscriptionCheckout(signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) throw new DOMException('Checkout aborted.', 'AbortError');
+  // VS Code's integrated browser blocks popup windows required by bank checkout.
+  // Reject before a quote/order is issued rather than stranding a payment attempt.
+  if (/\bCode\//.test(navigator.userAgent) && /\bElectron\//.test(navigator.userAgent)) {
+    throw new Error('Payment checkout requires a full browser. Open SkillPassport in Chrome, Edge, Firefox or Safari. Keep any existing payment references and check their status before paying again.');
+  }
+  const loaded = await new Promise<boolean>((resolve, reject) => {
+    const abort = () => { signal?.removeEventListener('abort', abort); reject(new DOMException('Checkout aborted.', 'AbortError')); };
+    signal?.addEventListener('abort', abort, { once: true });
+    void loadRazorpayScript().then(value => { signal?.removeEventListener('abort', abort); resolve(value); }, error => {
+      signal?.removeEventListener('abort', abort); reject(error);
+    });
+    if (signal?.aborted) abort();
+  });
+  if (signal?.aborted) throw new DOMException('Checkout aborted.', 'AbortError');
+  if (!loaded || typeof (window as RazorpayWindow).Razorpay !== 'function') throw new Error('Razorpay could not load. Check your connection and try again.');
+}
 
 /**
  * Create Razorpay order via Cloudflare Worker
@@ -113,13 +143,14 @@ export interface InitiatePaymentParams {
   onFailure: (result: PaymentFailureResult) => void;
   onCancel?: () => void;
 }
-interface PaymentProof { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }
+export interface PaymentProof { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }
 interface RazorpayOptions {
   key: string; amount: number; currency: string; name: string; description: string; order_id: string;
-  prefill: { name: string; email: string; contact: string };
-  notes: { plan_id: string; plan_name: string }; theme: { color: string };
+  prefill?: { name: string; email: string; contact: string };
+  notes?: { plan_id: string; plan_name: string }; theme?: { color: string };
   handler: (response: PaymentProof) => Promise<void>;
   modal: { ondismiss: () => void };
+  timeout?: number;
 }
 interface RazorpayCheckout {
   open: () => void;
@@ -249,3 +280,51 @@ export const initiateRazorpayPayment = async ({
   }
   return handle;
 };
+
+export interface IssuedPaymentOrder { id: string; key_id: string; amount: number; currency: string }
+/** Opens an already-issued canonical commerce order. Never creates or verifies a legacy order. */
+export async function payIssuedSubscriptionOrder(order: IssuedPaymentOrder, description: string, signal: AbortSignal | undefined, validUntil: number): Promise<PaymentProof> {
+  if (!/^order_[A-Za-z0-9]+$/.test(order.id) || !/^rzp_(test|live)_[A-Za-z0-9]+$/.test(order.key_id)
+    || !Number.isSafeInteger(order.amount) || order.amount <= 0 || !/^[A-Z]{3}$/.test(order.currency)) {
+    throw new Error('Owner payment order is invalid or has no checkout key.');
+  }
+  if (!Number.isSafeInteger(validUntil) || validUntil <= Date.now()) throw new Error('This checkout has expired. Check its payment status before continuing.');
+  await prepareSubscriptionCheckout(signal);
+  const Constructor = (window as RazorpayWindow).Razorpay;
+  if (!Constructor) throw new Error('Razorpay SDK is unavailable.');
+  const remaining = validUntil - Date.now();
+  // Browser timers use a signed 32-bit delay. Never wrap an invalid owner deadline.
+  if (remaining <= 0 || remaining > 2 ** 31 - 1) throw new Error('Checkout validity is unavailable or expired. Check its payment status.');
+  return new Promise((resolve, reject) => {
+    let done = false;
+    let checkout: RazorpayCheckout | undefined;
+    const finish = (proof?: PaymentProof, error?: Error) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', abort);
+      // close may synchronously dispatch dismissal. Finish first to avoid reentry.
+      try { checkout?.close(); } finally { if (proof) resolve(proof); else reject(error); }
+    };
+    const abort = () => finish(undefined, new DOMException('Checkout aborted; reconcile the tracked order.', 'AbortError'));
+    const timer = setTimeout(() => finish(undefined, new Error('This checkout has expired. Check its payment status before continuing.')), remaining);
+    signal?.addEventListener('abort', abort, { once: true });
+    try {
+      checkout = new Constructor({ key: order.key_id, amount: order.amount, currency: order.currency,
+        order_id: order.id, name: 'SkillPassport', description, timeout: Math.ceil(remaining / 1000),
+        handler: async proof => {
+          if (done) return;
+          if (!record(proof) || proof.razorpay_order_id !== order.id
+            || !/^pay_[A-Za-z0-9]+$/.test(proof.razorpay_payment_id)
+            || typeof proof.razorpay_signature !== 'string' || !proof.razorpay_signature.trim()) {
+            finish(undefined, new Error('Payment proof differs from the tracked owner order.'));
+          } else finish(proof);
+        },
+        modal: { ondismiss: () => finish(undefined, new Error('Checkout dismissed. Reconcile the tracked order before another purchase.')) },
+      });
+      // A failed attempt is not a terminal outcome: the same SDK modal can still succeed.
+      checkout.on('payment.failed', () => undefined);
+      if (signal?.aborted) abort(); else checkout.open();
+    } catch (error) { finish(undefined, error instanceof Error ? error : new Error('Checkout could not open.')); }
+  });
+}

@@ -167,7 +167,7 @@ async function getStoredReferralCodeAndRole(
 function applyDidacPromoRules(
   plans: Record<string, unknown>[],
   acceptedPlanId: string,
-  priceAdjustment: number,
+  acceptedPrice: number,
 ): Record<string, unknown>[] {
   return plans
     .map((plan) => {
@@ -176,8 +176,8 @@ function applyDidacPromoRules(
       if (isAllowedPlan) {
         return {
           ...plan,
-          price: typeof plan.price === 'number' ? plan.price + priceAdjustment : plan.price,
-          yearlyPrice: typeof plan.yearlyPrice === 'number' ? plan.yearlyPrice + priceAdjustment : plan.yearlyPrice,
+          price: acceptedPrice,
+          yearlyPrice: acceptedPrice,
           hidePrice: false,
           isDisabled: false,
         };
@@ -296,7 +296,7 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     if (isSupportedPromoRole(storedRole) && referralCode && userIdentity.id) {
       const redemption = await getAcceptedOfferSnapshot(supabase, userIdentity.id, storedRole, referralCode);
       if (redemption) {
-        plans = applyDidacPromoRules(plans, redemption.offer.planId, redemption.priceAdjustment);
+        plans = applyDidacPromoRules(plans, redemption.offer.planId, redemption.offer.amountMinor / 10 ** redemption.offer.minorUnit);
       }
     }
 

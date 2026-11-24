@@ -19,7 +19,10 @@ import type {
  * Standard environment variables available to all Pages Functions
  */
 export interface PagesEnv {
-  /** Existing platform context used to select code-owned integration profiles. */
+  /** Sales enquiry recipient and published phone (owner configuration; required for sales enquiries). */
+  SALES_ENQUIRY_EMAIL?: string;
+  SALES_ENQUIRY_PHONE?: string;
+  /** Deployment environment name used by platform integrations. */
   ENVIRONMENT?: string;
   ZOHO_CANDIDATE_SOURCE?: {
     getSubjectSyncPolicy?(input: { userId: string }): Promise<unknown>;
@@ -29,10 +32,11 @@ export interface PagesEnv {
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;
-  /** LTE app base URL used for cross-app SSO callback redirects. */
+  /** LTE base URL used for API requests and cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
   /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;
+  /** Managed catalogue origin supplied by the deployment's Wrangler variables. */
   SP_DASH_CATALOG_URL?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
@@ -54,6 +58,8 @@ export interface PagesEnv {
   /** Existing database URL fallback; SUPABASE_URL takes precedence. */
   VITE_SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
+  /** Existing shared client's configuration alias, declared for its established use. */
+  VITE_SUPABASE_ANON_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
 
   // Payment Worker configuration

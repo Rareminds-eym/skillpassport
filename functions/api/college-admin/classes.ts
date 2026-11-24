@@ -3,6 +3,8 @@ import { getServiceClient } from '../../lib/supabase';
 import { getCollegeLearnerAcademicYear } from '../../lib/college-learner-academic-year';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
+import { createLogger } from '../../lib/logger';
+import { aiSubmissionFiles } from './utils/ai-submission-files';
 
 type EducatorType = 'school' | 'college';
 
@@ -895,7 +897,10 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'get-classmates': {
-        const { program_id, semester, program_section_id, current_learner_id } = params;
+        const program_id = params.program_id || params.programId;
+        const semester = params.semester;
+        const program_section_id = params.program_section_id || params.programSectionId;
+        const current_learner_id = params.current_learner_id || params.currentLearnerId;
         if (!program_id) {
           return apiError(400, 'VALIDATION_ERROR', 'Missing program_id', context.request, { startTime });
         }
@@ -1286,6 +1291,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           });
         }
 
+        const allocationIds = (rows || []).map((row: any) => row.learner_assignment_id);
+        const aiFiles = new Map<string, any[]>();
+        if (allocationIds.length) {
+          const linked = await supabase.from('ai_assignment_learners')
+            .select('college_allocation_id,submissions:ai_assignment_submissions(id,file_name,mime_type)')
+            .in('college_allocation_id', allocationIds)
+            .eq('assigned_by', getContextUser(context).id);
+          if (linked.error) return apiDbError(linked.error, context.request, { startTime });
+          for (const link of linked.data || []) aiFiles.set(link.college_allocation_id, aiSubmissionFiles(link.submissions));
+        }
         const mapped = (rows || []).map((row: any) => {
           const learner = learnersMap.get(row.learner_id) || {};
           return {
@@ -1304,7 +1319,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             submission_type: row.submission_type,
             submission_content: row.submission_content,
             submission_url: row.submission_url,
-            submission_files: row.submission_files || [],
+            submission_files: aiFiles.get(row.learner_assignment_id)?.length ? aiFiles.get(row.learner_assignment_id) : row.submission_files || [],
             is_late: row.is_late ?? false,
             assigned_date: row.assigned_date,
             completed_date: row.completed_date,
@@ -1330,7 +1345,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(400, 'VALIDATION_ERROR', 'Missing learnerAssignmentId or grade_received', context.request, { startTime });
         }
 
-        let educatorId = params.educator_id || params.graded_by;
+        const actorId = getContextUser(context).id;
+        const linked = await supabase.from('ai_assignment_learners').select('id,assigned_by')
+          .eq('college_allocation_id', learnerAssignmentId).maybeSingle();
+        if (linked.error) return apiDbError(linked.error, context.request, { startTime });
+        if (linked.data) {
+          if (linked.data.assigned_by !== actorId) return apiError(403, 'FORBIDDEN', 'Assignment educator access required', context.request, { startTime });
+          if (typeof grade_received !== 'number' || !Number.isFinite(grade_received)) return apiError(400, 'VALIDATION_ERROR', 'Enter a valid score', context.request, { startTime });
+          const graded = await supabase.rpc('update_college_ai_grade', {
+            p_user: actorId, p_allocation: learnerAssignmentId, p_marks: grade_received,
+            p_feedback: typeof instructor_feedback === 'string' ? instructor_feedback : '',
+          });
+          if (graded.error) return apiError(409, 'GRADE_UPDATE_FAILED', 'Unable to update marks. Check the score and wait for evaluation to complete, then retry.', context.request, { startTime });
+          return apiSuccess(graded.data, context.request, { startTime });
+        }
+        let educatorId = actorId;
         if (!educatorId) {
           try {
             const authUser = getContextUser(context);
@@ -1389,7 +1418,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .single();
 
         if (error) {
-          console.error('[grade-college-assignment] DB error:', error);
+          createLogger('college-grading', env.ENVIRONMENT).warn('Grade update failed', { code: error.code });
           return apiDbError(error, context.request, { startTime });
         }
 

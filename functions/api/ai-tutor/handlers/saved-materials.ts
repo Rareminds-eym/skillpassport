@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { createLogger } from '../../../lib/logger';
 import { getContextUser, getServiceClient } from '../../../lib/auth';
 import type { PagesEnv } from '../../../lib/types';
 import { apiSuccess, apiError } from '../../../lib/response';
@@ -13,6 +14,7 @@ type Context = { request: Request; env: PagesEnv; data?: Parameters<typeof getCo
 const uuid = z.string().uuid();
 export async function handleSavedMaterials(context: Context) {
   const { request, env } = context;
+  const logger = createLogger('ai-saved-materials', env.ENVIRONMENT);
   const user = getContextUser(context), db = getServiceClient(env);
   const fail = (status: number, message: string) => apiError(status, 'MATERIAL_ERROR', message, request);
   let stage = 'request';
@@ -31,7 +33,7 @@ export async function handleSavedMaterials(context: Context) {
     const profile = await db.from('users').select('role').eq('id', user.id).single();
     const educator = !profile.error && ['educator','school_educator','college_educator'].includes(profile.data?.role);
     if (body.action === 'deliveries') {
-      const query = db.from('ai_assignment_learners').select('id,assigned_by,learner_id,due_at,assigned_at,assignment:ai_assignments!inner(id,title,course_id,content),learner:learners!inner(id,user_id,name),submissions:ai_assignment_submissions(id,file_name,submitted_at,results:ai_assignment_results(id,status,total_marks,maximum_marks,feedback,question_results,released_at))').eq('assignment.course_id', courseId).order('assigned_at', { ascending: false }).limit(500);
+      const query = db.from('ai_assignment_learners').select('id,assigned_by,learner_id,due_at,assigned_at,assignment:ai_assignments!inner(id,title,course_id,content,created_at),learner:learners!inner(id,user_id,name),submissions:ai_assignment_submissions(id,file_name,submitted_at,results:ai_assignment_results(id,status,total_marks,maximum_marks,feedback,question_results,reviewed_by,released_at))').eq('assignment.course_id', courseId).order('assigned_at', { ascending: false }).limit(500);
       if (educator) query.eq('assigned_by', user.id); else query.eq('learner.user_id', user.id);
       const result = await query;
       if (result.error) throw result.error;
@@ -164,7 +166,7 @@ export async function handleSavedMaterials(context: Context) {
     return apiSuccess(choice, request);
   } catch (error) {
     // Metadata only: never log private questions, answer keys, provider bodies or credentials.
-    console.warn('Saved material operation failed', { stage, errorType: error instanceof Error ? error.name : 'DatabaseError',
+    logger.warn('Saved material operation failed', { stage, errorType: error instanceof Error ? error.name : 'DatabaseError',
       ...(error instanceof AssessmentModelError ? { reason: error.reason, providerStatus: error.status } : {}),
       ...(error && typeof error === 'object' && 'code' in error ? { databaseCode: String(error.code) } : {}) });
     if (error instanceof AssessmentModelError) {

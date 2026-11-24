@@ -141,7 +141,7 @@ function PublishedPlanCard({ plan, selected, current, organization, prices, purc
       <div className={`${styles.cardActions} mt-auto space-y-3 [&_button]:w-full [&_button]:py-4 [&_button]:px-4 [&_button]:rounded-2xl [&_button]:font-semibold [&_button]:shadow-lg [&_button:hover]:shadow-xl [&_button]:transition-all [&_button:disabled]:opacity-50 [&_p]:text-sm [&_p]:text-slate-600 [&_p]:mb-3 ${actionColors}`}>
         {promoLocked
           ? <p role="note" className="text-center text-sm font-medium text-slate-500 py-4 px-2 rounded-2xl bg-slate-50 border-2 border-slate-200">
-            Not available with your applied promo code. Remove the code to choose this plan.
+            This plan is not included in your promo offer.
           </p>
           : purchase}
       </div>
@@ -170,12 +170,12 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, curre
     categories.set(category, [...(categories.get(category) ?? []), key]);
   }
   return <>
-    {catalog.eligiblePlanId !== null && <div role="status" className="mb-8 text-center text-sm font-semibold text-emerald-800 bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-3 px-4">
+    {catalog.eligiblePlanId != null && <div role="status" className="mb-8 text-center text-sm font-semibold text-emerald-800 bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-3 px-4">
       Your applied promo code unlocks a special price on one plan below — other plans are unavailable while the code is applied.
     </div>}
     <div className={`${styles.planGrid} grid md:grid-cols-2 gap-6 ${plans.length >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
       {plans.map(plan => <PublishedPlanCard key={plan.revisionId} plan={plan} selected={plan.revisionId === selectedRevisionId} current={plan.plan.id === currentPlanId} organization={catalog.subjectKind === 'organization'}
-        promoLocked={catalog.eligiblePlanId !== null && plan.plan.id !== catalog.eligiblePlanId}
+        promoLocked={catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId}
         prices={renderPrices(plan)} purchase={renderPurchase(plan)} />)}
     </div>
     <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">

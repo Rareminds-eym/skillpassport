@@ -432,9 +432,9 @@ const SignupAdmin = () => {
 
       // Success!
       if (returnToPayment && plan) {
-        // If coming from subscription page, redirect to payment
-        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nProceeding to payment...`);
-        navigate('/subscription/payment', {
+        // If coming from subscription page, redirect to plans to complete checkout
+        alert(`Workspace created successfully! Your Workspace ID is: ${companyCode}\n\nProceeding to plans...`);
+        navigate('/subscription/plans/recruitment-admin/purchase', {
           state: {
             plan,
             learnerType: learnerType || 'recruitment-admin',

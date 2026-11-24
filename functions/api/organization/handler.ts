@@ -6,6 +6,8 @@ import { apiError, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
 import { createLogger } from '../../lib/logger';
 import { authorizeSeatOrganization, seatRpcError } from '../../lib/seat-access';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
+import { subscriptionActionAuthorization } from '../../lib/subscriptions/action';
 
 const logger = createLogger('organization-handler');
 
@@ -16,6 +18,23 @@ function getSupabase(context: AuthenticatedContext) {
 
 function getUserId(context: AuthenticatedContext): string {
   return getContextUser(context).id;
+}
+
+async function requireOrganizationWrite(context: AuthenticatedContext, organizationId: string) {
+  const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request,
+    actorId: getUserId(context), subject: { kind: 'organization', id: organizationId }, mode: 'write' });
+  return access instanceof Response ? access : null;
+}
+
+/** Commercial mutations resolve the organization from the retained subscription. */
+async function requireSubscriptionOrganizationWrite(context: AuthenticatedContext, subscriptionId: string) {
+  const supabase = getSupabase(context);
+  const result = await supabase.from('subscription_cache').select('organization_id')
+    .eq('id', subscriptionId).maybeSingle();
+  if (result.error) return seatRpcError(result.error, context.request);
+  if (!result.data) return apiError(404, 'NOT_FOUND', 'Subscription not found', context.request);
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), result.data.organization_id, context.request, true);
+  return denied || requireOrganizationWrite(context, result.data.organization_id);
 }
 
 type OrganizationType = 'school' | 'college' | 'university';
@@ -90,6 +109,8 @@ async function createPool(context: AuthenticatedContext, body: any) {
   if (!subscription || availableSeats < allocatedSeats) {
     return apiError(400, 'VALIDATION_ERROR', 'Insufficient available seats in subscription', context.request);
   }
+  const accessDenied = await requireOrganizationWrite(context, organizationId);
+  if (accessDenied) return accessDenied;
 
   const { data, error } = await supabase
     .from('license_pools')
@@ -143,6 +164,8 @@ async function updatePoolAllocation(context: AuthenticatedContext, body: any) {
   if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
   const denied = await authorizeSeatOrganization(supabase, getUserId(context), pool.organization_id, context.request, true);
   if (denied) return denied;
+  const accessDenied = await requireOrganizationWrite(context, pool.organization_id);
+  if (accessDenied) return accessDenied;
   if (!Number.isInteger(newAllocation) || newAllocation < 1) return apiError(400, 'VALIDATION_ERROR', 'Allocation must be a positive integer', context.request);
   if (newAllocation < pool.assigned_seats) {
     return apiError(400, 'VALIDATION_ERROR', `Cannot reduce allocation below assigned seats (${pool.assigned_seats})`, context.request);
@@ -160,11 +183,47 @@ async function mutateLicense(context: AuthenticatedContext, body: Record<string,
       (operation === 'transfer' && (!body.fromUserId || !body.toUserId || !body.organizationSubscriptionId))) {
     return apiError(400, 'VALIDATION_ERROR', 'Required license identifiers are missing', context.request);
   }
-  const { data, error } = await supabase.rpc('manage_organization_license', {
+  // Resolve scope from the persisted resource. The caller's subscription or
+  // organization fields are never an authority for this lifecycle decision.
+  const resource = operation === 'assign'
+    ? await supabase.from('license_pools').select('organization_id,member_type,organization_subscription_id').eq('id', body.poolId).maybeSingle()
+    : operation === 'revoke'
+      ? await supabase.from('license_assignments').select('organization_subscription_id').eq('id', body.assignmentId).maybeSingle()
+      : await supabase.from('license_assignments').select('organization_subscription_id,member_type')
+        .eq('user_id', body.fromUserId).eq('organization_subscription_id', body.organizationSubscriptionId).eq('status', 'active').maybeSingle();
+  if (resource.error) return seatRpcError(resource.error, context.request);
+  if (!resource.data) return apiError(404, 'NOT_FOUND', 'License or pool not found', context.request);
+  let organizationId = resource.data.organization_id;
+  if (operation !== 'assign') {
+    const subscription = await supabase.from('subscription_cache').select('organization_id')
+      .eq('id', resource.data.organization_subscription_id).maybeSingle();
+    if (subscription.error) return seatRpcError(subscription.error, context.request);
+    if (!subscription.data) return apiError(404, 'NOT_FOUND', 'Subscription not found', context.request);
+    organizationId = subscription.data.organization_id;
+  }
+  const denied = await authorizeSeatOrganization(supabase, getUserId(context), organizationId, context.request, true);
+  if (denied) return denied;
+  const includedLearner = operation !== 'revoke' && resource.data.member_type === 'learner';
+  if (operation !== 'revoke' && !['learner', 'educator'].includes(resource.data.member_type)) {
+    return apiError(503, 'UNAVAILABLE', 'Persisted license member type unavailable', context.request);
+  }
+  const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request,
+    actorId: getUserId(context), subject: { kind: 'organization', id: organizationId }, mode: 'write',
+    ...(includedLearner ? { actionKey: 'organization.learner.assign' } : {}) });
+  if (access instanceof Response) return access;
+  if (includedLearner && (!('binding' in access) || access.grant.type !== 'numeric_limit'
+    || access.binding.quota?.period !== 'concurrent' || access.binding.quota.countingEvent !== 'learner_assignment'
+    || access.context.state.id !== resource.data.organization_subscription_id)) {
+    return apiError(503, 'UNAVAILABLE', 'Included learner capacity configuration unavailable', context.request);
+  }
+  // Existing owner repeats membership checks under its locks and performs the
+  // assignment/counter changes atomically. This guard does not reserve capacity.
+  const { data, error } = await supabase.rpc(includedLearner ? 'manage_subscription_learner_license' : 'manage_organization_license', {
     p_operation: operation, p_actor: getUserId(context), p_pool: body.poolId || null,
     p_target: operation === 'transfer' ? body.toUserId : body.userId || null,
     p_assignment: body.assignmentId || null, p_source_user: body.fromUserId || null,
     p_subscription: body.organizationSubscriptionId || null, p_reason: body.reason || null,
+    ...(includedLearner && 'binding' in access ? { p_authorization: subscriptionActionAuthorization(access) } : {}),
   });
   if (error) return seatRpcError(error, context.request);
   return apiSuccess(data, context.request);
@@ -210,6 +269,8 @@ async function configureAutoAssignment(context: AuthenticatedContext, body: any)
   if (!pool) return apiError(404, 'NOT_FOUND', 'License pool not found', context.request);
   const denied = await authorizeSeatOrganization(supabase, getUserId(context), pool.organization_id, context.request, true);
   if (denied) return denied;
+  const accessDenied = await requireOrganizationWrite(context, pool.organization_id);
+  if (accessDenied) return accessDenied;
   if (typeof enabled !== 'boolean') return apiError(400, 'VALIDATION_ERROR', 'enabled must be boolean', context.request);
 
   const { data, error } = await supabase.from('license_pools').update({ auto_assign_new_members: enabled, assignment_criteria: criteria, updated_at: new Date().toISOString() }).eq('id', poolId).select().single();
@@ -244,6 +305,9 @@ async function inviteMember(context: AuthenticatedContext, body: any) {
   if (!isAdmin(membership.role)) {
     return apiError(403, 'FORBIDDEN', 'Insufficient permissions. Admin role required to send invitations.', context.request);
   }
+
+  const accessDenied = await requireOrganizationWrite(context, organizationId);
+  if (accessDenied) return accessDenied;
 
   const { data: existing } = await supabase.from('organization_invitations').select('*').eq('organization_id', organizationId).eq('invitee_email', email.toLowerCase()).eq('status', 'pending').maybeSingle();
   if (existing) return apiError(409, 'DUPLICATE', 'An invitation is already pending for this email', context.request);
@@ -1036,6 +1100,8 @@ async function getUserEntitlementsHandler(context: AuthenticatedContext) {
 async function grantEntitlement(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { userId, featureKey, organizationSubscriptionId, grantedBy, expiresAt } = body;
+  const denied = await requireSubscriptionOrganizationWrite(context, organizationSubscriptionId);
+  if (denied) return denied;
   const { data, error } = await supabase.from('user_entitlements').insert({ user_id: userId, feature_key: featureKey, is_active: true, granted_by_organization: true, organization_subscription_id: organizationSubscriptionId, granted_by: grantedBy, expires_at: expiresAt }).select().single();
   if (error) throw error;
   return apiSuccess(data, context.request);
@@ -1044,6 +1110,8 @@ async function grantEntitlement(context: AuthenticatedContext, body: any) {
 async function revokeEntitlements(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { userId, organizationSubscriptionId } = body;
+  const denied = await requireSubscriptionOrganizationWrite(context, organizationSubscriptionId);
+  if (denied) return denied;
   const { error } = await supabase.from('user_entitlements').update({ is_active: false, updated_at: new Date().toISOString() }).eq('user_id', userId).eq('organization_subscription_id', organizationSubscriptionId).eq('granted_by_organization', true);
   if (error) throw error;
   return apiSuccess({ success: true }, context.request);
@@ -1052,6 +1120,8 @@ async function revokeEntitlements(context: AuthenticatedContext, body: any) {
 async function bulkGrantEntitlements(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { userIds, featureKeys, organizationSubscriptionId, grantedBy } = body;
+  const denied = await requireSubscriptionOrganizationWrite(context, organizationSubscriptionId);
+  if (denied) return denied;
 
   const records = userIds.flatMap((userId: string) =>
     featureKeys.map((featureKey: string) => ({
@@ -1075,6 +1145,8 @@ async function bulkGrantEntitlements(context: AuthenticatedContext, body: any) {
 async function bulkRevokeEntitlements(context: AuthenticatedContext, body: any) {
   const supabase = getSupabase(context);
   const { userIds, organizationSubscriptionId } = body;
+  const denied = await requireSubscriptionOrganizationWrite(context, organizationSubscriptionId);
+  if (denied) return denied;
   const { error } = await supabase.from('user_entitlements').update({ is_active: false, updated_at: new Date().toISOString() }).in('user_id', userIds).eq('organization_subscription_id', organizationSubscriptionId).eq('granted_by_organization', true);
   if (error) throw error;
   return apiSuccess({ success: true }, context.request);
@@ -1108,6 +1180,8 @@ async function removeMemberHandler(context: AuthenticatedContext, body: Record<s
   const supabase = getSupabase(context);
   const denied = await authorizeSeatOrganization(supabase, getUserId(context), body.organizationId, context.request, true);
   if (denied) return denied;
+  const accessDenied = await requireOrganizationWrite(context, body.organizationId);
+  if (accessDenied) return accessDenied;
   if (!body.memberId || !['learner', 'educator'].includes(body.memberType) || !['school', 'college', 'university'].includes(body.organizationType)) {
     return apiError(400, 'VALIDATION_ERROR', 'Valid member and organization type are required', context.request);
   }

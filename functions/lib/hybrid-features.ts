@@ -36,15 +36,27 @@ export async function resolveAdminOrganizationId(
   return orgs[0].id;
 }
 
+/**
+ * The adopted Hybrid catalog plan (env HYBRID_PLAN_ID). Its canonical code is opaque, so contracts are identified by
+ * plan id only. Missing configuration is unavailable, never "not Hybrid": non-Hybrid plans are unrestricted here.
+ */
+function hybridPlanIdentity(value: unknown): string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new HybridAccessError('Hybrid plan identity is not configured');
+  }
+  return value.toLowerCase();
+}
 export async function getHybridOrganizationAccess(
-  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
+  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, hybridPlanId: string | undefined,
+  verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<{ isHybrid: boolean; features: string[]; organizationId: string | null }> {
+  const hybrid = hybridPlanIdentity(hybridPlanId);
   const organizationId = await resolveAdminOrganizationId(supabase, userId, type, verifiedOrgId);
   // Cache timestamps describe replication, not which contract is effective.
   // Keep paused/cancelled/expired contracts in the selection: changing status
   // must never turn a restricted Hybrid organization into an unrestricted one.
-  const subscription = effectiveContract ?? await checked<{ plan_code: string; features: unknown }>(supabase.from('subscription_cache')
-    .select('plan_code, features, status, subscription_start_date')
+  const subscription = effectiveContract ?? await checked<{ plan_id: string | null; features: unknown }>(supabase.from('subscription_cache')
+    .select('plan_id, features, status, subscription_start_date')
     .eq('organization_id', organizationId).eq('is_organization_subscription', true)
     .neq('status', 'pending')
     .or(`subscription_start_date.lte.${new Date().toISOString()},subscription_start_date.is.null`)
@@ -52,22 +64,22 @@ export async function getHybridOrganizationAccess(
     .order('id', { ascending: false }).limit(1).maybeSingle());
   return {
     organizationId,
-    isHybrid: subscription?.plan_code === 'hybrid',
+    isHybrid: typeof subscription?.plan_id === 'string' && subscription.plan_id.toLowerCase() === hybrid,
     features: Array.isArray(subscription?.features) ? subscription.features.filter((f: unknown) => typeof f === 'string') : [],
   };
 }
 
-export interface EffectiveHybridContract { plan_code: string; features?: unknown }
+export interface EffectiveHybridContract { plan_id: string | null; features?: unknown }
 
 export interface HybridGateResult { allowed: boolean; reason?: string; unavailable?: boolean }
 
 export async function checkHybridFeatureAccess(
-  supabase: SupabaseClient, userId: string, type: AdminOrganizationType,
+  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, hybridPlanId: string | undefined,
   featureKeys: string | readonly string[], verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<HybridGateResult> {
   try {
     // A covered request supplies its exact contract to both navigation and mutations.
-    const access = await getHybridOrganizationAccess(supabase, userId, type, verifiedOrgId, effectiveContract);
+    const access = await getHybridOrganizationAccess(supabase, userId, type, hybridPlanId, verifiedOrgId, effectiveContract);
     if (!access.isHybrid) return { allowed: true };
     const keys = typeof featureKeys === 'string' ? [featureKeys] : featureKeys;
     if (!keys.length) return { allowed: false, reason: 'This operation is not available on your plan' };
@@ -88,10 +100,10 @@ export async function checkHybridFeatureAccess(
 }
 
 export async function requireHybridFeature(
-  supabase: SupabaseClient, request: Request, type: AdminOrganizationType,
+  supabase: SupabaseClient, request: Request, type: AdminOrganizationType, hybridPlanId: string | undefined,
   featureKeys: string | readonly string[], userId: string, verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<Response | null> {
-  const result = await checkHybridFeatureAccess(supabase, userId, type, featureKeys, verifiedOrgId, effectiveContract);
+  const result = await checkHybridFeatureAccess(supabase, userId, type, hybridPlanId, featureKeys, verifiedOrgId, effectiveContract);
   if (result.allowed) return null;
   return apiError(result.unavailable ? 503 : 403, result.unavailable ? 'FEATURE_ACCESS_UNAVAILABLE' : 'FEATURE_ACCESS_DENIED',
     result.reason!, request);

@@ -2,6 +2,10 @@ import { withAuth, getContextUser, getServiceClient } from '../../lib/auth';
 import { apiSuccess, apiError, apiDbError, apiNotFound } from '../../lib/response';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { COURSE_CATALOG_SELECT, presentCatalogCourse } from '../../lib/course-catalog';
+import { z } from 'zod';
+import type { PagesEnv } from '../../lib/types';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
+import { subscriptionActionAuthorization } from '../../lib/subscriptions/action';
 
 function parseBody(request: Request): Promise<any> {
   return request.json().catch(() => ({}));
@@ -20,50 +24,37 @@ async function handler(context: AuthenticatedContext): Promise<Response> {
 
   // POST /api/courses/enroll
   if (path === '/enroll' && method === 'POST') {
-    const { learnerEmail, courseId } = await parseBody(request);
-    if (!learnerEmail || !courseId) return apiError(400, 'VALIDATION_ERROR', 'learnerEmail and courseId required', request);
-
-    const { data: learner } = await supabase.from('learners').select('id, name, email').eq('email', learnerEmail).maybeSingle();
+    const parsed = z.object({ learnerEmail: z.string().email(), courseId: z.string().uuid(), operationId: z.string().uuid().optional() }).strict()
+      .safeParse(await parseBody(request));
+    if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', 'Valid learnerEmail, courseId and operationId are required', request);
+    const { learnerEmail, courseId } = parsed.data;
+    const learnerResult = await supabase.from('learners').select('id,user_id').eq('email', learnerEmail).maybeSingle();
+    if (learnerResult.error) return apiDbError(learnerResult.error, request);
+    const learner = learnerResult.data;
     if (!learner) return apiError(404, 'NOT_FOUND', 'Learner not found', request);
-
-    const { data: course } = await supabase.from('courses').select('course_id, title, educator_id').eq('course_id', courseId).maybeSingle();
-    if (!course) return apiError(404, 'NOT_FOUND', 'Course not found', request);
-
-    let educatorName = 'Unknown Educator';
-    if (course.educator_id) {
-      const { data: educator } = await supabase.from('users').select('firstName, lastName, email').eq('id', course.educator_id).maybeSingle();
-      if (educator) educatorName = `${educator.firstName || ''} ${educator.lastName || ''}`.trim() || educator.email || 'Unknown Educator';
+    if (learner.user_id !== user.id) return apiError(403, 'FORBIDDEN', 'Only your own course enrollment may be requested', request);
+    const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request, actorId: user.id,
+      subject: { kind: 'user', id: user.id }, mode: 'write', actionKey: 'course.enroll' });
+    if (access instanceof Response) return access;
+    if (!('binding' in access) || access.binding.paymentRequired === true
+      || (access.grant.type !== 'numeric_limit' && access.grant.type !== 'boolean')
+      || access.binding.quota?.period === 'concurrent') return apiError(503, 'UNAVAILABLE', 'Course subscription configuration unavailable', request);
+    const operationId = parsed.data.operationId ?? crypto.randomUUID();
+    const result = await supabase.rpc('enroll_subscription_course', { p_actor: user.id, p_learner: learner.id,
+      p_course: courseId, p_operation: operationId, p_authorization: subscriptionActionAuthorization(access) });
+    if (result.error) {
+      if (result.error.code === '42501') return apiError(403, 'FORBIDDEN', 'Course enrollment access denied', request);
+      if (result.error.code === '54000') return apiError(402, 'QUOTA_EXCEEDED', 'Course assignment capacity exhausted', request);
+      if (result.error.code === '22023') return apiError(409, 'IDEMPOTENCY_CONFLICT', 'Course enrollment operation differs', request);
+      if (result.error.code === 'P0002') return apiError(404, 'NOT_FOUND', 'Course or learner unavailable', request);
+      return apiDbError(result.error, request);
     }
-
-    const { data: existing } = await supabase.from('course_enrollments').select('*').eq('learner_id', learner.id).eq('course_id', courseId).maybeSingle();
-
-    if (existing) {
-      const updateData: Record<string, unknown> = { last_accessed: new Date().toISOString(), status: existing.status === 'completed' ? 'completed' : 'in_progress' };
-      if (existing.progress === 0) updateData.progress = 1;
-      await supabase.from('course_enrollments').update(updateData).eq('id', existing.id);
-      return apiSuccess({ ...existing, ...updateData }, request);
-    }
-
-    const { data: modulesData } = await supabase.from('course_modules').select('module_id, lessons!fk_module (lesson_id)').eq('course_id', courseId);
-    const totalLessons = modulesData?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0;
-
-    const { data: enrollment, error: enrollError } = await supabase.from('course_enrollments').insert({
-      learner_id: learner.id, learner_name: learner.name, learner_email: learner.email,
-      course_id: courseId, course_title: course.title, educator_id: course.educator_id,
-      educator_name: educatorName, enrolled_at: new Date().toISOString(), progress: 1,
-      completed_lessons: [], total_lessons: totalLessons, status: 'active', last_accessed: new Date().toISOString(),
-    }).select().single();
-
-    if (enrollError) {
-      if (enrollError.code === '23505') {
-        const { data: dup } = await supabase.from('course_enrollments').select('*').eq('learner_id', learner.id).eq('course_id', courseId).maybeSingle();
-        if (dup) return apiSuccess(dup, request);
-      }
-      return apiDbError(enrollError, request);
-    }
-
-    try { await supabase.rpc('increment_course_enrollment', { course_id_param: courseId }); } catch {}
-    return apiSuccess(enrollment, request, 201);
+    const receipt = z.object({ operationId: z.string().uuid(), created: z.boolean(), enrollment: z.object({
+      id: z.string().uuid(), learner_id: z.string().uuid(), course_id: z.string().uuid(),
+    }).passthrough() }).strict().safeParse(result.data);
+    if (!receipt.success || receipt.data.operationId !== operationId || receipt.data.enrollment.learner_id !== learner.id
+      || receipt.data.enrollment.course_id !== courseId) return apiError(503, 'UNAVAILABLE', 'Course enrollment confirmation differs', request);
+    return apiSuccess(receipt.data.enrollment, request, receipt.data.created ? 201 : 200);
   }
 
   // GET /api/courses/enrollment?learnerEmail=&courseId=

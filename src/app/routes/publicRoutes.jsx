@@ -28,9 +28,6 @@ const PuterDemo = lazy(() => import("@/pages/puter/PuterDemo"));
 const SubscriptionPlans = lazy(() =>
   import("@/pages/subscription/SubscriptionPlans")
 );
-const PaymentCompletion = lazy(() =>
-  import("@/pages/subscription/PaymentCompletion")
-);
 const PaymentSuccess = lazy(() =>
   import("@/features/subscription/ui/shared/PaymentSuccess")
 );
@@ -186,11 +183,13 @@ export const publicRoutes = [
     <Route path="/signin/university" element={<GuestOnlyRoute><SignInUniversity /></GuestOnlyRoute>} />
     <Route path="/signup/university-admin" element={<GuestOnlyRoute><UniversityAdmin /></GuestOnlyRoute>} />
 
+    <Route path="/subscription/manage" element={<ProtectedRoute><SubscriptionManage /></ProtectedRoute>} />
     <Route path="/subscription/plans" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
     <Route path="/subscription/plans/:type/:mode" element={<ProtectedRoute><SubscriptionPlans /></ProtectedRoute>} />
 
-    <Route path="/subscription/payment" element={<PaymentCompletion />} />
+    {/* Legacy /subscription/payment route redirects to canonical plans page */}
+    <Route path="/subscription/payment" element={<Navigate to="/subscription/plans" replace />} />
     <Route path="/subscription/payment/success" element={<PaymentSuccess />} />
     <Route path="/subscription/payment/failure" element={<PaymentFailure />} />
     <Route path="/accept-invitation" element={<AcceptInvitationPage />} />

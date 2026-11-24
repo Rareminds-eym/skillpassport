@@ -1,3 +1,5 @@
+import { catalogInventoryDatabase } from './catalog-inventory';
+import { withSubscriptionReadInvalidation } from './read-cache';
 import { z } from 'zod';
 import { getAcceptedOfferSnapshot, getStoredReferralCodeAndRole } from '../../api/payments/lib/promoCode';
 import { completePlanSelection } from '../../shared/lib/org-subscription';
@@ -7,15 +9,15 @@ import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponse
 import { readApplicationPlanProjectionByRevision } from './publication';
 
 /**
- * R16/R17: checkout reads the user's already-accepted, immutable offer snapshot — it never
+ * R16/R17: checkout reads the user's already-accepted, immutable offer snapshot â€” it never
  * recomputes a fresh live adjustment here. SkillPassport remains the sole authority on promo
  * validity, role eligibility and quota (promo_codes/promo_redemptions,
  * functions/api/payments/lib/promoCode.ts); this just reproduces, against the exact accepted
  * revision/price (immutable once published), the bounded additive adjustment that yields the
- * exact accepted amount — SSO independently derives the real published price itself and
+ * exact accepted amount â€” SSO independently derives the real published price itself and
  * enforces its own fixed safety cap (see sso-worker's MAX_PROMO_ADJUSTMENT_MINOR); no secret or
  * signature is involved. No accepted offer, or a quote for a different plan/price/revision than
- * the one accepted, means no discount is attempted here — never a blocked checkout.
+ * the one accepted, means no discount is attempted here â€” never a blocked checkout.
  */
 async function computePromoAdjustment(
   env: Parameters<typeof getServiceClient>[0],
@@ -28,21 +30,21 @@ async function computePromoAdjustment(
     const accepted = await getAcceptedOfferSnapshot(supabase, actorId, role, referralCode);
     if (!accepted) return null;
     const offer = accepted.offer;
-    // The quote must be for exactly the plan/price/revision the user explicitly accepted —
+    // The quote must be for exactly the plan/price/revision the user explicitly accepted â€”
     // anything else is a stale or mismatched selection, not a use of the locked-in price.
     if (offer.revisionId !== revisionId || offer.priceId !== priceId) return null;
     const stored = await readApplicationPlanProjectionByRevision(supabase, revisionId, productId);
     const draft = stored.projection.bundle.draft;
-    // The resolved revision's plan must be exactly the one this offer was accepted for — this is
+    // The resolved revision's plan must be exactly the one this offer was accepted for â€” this is
     // the real safety invariant (independent of role or any role/code-default plan mapping), now
     // that per-code plan targeting means "the one eligible plan" is no longer fixed per role.
     if (draft.plan.id !== offer.planId) return null;
     const matchedPrice = draft.prices.find(p => p.id === priceId);
     if (!matchedPrice) return null;
-    // Published revisions are immutable once published, so this base price never changes —
+    // Published revisions are immutable once published, so this base price never changes â€”
     // this reproduces exactly the adjustment that produced the accepted amount, every time.
     const priceAdjustmentMinor = offer.amountMinor - matchedPrice.amountMinor;
-    if (priceAdjustmentMinor < 1) return null;
+    if (!Number.isSafeInteger(priceAdjustmentMinor) || offer.amountMinor < 1 || priceAdjustmentMinor > 1_000_000) return null;
     return { planId: draft.plan.id, priceAdjustmentMinor };
   } catch {
     return null;
@@ -93,14 +95,17 @@ export const commerceEndpoint = subscriptionConsumerEndpoint('POST', async conte
   const { operationId, request } = parsed.data;
   if (request.subject.kind === 'user' ? request.subject.id !== context.actorId : request.subject.id !== context.organizationId) return subscriptionFailure(403);
   // Server-to-server only: SkillPassport decides the promo discount itself, from its own stored
-  // referralCode/role/quota state — the browser never sees or supplies this value.
+  // referralCode/role/quota state â€” the browser never sees or supplies this value.
   let outgoingRequest: typeof request = request;
-  if (request.kind === 'quote' && request.purpose === 'purchase' && request.priceId) {
+  if (request.kind === 'quote' && (request.purpose === 'purchase' || request.purpose === 'upgrade') && request.priceId) {
     const adjustment = await computePromoAdjustment(context.env as Parameters<typeof getServiceClient>[0],
       context.actorId, context.productId, request.revisionId, request.priceId);
     if (adjustment) outgoingRequest = { ...request, priceAdjustmentMinor: adjustment.priceAdjustmentMinor } as typeof request;
   }
-  const raw = await context.env.SSO_SERVICE!.executeSubscriptionCommerce(context.token, context.productId, operationId, outgoingRequest);
+  const execute = () => context.env.SSO_SERVICE!.executeSubscriptionCommerce(context.token, context.productId, operationId, outgoingRequest);
+  const raw = ['activate', 'settle', 'refund', 'refund_confirm'].includes(request.kind)
+    ? await withSubscriptionReadInvalidation(catalogInventoryDatabase(context.env), context.productId, execute,
+      request.subject.kind === 'user' ? request.subject.id : undefined) : await execute();
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
   const rejected = rejectionSchema.safeParse(raw);
   if (rejected.success) return Response.json({ error: 'Subscription request rejected', reason: rejected.data.reason }, { status: 409, headers: subscriptionResponseHeaders });
@@ -127,7 +132,7 @@ export const commerceEndpoint = subscriptionConsumerEndpoint('POST', async conte
     // checkout does. Failure surfaces as 503; replaying the same settlement is idempotent.
     if (s.subject.kind === 'user' && s.purpose !== 'retake') await completePlanSelection(getServiceClient(context.env as Parameters<typeof getServiceClient>[0]), context.actorId);
     // R16/R17: promo quota is already committed, atomically with its offer snapshot, at explicit
-    // acceptance time (functions/lib/subscriptions/promo-offer.ts) — well before checkout. There
+    // acceptance time (functions/lib/subscriptions/promo-offer.ts) â€” well before checkout. There
     // is nothing left to redeem at settlement; the snapshot read in computePromoAdjustment() above
     // is what determined this settlement's price.
   } else if ((request.kind !== 'refund' && request.kind !== 'refund_confirm') || receipt.settlementId !== request.settlementId || receipt.accessRevoked !== (receipt.status === 'processed')

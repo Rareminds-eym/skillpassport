@@ -87,7 +87,7 @@ import { useLearnerAchievements } from '@/entities/learner';
 import { useLearnerRealtimeActivities } from '@/entities/learner/model/useLearnerRealtimeActivities';
 import { isSchoolLearner, isCollegeLearner, isLearner } from '@/entities/learner/lib/learnerType';
 import { useUserRole } from '@/shared/model/authStore';
-import { useSubscriptionQuery } from '@/features/subscription/model';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 import { PLAN_IDS } from '@/shared/config/subscriptionPlans';
 import { isFreemiumPlan } from '@/shared/lib/isFreemiumPlan';
 import { checkFeatureAccess } from '@/features/subscription/lib/featureGating';
@@ -2532,7 +2532,7 @@ const LearnerDashboard = () => {
                     <div className="px-3.5 py-3">
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <h4 className="text-sm font-semibold text-gray-900 flex-1">
-                          {course.course}
+                          {course.course || course.title || 'Training'}
                         </h4>
                         {course.verified && (
                           <Badge className="shrink-0 !bg-gradient-to-r !from-green-100 !to-emerald-100 !text-green-700 text-[10px] px-2 py-0.5 rounded-full font-semibold">
@@ -2544,7 +2544,7 @@ const LearnerDashboard = () => {
 
                       <div className="flex items-center gap-2 mb-2">
                         <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                        <span className="text-xs text-gray-500">{course.provider}</span>
+                        <span className="text-xs text-gray-500">{course.provider || course.organization || 'Provider not specified'}</span>
                       </div>
 
                       {/* Progress Bar */}

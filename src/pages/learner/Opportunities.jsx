@@ -416,6 +416,7 @@ const Opportunities = () => {
     loading: dataLoading,
     hasLoadedPage,
     error,
+    failure,
     totalCount,
     totalPages,
     refreshOpportunities
@@ -823,6 +824,7 @@ const Opportunities = () => {
                 viewMode={viewMode}
                 setViewMode={setViewMode}
                 opportunities={filteredAndSortedOpportunities}
+                failure={failure}
                 error={error}
                 loading={dataLoading}
                 onRetry={refreshOpportunities}
@@ -1344,7 +1346,7 @@ const Opportunities = () => {
 
 
 // My Jobs Content Component
-const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sortBy, setSortBy, viewMode, setViewMode, opportunities, error, loading, onRetry, selectedOpportunity, appliedJobs, savedJobs, handleToggleSave, handleApply, isApplying, advancedFilters, setAdvancedFilters, currentPage, setCurrentPage, totalCount, totalPages, needsProfileCompletion, navigate, learnerData, canAccessOpportunities, setShowUpgradePrompt, missingFields, completionPercentage, profileCheckLoading, profileCheckError, onRetryProfile, detailsOpen, onDetailsOpenChange, onSelect, onRequestApply, applicationRequest, accessCheckLoading, accessCheckError, onRetryAccess }) => {
+const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sortBy, setSortBy, viewMode, setViewMode, opportunities, error, failure, loading, onRetry, selectedOpportunity, appliedJobs, savedJobs, handleToggleSave, handleApply, isApplying, advancedFilters, setAdvancedFilters, currentPage, setCurrentPage, totalCount, totalPages, needsProfileCompletion, navigate, learnerData, canAccessOpportunities, setShowUpgradePrompt, missingFields, completionPercentage, profileCheckLoading, profileCheckError, onRetryProfile, detailsOpen, onDetailsOpenChange, onSelect, onRequestApply, applicationRequest, accessCheckLoading, accessCheckError, onRetryAccess }) => {
   const activeFilters = Object.values(advancedFilters).some(value=>Array.isArray(value)?value.length:!!value);
   return <div className="grid min-w-0 grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px] 2xl:grid-cols-[minmax(0,1fr)_360px]"><div className="min-w-0">
     <LearningMatches onSelectJob={onSelect}/>
@@ -1358,7 +1360,7 @@ const MyJobsContent = ({ onRecommendationsChange, searchTerm, setSearchTerm, sor
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2"><p role="status" aria-live="polite" className="text-sm leading-5 text-slate-600">{loading ? 'Updating jobs…' : error ? 'Jobs could not be loaded' : `${totalCount} ${totalCount===1?'job':'jobs'}${totalCount>0?` · Page ${currentPage} of ${totalPages}`:''}`}</p>{activeFilters&&<button type="button" onClick={()=>setAdvancedFilters(emptyOpportunityFilters())} className="min-h-8 rounded px-2 text-sm font-medium text-blue-700 hover:bg-blue-50">Clear all filters</button>}</div>
     </section>
-    {error ? <section role="alert" className="rounded-lg border border-red-200 bg-white p-6"><h2 className="text-base font-semibold text-slate-900">Unable to load jobs</h2><p className="mt-2 text-sm leading-5 text-slate-600">Your search and filters have been kept. Please try again.</p><button type="button" onClick={onRetry} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">Retry jobs</button></section> : <>
+    {error ? <section role="alert" className="rounded-lg border border-red-200 bg-white p-6"><h2 className="text-base font-semibold text-slate-900">{failure?.title || 'Unable to load jobs'}</h2><p className="mt-2 text-sm leading-5 text-slate-600">{failure && !failure.retryable ? failure.message : 'Your search and filters have been kept. Please try again.'}</p>{failure?.action ? <button type="button" onClick={()=>navigate(failure.action.to)} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">{failure.action.label}</button> : <button type="button" onClick={onRetry} className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm text-white">Retry jobs</button>}</section> : <>
       <div className="min-w-0">
         <div aria-busy={loading} className="min-w-0">
           {loading && !opportunities.length ? <div role="status" className="rounded-lg border bg-white p-6 text-sm text-slate-600">Loading jobs…</div> : opportunities.length ? <div className={viewMode==='grid'?'grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3':'space-y-3'}>{opportunities.map(job=>{const Card=viewMode==='grid'?OpportunityCard:OpportunityListItem;return <Card key={job.id} opportunity={job} isSelected={selectedOpportunity?.id===job.id} isApplied={appliedJobs.has(job.id)} isSaved={savedJobs.has(job.id)} isApplying={isApplying} learnerData={learnerData} onClick={()=>onSelect(job)} onApply={()=>onRequestApply(job)} onToggleSave={handleToggleSave}/>;})}</div> : <section className="rounded-lg border border-slate-200 bg-white p-8 text-center"><h2 className="text-base font-semibold text-slate-900">No jobs match your search</h2><p className="mt-2 text-sm leading-5 text-slate-600">Try another keyword or remove a filter.</p><button type="button" onClick={()=>{setSearchTerm('');setAdvancedFilters(emptyOpportunityFilters());}} className="mt-4 rounded-md border border-slate-300 px-4 py-2 text-sm">Reset search and filters</button></section>}

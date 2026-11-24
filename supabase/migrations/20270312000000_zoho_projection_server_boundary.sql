@@ -6,7 +6,8 @@ SET LOCAL search_path=pg_catalog,public;
 -- Supabase owns browser-callable pg_graphql metadata helpers and pg_net queue
 -- helpers. These reviewed routines do not read identities. Attest exact
 -- extension-owned definitions, not names or whole schemas; implementation
--- drift makes the boundary fail closed.
+-- drift makes the boundary fail closed. Version 0.19.5 is approved only with
+-- the same already-reviewed function hashes used by the newer versions.
 CREATE FUNCTION public.zoho_private_boundary_safe_routine(p_oid oid) RETURNS boolean
 LANGUAGE sql STABLE SET search_path=pg_catalog,public AS $safe$
  SELECT EXISTS(
@@ -19,7 +20,7 @@ LANGUAGE sql STABLE SET search_path=pg_catalog,public AS $safe$
     '0e461d6c599638cc70f1e14d4175b3f002709e08b55e27b16b7b17245e9f00b8')
    AND EXISTS(SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname='graphql' AND c.relname='seq_schema_version' AND c.relkind='S'))
-   OR (e.extname='pg_net' AND e.extversion IN ('0.20.3','0.20.4')
+   OR (e.extname='pg_net' AND e.extversion IN ('0.19.5','0.20.3','0.20.4')
     AND encode(sha256(convert_to(pg_get_functiondef(p.oid),'UTF8')),'hex') IN (
      'a314aa28b0562dc66cc6816ef80ac8572f0f8dad52a2384436aead7f5773e391',
      '0f55d7f307a02151f2ced9329d5b5ac8274a7099254fed625aaaa2722764a39b')))

@@ -12,7 +12,8 @@
 import { getServiceClient } from '../../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 
-const UNIVERSITY_GRADES = new Set(['after12', 'after10', 'college']);
+const UNIVERSITY_GRADES = new Set(['after12', 'college', 'university']);
+const SCHOOL_GRADES = new Set(['middle', 'middle_school', 'middleschool', 'high', 'high_school', 'highschool', 'higher_secondary', 'after10']);
 
 function mapLearnerInfo(learner: any, gradeLevel: string | null, streamId: string | null, attemptContext?: any) {
   const program = learner?.programs;
@@ -25,13 +26,21 @@ function mapLearnerInfo(learner: any, gradeLevel: string | null, streamId: strin
   const orgSchool = (learner as any)?.school?.name;
   const orgUni = (learner as any)?.universityOrganization?.name;
   const institution = orgCollege || orgSchool || orgUni || learner?.college_school_name || learner?.school_name || learner?.university || '—';
-  const isCollege = UNIVERSITY_GRADES.has(gradeLevel as string) || String(learner?.grade || '').toLowerCase().includes('college') || String(gradeLevel || '').toLowerCase()==='college' || !!learner?.specialization || !!contextProgram;
+  const learnerType = String(learner?.learner_type || '').toLowerCase();
+  const level = String(gradeLevel || '').toLowerCase();
+  const isSchool = learnerType === 'school_student' || learnerType === 'school' ||
+    (learnerType !== 'college_student' && SCHOOL_GRADES.has(level));
+  const isCollege = !isSchool && (learnerType === 'college_student' || UNIVERSITY_GRADES.has(level) ||
+    String(learner?.grade || '').toLowerCase().includes('college') || !!learner?.college_id ||
+    !!learner?.university_college_id || !!learner?.universityCollegeId);
   return {
     name: learner?.name || '—',
-    regNo: learner?.enrollmentNumber || learner?.admission_number || learner?.roll_number || learner?.registration_number || '—',
+    regNo: isCollege
+      ? learner?.enrollmentNumber || learner?.admission_number || learner?.roll_number || learner?.registration_number || '—'
+      : learner?.roll_number || learner?.admission_number || learner?.registration_number || learner?.enrollmentNumber || '—',
     rollNumberType: isCollege ? 'university' : 'school',
-    college: institution,
-    school: institution,
+    college: isCollege ? institution : '—',
+    school: isCollege ? '—' : institution,
     stream: streamId || derivedStream,
     grade: learner?.grade || attemptContext?.rawGrade || gradeLevel || '—',
     branchField: learner?.branch_field || contextProgram || '—',

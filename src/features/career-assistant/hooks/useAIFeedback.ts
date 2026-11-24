@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { useUser } from '@/shared/model/authStore';
 import { getLogger } from '@/shared/config/logging';
@@ -30,6 +30,13 @@ export function useAIFeedback() {
   const [feedbackState, setFeedbackState] = useState<FeedbackState>({});
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const ownerEpoch = useRef(0);
+  const writeVersions = useRef(new Map<string, number>());
+  useEffect(() => {
+    setFeedbackState({}); setLoading(null); setError(null);
+    writeVersions.current.clear();
+    return () => { ownerEpoch.current++; };
+  }, [user?.id]);
 
   const submitFeedback = useCallback(async (
     feedback: AIFeedback,
@@ -42,6 +49,9 @@ export function useAIFeedback() {
       return false;
     }
 
+    const owner = ownerEpoch.current;
+    const advanceWrite = () => writeVersions.current.set(feedback.messageId, (writeVersions.current.get(feedback.messageId) ?? 0) + 1);
+    advanceWrite();
     setLoading(feedback.messageId);
     setError(null);
 
@@ -59,6 +69,8 @@ export function useAIFeedback() {
         userFeedback: userFeedbackText || null,
       });
 
+      if (owner !== ownerEpoch.current) return false;
+      advanceWrite();
       setFeedbackState(prev => ({
         ...prev,
         [feedback.messageId]: {
@@ -70,19 +82,23 @@ export function useAIFeedback() {
 
       return true;
     } catch (err: any) {
+      if (owner !== ownerEpoch.current) return false;
+      advanceWrite();
       logger.error('Failed to submit AI feedback', err instanceof Error ? err : new Error(String(err)));
       setError(err.message || 'Failed to submit feedback');
       return false;
     } finally {
-      setLoading(null);
+      if (owner === ownerEpoch.current) setLoading(null);
     }
   }, [user?.id]);
 
   const loadFeedback = useCallback(async (conversationId: string) => {
     if (!user?.id || !conversationId) return;
-
+    const owner = ownerEpoch.current;
+    const versionsAtRead = new Map(writeVersions.current);
     try {
       const response: any = await apiGet(`/career/feedback?conversationId=${encodeURIComponent(conversationId)}`);
+      if (owner !== ownerEpoch.current) return;
       const data = response.data || [];
 
       const newState: FeedbackState = {};
@@ -92,6 +108,9 @@ export function useAIFeedback() {
         user_rating: number | null;
         user_feedback: string | null;
       }) => {
+        // A response started before a local write cannot replace that write's
+        // acknowledged value, even when network responses arrive out of order.
+        if (writeVersions.current.get(item.message_id) !== versionsAtRead.get(item.message_id)) return;
         newState[item.message_id] = {
           thumbsUp: item.thumbs_up,
           rating: item.user_rating,

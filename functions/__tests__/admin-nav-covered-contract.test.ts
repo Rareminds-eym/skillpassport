@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
+import { HYBRID_PLAN_ID } from '../lib/subscription-config';
 const f = vi.hoisted(() => ({ entitlement: vi.fn(), tables: [] as string[] }));
 vi.mock('../lib/auth', () => ({ withAuth: (fn: unknown) => fn, getContextUser: () => ({ id: 'admin', roles: ['college_admin'], org_id: 'org' }) }));
 vi.mock('../shared/lib/org-subscription', () => ({ resolveUserEntitlement: f.entitlement }));
@@ -20,7 +21,7 @@ import { onRequestGet } from '../api/admin-nav-features';
 const get = () => onRequestGet({ env: {}, request: new Request('https://app.test/api/admin-nav-features?role=college_admin') } as never);
 beforeEach(() => { vi.clearAllMocks(); f.tables = []; });
 it('uses the covered contract rather than independently selecting subscription history for navigation', async () => {
-  f.entitlement.mockResolvedValue({ plan_code: 'hybrid', features: ['admissions_data'] });
+  f.entitlement.mockResolvedValue({ plan_code: 'opaque', plan_id: HYBRID_PLAN_ID, features: ['admissions_data'] });
   const response = await get();
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ data: { isHybrid: true, organizationId: 'org', features: ['admissions_data'] } });

@@ -72,7 +72,7 @@ export function LearningOutcomeFields({ value, onChange, units, assessmentTypes,
         <p className="!text-xs !leading-5 text-gray-500">Saved for your college and available to its educators.</p>
         {createType.error && <p role="alert" className="!text-sm text-red-700">{createType.error.message}</p>}
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700" onClick={() => setCreating(false)}>Cancel new type</button>
+          <button type="button" className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700" onClick={() => setCreating(false)}>Cancel</button>
           <button type="button" disabled={!newName.trim() || createType.isPending} className="min-h-11 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white disabled:opacity-50" onClick={() => createType.mutate()}>{createType.isPending ? 'Saving...' : 'Save assessment type'}</button>
         </div>
       </div>}

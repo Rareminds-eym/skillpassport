@@ -1,19 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiGet, apiDelete } from '@/shared/api/apiClient';
-import { getLogger } from '@/shared/config/logging';
-
-import { CONVERSATIONS_PER_PAGE, MAX_MESSAGES_PER_CONVERSATION } from '../constants';
-
 import { useUser } from '@/shared/model/authStore';
+import type { Message } from '../model/message';
 
-const logger = getLogger('career-conversations-hook');
-export interface ConversationMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
-
+export type ConversationMessage = Message;
 export interface Conversation {
   id: string;
   title: string;
@@ -22,152 +12,116 @@ export interface Conversation {
   updated_at: string;
   message_count?: number;
 }
+interface Envelope<T> { data: T }
+interface ConversationPage { conversations: Omit<Conversation, 'messages'>[]; hasMore: boolean }
 
-export interface UseCareerConversationsReturn {
-  conversations: Conversation[];
-  currentConversation: Conversation | null;
-  loading: boolean;
-  error: string | null;
-  fetchConversations: () => Promise<void>;
-  loadConversation: (id: string) => Promise<void>;
-  createNewConversation: () => void;
-  deleteConversation: (id: string) => Promise<void>;
-  setCurrentConversationId: (id: string | null) => void;
-  currentConversationId: string | null;
-  hasMore: boolean;
-  loadMore: () => Promise<void>;
-}
-
-export function useCareerConversations(): UseCareerConversationsReturn {
+export function useCareerConversations() {
   const user = useUser();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingConversation, setLoadingConversation] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const page = useRef(0);
+  const listSequence = useRef(0);
+  const selectionSequence = useRef(0);
+  const listBusy = useRef(false);
+  const ownerEpoch = useRef(0);
 
-  const fetchConversations = useCallback(async (reset = false) => {
-    if (!user?.id) return;
-
+  const fetchPage = useCallback(async (reset: boolean) => {
+    if (!user?.id || (!reset && listBusy.current)) return;
+    const sequence = ++listSequence.current;
+    const nextPage = reset ? 0 : page.current + 1;
+    listBusy.current = true;
     setLoading(true);
     setError(null);
-
     try {
-      const currentPage = reset ? 0 : page;
-      const response: any = await apiGet(`/career/conversations?page=${currentPage}`);
-
-      const data = response.data || {};
-      const items = (data.conversations || []).map((conv: any) => ({
-        ...conv,
-        messages: [] as ConversationMessage[],
-      }));
-
-      setConversations(prev => {
-        if (reset) return items;
-        return [...prev, ...items];
-      });
-
-      if (reset) setPage(0);
-      setHasMore(data.hasMore ?? false);
-    } catch (err) {
-      logger.error('Exception in fetchConversations', err instanceof Error ? err : new Error(String(err)), { page });
-      setError('Failed to load conversations');
+      const response = await apiGet<Envelope<ConversationPage>>(`/career/conversations?page=${nextPage}`);
+      if (!Array.isArray(response.data?.conversations) || typeof response.data.hasMore !== 'boolean') {
+        throw new Error('Invalid conversation list');
+      }
+      if (sequence !== listSequence.current) return;
+      const items = response.data.conversations.map(conv => ({ ...conv, messages: [] }));
+      setConversations(previous => [...new Map((reset ? items : [...previous, ...items]).map(conv => [conv.id, conv])).values()]);
+      page.current = nextPage;
+      setHasMore(response.data.hasMore);
+    } catch {
+      if (sequence === listSequence.current) setError('Unable to load conversation history. Try again.');
     } finally {
-      setLoading(false);
+      if (sequence === listSequence.current) {
+        listBusy.current = false;
+        setLoading(false);
+      }
     }
-  }, [user?.id, page]);
-
-  const loadMore = useCallback(async () => {
-    if (!hasMore || loading) return;
-    setPage(prev => prev + 1);
-    await fetchConversations(false);
-  }, [hasMore, loading, fetchConversations]);
+  }, [user?.id]);
+  const fetchConversations = useCallback(() => fetchPage(true), [fetchPage]);
+  const loadMore = useCallback(async () => { if (hasMore) await fetchPage(false); }, [hasMore, fetchPage]);
 
   const loadConversation = useCallback(async (id: string) => {
-    if (!user?.id) return;
-
-    setLoading(true);
+    if (!user?.id) return false;
+    const sequence = ++selectionSequence.current;
+    setLoadingConversation(true);
     setError(null);
-
     try {
-      const response: any = await apiGet(`/career/conversation?id=${encodeURIComponent(id)}`);
-      const data = response.data;
-
-      if (!data) {
-        setError('Failed to load conversation');
-        return;
-      }
-
-      const allMessages = data.messages || [];
-      const limitedMessages = allMessages.slice(-MAX_MESSAGES_PER_CONVERSATION);
-
-      setCurrentConversation({
-        ...data,
-        messages: limitedMessages,
-      });
+      const response = await apiGet<Envelope<Conversation>>(`/career/conversation?id=${encodeURIComponent(id)}`);
+      if (response.data?.id !== id || !Array.isArray(response.data.messages)) throw new Error('Invalid conversation');
+      if (sequence !== selectionSequence.current) return false;
+      // Virtualization controls rendering; history data must not be silently truncated.
+      setCurrentConversation(response.data);
       setCurrentConversationId(id);
-    } catch (err) {
-      logger.error('Exception in loadConversation', err instanceof Error ? err : new Error(String(err)));
-      setError('Failed to load conversation');
+      return true;
+    } catch {
+      if (sequence === selectionSequence.current) setError('Unable to open this conversation. Select it again to retry.');
+      return false;
     } finally {
-      setLoading(false);
+      if (sequence === selectionSequence.current) setLoadingConversation(false);
     }
   }, [user?.id]);
 
   const createNewConversation = useCallback(() => {
+    selectionSequence.current++;
+    setLoadingConversation(false);
     setCurrentConversation(null);
     setCurrentConversationId(null);
+    setError(null);
   }, []);
 
   const deleteConversation = useCallback(async (id: string) => {
-    if (!user?.id) return;
-
-    const previousConversations = conversations;
-    setConversations(prev => prev.filter(c => c.id !== id));
-
-    if (currentConversationId === id) {
-      setCurrentConversation(null);
-      setCurrentConversationId(null);
-    }
-
+    if (!user?.id) return false;
+    setError(null);
+    const owner = ownerEpoch.current;
+    selectionSequence.current++;
+    setLoadingConversation(false);
     try {
+      // Commit UI deletion only after the server acknowledges it.
       await apiDelete(`/career/conversations?id=${encodeURIComponent(id)}`);
-    } catch (err) {
-      logger.error('Exception in deleteConversation', err instanceof Error ? err : new Error(String(err)));
-      setError('Failed to delete conversation');
-      setConversations(previousConversations);
-      if (currentConversationId === id) {
-        const conv = previousConversations.find(c => c.id === id);
-        if (conv) {
-          setCurrentConversation(conv);
-          setCurrentConversationId(id);
-        }
-      }
+      if (owner !== ownerEpoch.current) return false;
+      listSequence.current++;
+      listBusy.current = false;
+      setLoading(false);
+      setConversations(previous => previous.filter(conv => conv.id !== id));
+      setCurrentConversation(previous => previous?.id === id ? null : previous);
+      setCurrentConversationId(previous => previous === id ? null : previous);
+      return true;
+    } catch {
+      if (owner === ownerEpoch.current) setError('Unable to delete this conversation. Your history has been kept.');
+      return false;
     }
-  }, [user?.id, currentConversationId, conversations]);
+  }, [user?.id]);
 
   useEffect(() => {
-    if (user?.id) {
-      fetchConversations(true);
-    }
+    setConversations([]);
+    setCurrentConversation(null);
+    setCurrentConversationId(null);
+    setHasMore(false);
+    if (user?.id) void fetchConversations();
+    return () => { ownerEpoch.current++; listSequence.current++; selectionSequence.current++; listBusy.current = false; };
   }, [user?.id, fetchConversations]);
 
-  return {
-    conversations,
-    currentConversation,
-    loading,
-    error,
-    fetchConversations: () => fetchConversations(true),
-    loadConversation,
-    createNewConversation,
-    deleteConversation,
-    setCurrentConversationId,
-    currentConversationId,
-    hasMore,
-    loadMore,
-  };
+  return { conversations, currentConversation, currentConversationId, setCurrentConversationId,
+    loading, loadingConversation, error, hasMore, fetchConversations, loadMore,
+    loadConversation, createNewConversation, deleteConversation };
 }
-
 export default useCareerConversations;

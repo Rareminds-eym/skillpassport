@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { HYBRID_PLAN_ID } from './subscription-config';
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
@@ -97,13 +98,6 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
 
       const blocked = requireVerifiedEmail(authedContext.user);
       if (blocked) return blocked;
-
-      // DIDAC 2026 promo-code redemption is intentionally NOT hooked here any
-      // more (R16/R17): quota is only ever consumed together with an explicit,
-      // re-validated "accept this offer" step (see
-      // functions/lib/subscriptions/promo-offer.ts), never automatically on
-      // sign-in. See TSD-didac-2026-dynamic-promo-code-management.yml.
-
       if (authedContext.user.user_metadata?.must_change_password === true) {
         return Response.json({ error: 'Change your temporary password before accessing teaching data',
           code: 'PASSWORD_CHANGE_REQUIRED' }, { status: 403 });
@@ -140,7 +134,7 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
 
       if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
         const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user,
-          (env as unknown as PagesEnv).HYBRID_PLAN_ID);
+          HYBRID_PLAN_ID);
         if (featureDenied) return featureDenied;
       }
 

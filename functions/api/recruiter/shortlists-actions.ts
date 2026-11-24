@@ -1,8 +1,10 @@
 import { getActiveOrgId, getOrgMemberUserIds } from '../../lib/org-ownership';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
+import type { AuthenticatedPagesContext as AuthenticatedContext, PagesEnv } from '../../lib/types';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
+import {verifyOrgAccess,PERMISSIONS} from '../../lib/permissions';
 
 export const onRequest = async (context: any) => {
   if (context.request.method === 'POST') return onRequestPost(context);
@@ -28,6 +30,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
     if (!orgId) return apiError(403, 'FORBIDDEN', 'An active organization is required', context.request);
     const members = await getOrgMemberUserIds(supabase, orgId);
     if (!members.includes(user.id)) return apiError(403, 'FORBIDDEN', 'Active membership is required', context.request);
+    if(!(await verifyOrgAccess(supabase,user.id,orgId,PERMISSIONS.VIEW_CANDIDATES)).allowed)
+      return apiError(403,'FORBIDDEN','Candidate viewing permission is required',context.request);
+    const access=await requireSubscriptionAccess({env:context.env as PagesEnv,request:context.request,actorId:user.id,
+      subject:{kind:'organization',id:orgId},mode:'read'});
+    if(access instanceof Response)return access;
     const {
       searchQuery,
       advancedFilters = {},

@@ -1,0 +1,180 @@
+.workspace { --ink: #152c30; --muted: #52696b; --line: #d3dedb; --paper: #fafbf8; --accent: #136557; color: var(--ink); background: var(--paper); max-width: 1160px; margin: auto; padding: clamp(20px, 5vw, 64px); font-family: inherit; line-height: 1.6; }
+.workspace * { box-sizing: border-box; }
+.hero { padding-bottom: 40px; border-bottom: 1px solid var(--ink); margin-bottom: 44px; background: radial-gradient(ellipse at top right, #dfebe2, transparent 65%); }
+.hero h1 { font-family: Georgia, 'Times New Roman', serif; font-size: clamp(38px, 5vw, 68px); font-weight: 400; letter-spacing: -.04em; line-height: 1.08; max-width: 680px; margin: 18px 0; }
+.eyebrow, .sectionHeading > span { text-transform: uppercase; letter-spacing: .15em; font-size: .72rem; font-weight: 700; }
+.sectionHeading { margin: 40px 0 22px; }
+.workspace h2 { font-family: Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 2rem; margin: 8px 0 14px; }
+.workspace h3 { font-family: Georgia, 'Times New Roman', serif; font-size: 1.5rem; margin: 8px 0 14px; }
+.workspace p { color: var(--muted); }
+.catalog, .pools { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 22px; }
+.plan, .pool, .current, .actions { background: white; border: 1px solid var(--line); border-radius: 4px; padding: 26px; margin: 22px 0; }
+.plan { border-top: 4px solid var(--accent); margin: 0; display: flex; flex-direction: column; }
+.current { border-left: 4px solid var(--accent); }
+.notice { border: 1px solid var(--line); background: #eef4ef; padding: 22px; margin: 22px 0; overflow-wrap: anywhere; }
+.features, .prices { list-style: none; padding: 0; margin: 20px 0; }
+.features li { display: flex; justify-content: space-between; gap: 15px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: .9rem; }
+.features strong { text-align: right; }
+.prices strong { display: inline-block; font-family: Georgia, serif; font-size: 1.8rem; font-weight: 400; }
+.prices small { display: block; color: var(--muted); }
+.purchase { margin-top: auto; padding-top: 20px; font-size: .85rem; border-top: 1px solid var(--line); }
+.statuses { display: flex; gap: 10px; flex-wrap: wrap; }
+.statuses span { background: #e5f2eb; color: #194c3f; padding: 3px 12px; border-radius: 2px; font-size: .85rem; }
+.workspace button { background: var(--ink); border: 1px solid var(--ink); color: white; padding: 10px 18px; border-radius: 3px; font: inherit; cursor: pointer; }
+.workspace button:hover { background: var(--accent); }
+.workspace button:disabled { cursor: not-allowed; opacity: .5; }
+.workspace :focus-visible { outline: 3px solid #b07527; outline-offset: 3px; }
+.workspace label { display: flex; flex-direction: column; gap: 7px; font-size: .9rem; font-weight: 600; margin: 16px 0; }
+.workspace input, .workspace select, .workspace textarea { font: inherit; background: white; color: var(--ink); border: 1px solid #9badab; padding: 10px; border-radius: 2px; width: 100%; min-width: 0; }
+.workspace textarea { min-height: 90px; }
+.workspace fieldset { border: 0; padding: 0; min-width: 0; }
+.workspace legend { font-weight: 600; }
+.referenceGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 0 20px; }
+.selector { max-width: 700px; }
+.dates, .usage dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; font-size: .88rem; }
+.workspace dd { margin: 0; }
+.usage > div { display: flex; align-items: baseline; gap: 10px; }
+.usage strong { font-family: Georgia, serif; font-size: 2.5rem; font-weight: 400; }
+.usage small { color: var(--muted); overflow-wrap: anywhere; }
+.pagination { display: flex; gap: 12px; margin: 20px 0; }
+@media (max-width: 600px) { .plan, .pool, .current, .actions { padding: 18px; } .dates { grid-template-columns: 1fr; } .dates dd { margin-bottom: 10px; } }
+.badge { align-self: flex-start; background: var(--accent); color: white; font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 4px 10px; border-radius: 3px; margin: 0 0 12px; }
+.tax { color: var(--muted); font-size: .9rem; }
+.sales { align-self: flex-start; border: 1px solid var(--ink); color: var(--ink); padding: 10px 18px; border-radius: 3px; text-decoration: none; margin: 8px 0 16px; font-weight: 600; }
+.sales:hover { background: var(--accent); border-color: var(--accent); color: white; }
+.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.catalogPage { --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --accent: #047857; }
+.featureValue, .comparisonTable th, .comparisonTable td { white-space: normal; overflow-wrap: anywhere; }
+.comparisonTable th, .comparisonTable td { vertical-align: top; }
+.catalogPage .notice { border-radius: 1rem; background: #f8fafc; color: var(--ink); }
+.catalogPage .notice button, .catalogPage .pagination button { background: var(--ink); color: white; border-radius: .75rem; padding: .75rem 1.25rem; }
+.catalogPage .purchase label { display: flex; flex-direction: column; gap: .5rem; margin: 1rem 0; font-weight: 600; }
+.catalogPage .purchase input { width: 100%; min-width: 0; padding: .75rem; border: 1px solid var(--line); border-radius: .75rem; }
+.catalogPage :focus-visible { outline: 3px solid #d97706; outline-offset: 3px; }
+
+/* Match the retained QA management page's slate surfaces and rounded cards. */
+.managementPage { --ink: #0f172a; --muted: #64748b; --line: #e2e8f0; --accent: #047857; max-width: none; padding: 0 0 3rem; min-height: 100vh; background: linear-gradient(135deg, #f8fafc, #fff, #f8fafc); }
+.managementContainer { max-width: 1152px; margin: 0 auto; padding: 2rem; }
+.managementPage .hero { margin: 0; padding: 0; background: #fff; border-bottom: 2px solid var(--line); box-shadow: 0 1px 3px #0f172a0d; }
+.managementPage .hero h1 { margin: 0 0 .75rem; font-size: clamp(2rem, 4vw, 3rem); font-weight: 300; letter-spacing: -.025em; max-width: none; }
+.managementPage .hero p { margin: 0; font-size: 1.125rem; font-weight: 300; }
+.managementHeading { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.managementIcon { display: flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; border-radius: 1rem; color: #fff; background: linear-gradient(135deg, #334155, #1e293b); box-shadow: 0 8px 12px #0f172a1a; flex-shrink: 0; }
+.managementTabs { display: inline-flex; flex-wrap: wrap; gap: .375rem; padding: .375rem; margin-top: 2rem; border: 1px solid var(--line); border-radius: 1rem; background: #fff; box-shadow: 0 10px 15px #0f172a12; }
+.managementPage .managementTabs button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; padding: .75rem 1.5rem; background: transparent; border: 0; color: #475569; border-radius: .75rem; font-size: .875rem; font-weight: 600; }
+.managementPage .managementTabs button[aria-selected="true"] { background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; box-shadow: 0 6px 12px #0f172a26; }
+.managementGrid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 1.5rem; margin: 1.5rem 0; align-items: start; }
+.managementPrimary, .managementSidebar { min-width: 0; display: flex; flex-direction: column; gap: 1.5rem; }
+.managementPage .managementCard, .managementPage .current, .managementPage .actions, .managementPage .plan, .managementPage .pool { border: 2px solid var(--line); border-radius: 1.5rem; background: #fff; padding: 1.5rem; margin: 0; box-shadow: 0 10px 15px #0f172a0a, 0 4px 6px #0f172a05; overflow-wrap: anywhere; }
+.managementPage .managementCard + .managementCard { margin-top: 1.5rem; }
+.managementPage .current { border-left: 2px solid var(--line); }
+.managementPage .current h2 { font-size: 1.875rem; }
+.managementPage h3 { display: flex; align-items: center; gap: .5rem; font-weight: 300; font-size: 1.25rem; }
+.managementPage .eyebrow { color: #64748b; font-size: .75rem; letter-spacing: .08em; }
+.managementPage .statuses span { color: #047857; background: #d1fae5; border-radius: 999px; font-size: .75rem; font-weight: 700; text-transform: capitalize; }
+.managementPage .dates { padding: 1rem; background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid var(--line); border-radius: 1rem; }
+.managementPage .dates dt { color: #64748b; }
+.managementPage .dates dd { font-weight: 600; }
+.managementPage .features li { align-items: flex-start; }
+.managementPage .features strong { color: #047857; }
+.managementPage .notice { background: #f8fafc; border: 2px solid var(--line); border-radius: 1.5rem; }
+.managementPage button, .managementLink { border-radius: 1rem; background: linear-gradient(135deg, #1e293b, #0f172a); color: #fff; border: 0; padding: .75rem 1rem; font-size: .875rem; font-weight: 600; }
+.managementPage button:hover { background: #334155; }
+.managementLink { display: inline-flex; text-decoration: none; border: 2px solid #cbd5e1; background: #fff; color: var(--ink); }
+.managementLink:hover { background: #f8fafc; }
+.managementPage input, .managementPage select, .managementPage textarea { border: 1px solid #cbd5e1; border-radius: .75rem; }
+.managementPage .sectionHeading { margin-top: 0; }
+.managementPage .selector { max-width: none; }
+.managementPage .selector select { max-width: 100%; }
+.managementPage summary { cursor: pointer; font-weight: 600; }
+.managementPage .usage strong { color: #1e40af; }
+.managementPage :focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+.managementPage [hidden] { display: none; }
+@media (max-width: 1023px) { .managementGrid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .managementContainer { padding: 1.25rem; } .managementPage .managementCard, .managementPage .current, .managementPage .actions, .managementPage .pool { padding: 1.25rem; } .managementPage .managementTabs button { padding: .75rem 1rem; } .managementPage .dates { grid-template-columns: minmax(0, 1fr); } }
+.managementIdentity { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+.managementIdentity > span { display: inline-flex; align-items: center; gap: .375rem; padding: .375rem .75rem; border: 1px solid #e2e8f0; border-radius: 1rem; background: #f1f5f9; color: #334155; font-size: .75rem; font-weight: 600; }
+.managementIdentity > .managementRole { background: #fef3c7; border-color: #fde68a; color: #b45309; text-transform: capitalize; }
+
+.managementPage .statuses span[data-state="active"] { color: #fff; background: linear-gradient(90deg, #10b981, #059669); }
+.managementPage .statuses span[data-state="paused"], .managementPage .statuses span[data-state="grace_period"] { color: #fff; background: linear-gradient(90deg, #f59e0b, #d97706); }
+.managementPage .statuses span[data-state="cancelled"], .managementPage .statuses span[data-state="expired"] { color: #334155; background: #e2e8f0; }
+
+/* Preserve the QA palette while sharing row sizes across each group of plan cards. */
+.catalogPage, .managementPage { min-width: 0; font-family: inherit; line-height: 1.5; }
+.catalogPage * { box-sizing: border-box; }
+.catalogHeading { text-wrap: balance; }
+.optionTabs { max-width: 100%; flex-wrap: wrap; justify-content: center; }
+.optionTabs button { justify-content: center; min-height: 44px; }
+.planGrid { grid-template-columns: minmax(0, 1fr); gap: 1.5rem; }
+.planCard { min-width: 0; display: grid; grid-row: span 4; grid-template-rows: subgrid; row-gap: 0; }
+.planCardBody { display: contents; }
+.planCardHeader { min-width: 0; padding: 1.75rem 1.5rem 0; overflow-wrap: anywhere; }
+.planCardHeader h3 { margin: 0; line-height: 1.25; text-wrap: balance; }
+.cardFeatures { min-width: 0; padding: 0 1.5rem 1.5rem; }
+.cardFeatures li { min-height: 3.75rem; }
+.cardFeatures svg { flex-shrink: 0; }
+.cardPrices { min-width: 0; padding: .75rem 1.5rem 1.25rem; color: var(--ink); }
+.cardPrices .prices { margin: 0; }
+.cardPrices .prices strong { font-family: inherit; font-weight: 700; font-size: clamp(1.75rem, 2.4vw, 2.25rem); line-height: 1.2; font-variant-numeric: tabular-nums; letter-spacing: -.025em; }
+.prices li + li { margin-top: 1rem; }
+.billingPeriod { display: block; font-size: .875rem; margin-top: .375rem; }
+.prices small, .tax { font-size: .875rem; line-height: 1.5; }
+.cardActions { padding: 0 1.5rem 1.5rem; min-width: 0; }
+.cardActions .purchase { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; }
+.cardActions button, .cardActions a { min-height: 48px; line-height: 1.4; overflow-wrap: anywhere; }
+.cardActions a:hover { filter: brightness(.95); }
+.catalogPage [hidden] { display: none; }
+.catalogPage :focus-visible { outline: 3px solid #1e40af; outline-offset: 4px; }
+.summaryHero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1.5rem; align-items: start; }
+.summaryHero h2 { overflow-wrap: anywhere; }
+.daysRemaining { padding: 1.5rem; }
+.subscriptionSummary h3 { line-height: 1.3; }
+.subscriptionSummary [aria-hidden="true"] { flex-shrink: 0; }
+.comparisonRegion { scroll-margin-top: 6rem; }
+.comparisonTable { font-size: .875rem; }
+.comparisonTable th, .comparisonTable td { padding: 1.25rem; vertical-align: middle; }
+.comparisonTable thead th { padding: 1.5rem 1.25rem; }
+.comparisonTable thead .prices { margin: .75rem 0 0; }
+.comparisonTable .prices strong { font-family: inherit; font-weight: 700; font-size: 1.5rem; color: white; line-height: 1.3; }
+.comparisonTable thead .tax, .comparisonTable thead small { color: #cbd5e1; }
+.comparisonTable thead .billingPeriod { color: #e2e8f0; }
+.comparisonTable tbody th[scope="row"] { position: sticky; left: 0; background: #f8fafc; z-index: 1; box-shadow: 1px 0 #e2e8f0; }
+.comparisonTable tbody th[colspan] { padding: 0; }
+.comparisonTable tbody th[colspan] button { padding: 1rem 1.25rem; }
+.managementPage h1, .managementPage h2, .managementPage h3, .managementPage .prices strong, .managementPage .usage strong { font-family: inherit; }
+.managementPage .hero h1 { font-weight: 600; }
+.managementPage h3 { font-weight: 600; }
+.managementPage .features li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+.managementPage .features strong { overflow-wrap: anywhere; }
+.managementPage .statuses span[data-state="active"] { background: #047857; }
+.managementPage .statuses span[data-state="paused"], .managementPage .statuses span[data-state="grace_period"] { color: #78350f; background: #fef3c7; }
+.managementHeading > div { min-width: 0; }
+.managementIdentity > span { max-width: 100%; overflow-wrap: anywhere; }
+.managementTabs { max-width: 100%; }
+.managementTabs button { min-height: 44px; }
+.managementPage summary { padding: .5rem 0; }
+.managementPage details[open] > summary { margin-bottom: 1rem; }
+.managementPage .dates { margin: 1rem 0 1.5rem; }
+.managementPage .dates dd { min-width: 0; overflow-wrap: anywhere; }
+@media (min-width: 768px) { .planGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .planGrid:has(> :nth-child(4)) { grid-template-columns: repeat(4, minmax(0, 1fr)); } .planGrid:not(:has(> :nth-child(4))) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 639px) {
+  .summaryHero { grid-template-columns: minmax(0, 1fr); }
+  .daysRemaining { display: flex; justify-content: center; padding: 1rem; }
+  .daysRemaining > div { display: flex; align-items: baseline; gap: .75rem; }
+  .summaryHero h2 { font-size: 2rem; }
+  .comparisonTable th[scope="row"] { max-width: 9rem; }
+  .optionTabs button { flex: 1 1 auto; padding: .75rem 1rem; }
+  .planCardHeader, .cardPrices, .cardFeatures, .cardActions { padding-left: 1.25rem; padding-right: 1.25rem; }
+  .catalogPage .notice { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .catalogPage *, .managementPage * { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+
+.catalogPage .planState { min-height: 1.25rem; font-size: .875rem; line-height: 1.25rem; color: #047857; font-weight: 600; margin: 0 0 .25rem; }
+
+.comparisonTable col:first-child { width: clamp(8rem, 24vw, 12rem); }
+
+.cardFeatures { display: flex; flex-direction: column; }
+.cardFeatures > button { margin-top: auto; }
+.managementPage p { font-size: 1rem; line-height: 1.6; font-weight: 400; }

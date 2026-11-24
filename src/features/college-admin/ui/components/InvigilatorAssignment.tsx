@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import { Users, Calendar, Clock, MapPin, AlertCircle } from 'lucide-react';
+import { Users, Calendar, Clock, MapPin, AlertCircle, Download, Loader2 } from 'lucide-react';
 import type { ExamSlot } from '@/shared/types/college';
 
 interface Faculty {
   id: string;
   name: string;
-  department: string;
-  assigned_slots: number;
+  department?: string;
+  assigned_slots?: number;
 }
 
 interface InvigilatorAssignmentProps {
@@ -15,6 +15,8 @@ interface InvigilatorAssignmentProps {
   onClose: () => void;
   examSlots: ExamSlot[];
   availableFaculty: Faculty[];
+  assessmentName?: string;
+  courses?: any[];
   onAssign: (slotId: string, facultyId: string) => Promise<{ success: boolean; error?: string }>;
   onRemove: (slotId: string, facultyId: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -24,18 +26,171 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
   onClose,
   examSlots,
   availableFaculty,
+  assessmentName,
+  courses,
   onAssign,
   onRemove,
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<ExamSlot | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [localSlots, setLocalSlots] = useState<ExamSlot[]>(examSlots);
+
+  useEffect(() => {
+    setLocalSlots(examSlots);
+  }, [examSlots]);
+
+  // Dynamically calculate slot counts per faculty member
+  const facultySlotsCount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const slot of localSlots) {
+      for (const invigId of slot.invigilators || []) {
+        counts[invigId] = (counts[invigId] || 0) + 1;
+      }
+    }
+    return counts;
+  }, [localSlots]);
+
+  const handleExportDutyRoster = async () => {
+    try {
+      setExporting(true);
+      setError(null);
+
+      const jspdfModule = await import('jspdf');
+      const jsPDF = jspdfModule.jsPDF || jspdfModule.default;
+      const autoTableModule = await import('jspdf-autotable');
+      const autoTable = autoTableModule.default || (autoTableModule as any).autoTable;
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Header Banner
+      doc.setFillColor(30, 64, 175); // Deep Indigo/Blue
+      doc.rect(0, 0, pageWidth, 28, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text('EXAMINATION CELL - INVIGILATION DUTY ROSTER', pageWidth / 2, 12, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      const subTitle = assessmentName ? `Assessment: ${assessmentName}` : 'Academic Examination Schedule';
+      doc.text(
+        `${subTitle}  |  Generated: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+        pageWidth / 2,
+        21,
+        { align: 'center' }
+      );
+
+      // Table Rows
+      const tableRows: any[] = [];
+      let rowIdx = 1;
+
+      // Sort exam slots chronologically
+      const sortedSlots = [...localSlots].sort((a, b) => {
+        const dateA = new Date(`${a.exam_date}T${a.start_time || '00:00'}`).getTime();
+        const dateB = new Date(`${b.exam_date}T${b.start_time || '00:00'}`).getTime();
+        return dateA - dateB;
+      });
+
+      for (const slot of sortedSlots) {
+        const dateFormatted = slot.exam_date
+          ? new Date(slot.exam_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '—';
+        const timeFormatted = `${slot.start_time || ''} - ${slot.end_time || ''}`;
+        const room = slot.room ? `Room ${slot.room}` : 'TBD';
+        const batch = slot.batch_section ? `Batch ${slot.batch_section}` : '—';
+
+        // Find course details
+        const courseObj = (courses || []).find((c: any) => c.id === slot.course_id);
+        const courseDisplay = courseObj
+          ? `${courseObj.course_code || courseObj.code || ''} ${courseObj.course_name || courseObj.name || ''}`.trim()
+          : 'Course Scheduled';
+
+        const assignedInvigilators = (slot.invigilators || []).map((id: string) => {
+          const f = availableFaculty.find((fac: any) => fac.id === id);
+          return f ? `${f.name} (${f.department || 'Faculty'})` : 'Faculty';
+        });
+
+        const invigilatorText = assignedInvigilators.length > 0 ? assignedInvigilators.join('\n') : 'Pending Assignment';
+
+        tableRows.push([
+          rowIdx++,
+          dateFormatted,
+          timeFormatted,
+          courseDisplay,
+          room,
+          batch,
+          invigilatorText,
+          '', // Signature cell
+        ]);
+      }
+
+      autoTable(doc, {
+        startY: 34,
+        head: [['#', 'Date', 'Time Slot', 'Subject / Course', 'Hall / Room', 'Batch', 'Assigned Invigilator(s)', 'Invigilator Signature']],
+        body: tableRows.length > 0 ? tableRows : [['-', '-', '-', 'No exam slots scheduled', '-', '-', '-', '-']],
+        theme: 'grid',
+        headStyles: {
+          fillColor: [30, 64, 175],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          valign: 'middle',
+        },
+        styles: {
+          fontSize: 8.5,
+          cellPadding: 3.5,
+          valign: 'middle',
+        },
+        columnStyles: {
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 26, halign: 'center' },
+          2: { cellWidth: 28, halign: 'center' },
+          3: { cellWidth: 50 },
+          4: { cellWidth: 22, halign: 'center' },
+          5: { cellWidth: 20, halign: 'center' },
+          6: { cellWidth: 65 },
+          7: { cellWidth: 35 },
+        },
+        didDrawPage: () => {
+          const pageStr = `Page ${doc.internal.getNumberOfPages()}`;
+          doc.setFontSize(8);
+          doc.setTextColor(100, 100, 100);
+          doc.text('Note: Invigilators are requested to report 15 minutes before exam commencement.', 14, doc.internal.pageSize.getHeight() - 8);
+          doc.text(pageStr, pageWidth - 20, doc.internal.pageSize.getHeight() - 8, { align: 'right' });
+        },
+      });
+
+      const cleanName = (assessmentName || 'Schedule').replace(/[^a-zA-Z0-9]/g, '_');
+      doc.save(`Duty_Roster_${cleanName}.pdf`);
+      setSuccess('Duty roster exported successfully as PDF!');
+      setTimeout(() => setSuccess(null), 3500);
+    } catch (err: any) {
+      console.error('Failed to export duty roster:', err);
+      setError(err?.message || 'Failed to export duty roster PDF');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAssign = async (slotId: string, facultyId: string) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Optimistically update slots
+    setLocalSlots(prev => prev.map(s => {
+      if (s.id === slotId) {
+        const existing = s.invigilators || [];
+        return { ...s, invigilators: existing.includes(facultyId) ? existing : [...existing, facultyId] };
+      }
+      return s;
+    }));
 
     const result = await onAssign(slotId, facultyId);
 
@@ -43,6 +198,7 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
       setSuccess('Invigilator assigned successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } else {
+      setLocalSlots(examSlots);
       setError(result.error || 'Failed to assign invigilator');
     }
 
@@ -57,12 +213,21 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
     setLoading(true);
     setError(null);
 
+    // Optimistically update slots
+    setLocalSlots(prev => prev.map(s => {
+      if (s.id === slotId) {
+        return { ...s, invigilators: (s.invigilators || []).filter(id => id !== facultyId) };
+      }
+      return s;
+    }));
+
     const result = await onRemove(slotId, facultyId);
 
     if (result.success) {
       setSuccess('Invigilator removed successfully!');
       setTimeout(() => setSuccess(null), 3000);
     } else {
+      setLocalSlots(examSlots);
       setError(result.error || 'Failed to remove invigilator');
     }
 
@@ -88,7 +253,7 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
             <div>
               <h2 className="text-xl font-bold text-gray-900">Invigilator Assignment</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Assign faculty to exam slots • {examSlots.length} slots
+                Assign faculty to exam slots • {localSlots.length} slots
               </p>
             </div>
             <button
@@ -121,12 +286,15 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
               <h3 className="font-semibold">Available Faculty</h3>
             </div>
             <div className="grid grid-cols-4 gap-4">
-              {availableFaculty.slice(0, 4).map(faculty => (
-                <div key={faculty.id} className="text-sm">
-                  <p className="font-medium text-blue-900">{faculty.name}</p>
-                  <p className="text-blue-700">{faculty.assigned_slots} slots assigned</p>
-                </div>
-              ))}
+              {availableFaculty.slice(0, 4).map(faculty => {
+                const slotsCount = facultySlotsCount[faculty.id] ?? faculty.assigned_slots ?? 0;
+                return (
+                  <div key={faculty.id} className="text-sm">
+                    <p className="font-medium text-blue-900">{faculty.name}</p>
+                    <p className="text-blue-700">{slotsCount} {slotsCount === 1 ? 'slot' : 'slots'} assigned</p>
+                  </div>
+                );
+              })}
               {availableFaculty.length > 4 && (
                 <div className="text-sm text-blue-700">
                   +{availableFaculty.length - 4} more
@@ -137,7 +305,7 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
 
           {/* Exam Slots */}
           <div className="space-y-4">
-            {examSlots.map((slot) => {
+            {localSlots.map((slot) => {
               const assignedFaculty = slot.invigilators?.map(id => getFacultyById(id)).filter(Boolean) || [];
               const availableFaculty = getAvailableFacultyForSlot(slot);
 
@@ -220,7 +388,7 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
                               <div>
                                 <p className="text-sm font-medium text-gray-900">{faculty.name}</p>
                                 <p className="text-xs text-gray-600">
-                                  {faculty.department} • {faculty.assigned_slots} slots
+                                  {faculty.department || 'Faculty'} • {facultySlotsCount[faculty.id] ?? faculty.assigned_slots ?? 0} slots
                                 </p>
                               </div>
                               <button
@@ -251,10 +419,21 @@ const InvigilatorAssignment: React.FC<InvigilatorAssignmentProps> = ({
               Close
             </button>
             <button
-              onClick={() => alert('Duty roster will be exported as PDF')}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              onClick={handleExportDutyRoster}
+              disabled={exporting}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              Export Duty Roster
+              {exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating PDF...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Export Duty Roster
+                </>
+              )}
             </button>
           </div>
         </div>

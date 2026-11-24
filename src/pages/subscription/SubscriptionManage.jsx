@@ -1,19 +1,6 @@
-import { SubscriptionRouteGuard } from '@/features/subscription';
 import MySubscription from './MySubscription';
 
-/**
- * Subscription Management Route Component
- * - Shows subscription management page for authenticated users with active subscriptions
- * - Redirects unauthenticated users to subscription plans
- * - Uses centralized route guard for optimized status checking
- */
-function SubscriptionManage() {
-  return (
-    <SubscriptionRouteGuard mode="manage" showSkeleton={true}>
-      <MySubscription />
-    </SubscriptionRouteGuard>
-  );
+/** Authentication is enforced by the public/role route and authorization by owner APIs. */
+export default function SubscriptionManage() {
+  return <MySubscription />;
 }
-
-export default SubscriptionManage;
-

@@ -5,16 +5,17 @@ import { checkHybridFeatureAccess } from '../lib/hybrid-features';
 import { requireAdminRequestFeature, resolveAdminFeaturePolicy } from '../lib/admin-feature-request';
 import { syncAllFeatureKeysCache } from '../lib/sync-shadow';
 
+const HYBRID = 'a0000000-0000-4000-8000-000000000040';
 function database(options: { type?: string; status?: string; features?: string[]; rows?: any[]; errorTable?: string; catalog?: any[]; memberships?: any[] } = {}) {
   const type = options.type || 'college';
   const rows = (options.rows || [{ id: 'sub-new', organization_id: 'org-1', is_organization_subscription: true,
     plan_code: 'hybrid', status: options.status || 'active', features: options.features || [],
     subscription_start_date: '2026-01-01', synced_at: '2026-09-01' }]).map(row => ({
-      user_id: 'owner', plan_id: 'plan-hybrid', subscription_end_date: '2099-01-01', ...row,
+      user_id: 'owner', plan_id: HYBRID, subscription_end_date: '2099-01-01', ...row,
     }));
   const tables: Record<string, any[]> = {
     users: [{ id: 'member-admin', metadata: {} }, { id: 'owner', metadata: {} }],
-    plans_cache: [{ id: 'plan-hybrid', name: 'Hybrid', plan_code: 'hybrid', business_type: 'b2b', is_active: true, applicable_entities: [type] }],
+    plans_cache: [{ id: HYBRID, name: 'Hybrid', plan_code: 'hybrid', business_type: 'b2b', is_active: true, applicable_entities: [type] }],
     organizations: [{ id: 'org-1', organization_type: type, admin_id: 'owner' }],
     organization_members: options.memberships || [{ user_id: 'member-admin', organization_id: 'org-1', status: 'active' }],
     subscription_cache: rows,
@@ -59,81 +60,90 @@ const admin = { sub: 'member-admin', roles: ['college_admin'], org_id: 'org-1' }
 
 describe('Hybrid organization grants', () => {
   it('resolves member admins even when they are not organizations.admin_id', async () => {
-    expect(await checkHybridFeatureAccess(database(), 'member-admin', 'college', 'circulars')).toMatchObject({ allowed: false });
+    expect(await checkHybridFeatureAccess(database(), 'member-admin', 'college', HYBRID, 'circulars')).toMatchObject({ allowed: false });
   });
   it('accepts verified org scope for users with multiple memberships', async () => {
-    expect(await checkHybridFeatureAccess(database({ features: ['circulars'] }), 'member-admin', 'college', 'circulars', 'org-1')).toEqual({ allowed: true, reason: undefined });
+    expect(await checkHybridFeatureAccess(database({ features: ['circulars'] }), 'member-admin', 'college', HYBRID, 'circulars', 'org-1')).toEqual({ allowed: true, reason: undefined });
   });
   it.each(['active', 'paused', 'cancelled', 'grace_period', 'expired'])('keeps restrictions for %s contracts', async status => {
-    expect(await checkHybridFeatureAccess(database({ status }), 'owner', 'college', 'circulars', 'org-1')).toMatchObject({ allowed: false });
+    expect(await checkHybridFeatureAccess(database({ status }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toMatchObject({ allowed: false });
   });
   it.each(['organizations', 'organization_members', 'subscription_cache', 'feature_keys_cache'])('fails closed on %s errors', async errorTable => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    expect(await checkHybridFeatureAccess(database({ errorTable }), 'member-admin', 'college', 'circulars')).toMatchObject({ allowed: false, unavailable: true });
+    expect(await checkHybridFeatureAccess(database({ errorTable }), 'member-admin', 'college', HYBRID, 'circulars')).toMatchObject({ allowed: false, unavailable: true });
     vi.restoreAllMocks();
+  });
+  it('identifies Hybrid by the adopted plan id, never the purchase code, and fails closed without configuration', async () => {
+    const rows = [{ id: 'new', organization_id: 'org-1', is_organization_subscription: true, plan_id: HYBRID, plan_code: `pln_${'d'.repeat(32)}`,
+      status: 'active', subscription_start_date: '2026-01-01', synced_at: '2026-01-01', features: [] }];
+    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toMatchObject({ allowed: false });
+    // A legacy code alone no longer marks a contract as Hybrid.
+    const coded = [{ ...rows[0], plan_id: 'b0000000-0000-4000-8000-000000000001', plan_code: 'hybrid' }];
+    expect(await checkHybridFeatureAccess(database({ rows: coded }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toEqual({ allowed: true });
+    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', undefined, 'circulars', 'org-1')).toMatchObject({ allowed: false, unavailable: true });
   });
   it('selects the effective contract rather than the most recently synced row', async () => {
     const rows = [
-      { id: 'old', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'starter', status: 'active', subscription_start_date: '2025-01-01', synced_at: '2026-10-01' },
-      { id: 'new', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'hybrid', status: 'active', subscription_start_date: '2026-01-01', synced_at: '2026-01-01', features: [] },
+      { id: 'old', organization_id: 'org-1', is_organization_subscription: true, plan_id: 'b0000000-0000-4000-8000-000000000001', plan_code: 'starter', status: 'active', subscription_start_date: '2025-01-01', synced_at: '2026-10-01' },
+      { id: 'new', organization_id: 'org-1', is_organization_subscription: true, plan_id: HYBRID, plan_code: 'hybrid', status: 'active', subscription_start_date: '2026-01-01', synced_at: '2026-01-01', features: [] },
     ];
-    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', 'circulars', 'org-1')).toMatchObject({ allowed: false });
-    rows[0].plan_code = 'hybrid'; rows[1].plan_code = 'starter';
-    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', 'circulars', 'org-1')).toEqual({ allowed: true });
+    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toMatchObject({ allowed: false });
+    rows[0].plan_id = HYBRID; rows[1].plan_id = 'b0000000-0000-4000-8000-000000000001';
+    expect(await checkHybridFeatureAccess(database({ rows }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toEqual({ allowed: true });
   });
   it('does not enforce explicitly retired features', async () => {
     const catalog = [{ key: 'circulars', role: 'college_admin', product_code: 'skillpassport', is_active: false }];
-    expect(await checkHybridFeatureAccess(database({ catalog }), 'owner', 'college', 'circulars', 'org-1')).toMatchObject({ allowed: true });
+    expect(await checkHybridFeatureAccess(database({ catalog }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toMatchObject({ allowed: true });
   });
   it('rejects missing catalogs and ignores keys belonging to another product', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const catalog = [{ key: 'circulars', role: 'college_admin', product_code: 'lte', is_active: false }];
-    expect(await checkHybridFeatureAccess(database({ catalog }), 'owner', 'college', 'circulars', 'org-1')).toMatchObject({ allowed: false, unavailable: true });
+    expect(await checkHybridFeatureAccess(database({ catalog }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toMatchObject({ allowed: false, unavailable: true });
     vi.restoreAllMocks();
   });
   it('preserves no-subscription access after successful organization lookup', async () => {
-    expect(await checkHybridFeatureAccess(database({ rows: [] }), 'owner', 'college', 'circulars', 'org-1')).toEqual({ allowed: true });
+    expect(await checkHybridFeatureAccess(database({ rows: [] }), 'owner', 'college', HYBRID, 'circulars', 'org-1')).toEqual({ allowed: true });
   });
 });
 
 describe('request boundary', () => {
   it('still gates shared college handlers called by school administrators', async () => {
     const user = { ...admin, roles: ['school_admin'] };
-    expect((await requireAdminRequestFeature(database({ type: 'school' }), request('college-admin/college-circulars', 'get-circulars'), user))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database({ type: 'school' }), request('college-admin/college-circulars', 'get-circulars'), user, HYBRID))?.status).toBe(403);
     expect(await requireAdminRequestFeature(database({ type: 'school', features: ['parent_communication'],
-      catalog: [{ key: 'parent_communication', role: 'school_admin', product_code: 'skillpassport', is_active: true }] }), request('college-admin/college-circulars', 'get-circulars'), user)).toBeNull();
+      catalog: [{ key: 'parent_communication', role: 'school_admin', product_code: 'skillpassport', is_active: true }] }), request('college-admin/college-circulars', 'get-circulars'), user, HYBRID)).toBeNull();
   });
   it.each(['get-circulars', 'get-circular-by-id', 'create-circular', 'update-circular', 'delete-circular', 'toggle-circular-status'])('protects %s before dispatch', async action => {
-    const denied = await requireAdminRequestFeature(database(), request('college-admin/college-circulars', action), admin);
+    const denied = await requireAdminRequestFeature(database(), request('college-admin/college-circulars', action), admin, HYBRID);
     expect(denied?.status).toBe(403);
   });
   it('allows a granted mutation and leaves the request body readable by the handler', async () => {
     const req = request('college-admin/college-circulars', 'create-circular');
-    expect(await requireAdminRequestFeature(database({ features: ['circulars'] }), req, admin)).toBeNull();
+    expect(await requireAdminRequestFeature(database({ features: ['circulars'] }), req, admin, HYBRID)).toBeNull();
     expect((await req.json()).action).toBe('create-circular');
   });
   it('protects GET aliases and generic writes', async () => {
-    expect((await requireAdminRequestFeature(database(), new Request('https://example.test/api/college-admin/alias?action=get-assessments'), admin))?.status).toBe(403);
-    expect((await requireAdminRequestFeature(database(), request('college-admin/alias', 'delete-table', { table: 'college_circulars' }), admin))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database(), new Request('https://example.test/api/college-admin/alias?action=get-assessments'), admin, HYBRID))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database(), request('college-admin/alias', 'delete-table', { table: 'college_circulars' }), admin, HYBRID))?.status).toBe(403);
   });
   it('does not let generic queries modify entitlements or embed restricted tables', async () => {
     const db = database({ features: ['library'] });
-    expect((await requireAdminRequestFeature(db, request('college-admin/alias', 'update-table', { table: 'subscription_cache' }), admin))?.status).toBe(403);
-    expect((await requireAdminRequestFeature(db, request('college-admin/alias', 'query-table', { table: 'library_books', select_columns: '*,exams:assessments(*)' }), admin))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(db, request('college-admin/alias', 'update-table', { table: 'subscription_cache' }), admin, HYBRID))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(db, request('college-admin/alias', 'query-table', { table: 'library_books', select_columns: '*,exams:assessments(*)' }), admin, HYBRID))?.status).toBe(403);
   });
   it('protects school and university operations', async () => {
     for (const [type, path, action] of [['school', 'school-admin/actions', 'deleteLibraryBook'], ['university', 'university-admin/actions', 'upsert-course']]) {
-      const denied = await requireAdminRequestFeature(database({ type }), request(path, action), { ...admin, roles: [`${type}_admin`] });
+      const denied = await requireAdminRequestFeature(database({ type }), request(path, action), { ...admin, roles: [`${type}_admin`] }, HYBRID);
       expect(denied?.status).toBe(403);
     }
   });
   it('allows department choices for User Management without allowing department edits', async () => {
     const db = database({ features: ['user_management'] });
-    expect(await requireAdminRequestFeature(db, request('college-admin/academic', 'get-departments'), admin)).toBeNull();
-    expect((await requireAdminRequestFeature(db, request('college-admin/academic', 'update-department'), admin))?.status).toBe(403);
+    expect(await requireAdminRequestFeature(db, request('college-admin/academic', 'get-departments'), admin, HYBRID)).toBeNull();
+    expect((await requireAdminRequestFeature(db, request('college-admin/academic', 'update-department'), admin, HYBRID))?.status).toBe(403);
   });
   it('denies unknown operations on Hybrid and preserves unrelated routes', async () => {
-    expect((await requireAdminRequestFeature(database(), request('college-admin/future', 'new-operation'), admin))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database(), request('college-admin/future', 'new-operation'), admin, HYBRID))?.status).toBe(403);
     expect(resolveAdminFeaturePolicy('/api/payments/get-active-subscription', undefined, {}, 'college')).toBeNull();
   });
 });
@@ -159,15 +169,15 @@ describe('admissions scope and grants', () => {
   });
   it('permits scoped class choices for admissions without faculty or class-management grants', async () => {
     const db = database({ features: ['admissions_data'], catalog: [{ key: 'admissions_data', role: 'college_admin', product_code: 'skillpassport', is_active: true }] });
-    expect(await requireAdminRequestFeature(db, request('college-admin/admissions', 'get-admission-classes'), admin)).toBeNull();
-    expect((await requireAdminRequestFeature(db, request('college-admin/classes', 'update-class'), admin))?.status).toBe(403);
-    expect((await requireAdminRequestFeature(database(), request('college-admin/admissions', 'get-admission-context'), admin))?.status).toBe(403);
+    expect(await requireAdminRequestFeature(db, request('college-admin/admissions', 'get-admission-classes'), admin, HYBRID)).toBeNull();
+    expect((await requireAdminRequestFeature(db, request('college-admin/classes', 'update-class'), admin, HYBRID))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database(), request('college-admin/admissions', 'get-admission-context'), admin, HYBRID))?.status).toBe(403);
   });
   it('uses the covered Hybrid contract when newer cancelled standard history is expired', async () => {
     const rows = [
       { id: 'z-hybrid', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'hybrid', status: 'active', subscription_start_date: '2026-01-01', subscription_end_date: '2099-01-01', features: [] },
       { id: 'a-standard', organization_id: 'org-1', is_organization_subscription: true, plan_code: 'starter', status: 'cancelled', subscription_start_date: '2026-03-01', subscription_end_date: '2026-04-01' },
     ];
-    expect((await requireAdminRequestFeature(database({ rows }), request('college-admin/college-circulars', 'get-circulars'), admin))?.status).toBe(403);
+    expect((await requireAdminRequestFeature(database({ rows }), request('college-admin/college-circulars', 'get-circulars'), admin, HYBRID))?.status).toBe(403);
   });
 });

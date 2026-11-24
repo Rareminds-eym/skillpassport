@@ -40,6 +40,8 @@ export function usePublishedCatalog() {
   return useRead<Catalog>(useCallback(async signal => {
     const first = await api.catalog(signal);
     const plans = [...first.plans];
+    let eligiblePlanId = first.eligiblePlanId;
+    let offerAccepted = first.offerAccepted;
     const ids = new Set(plans.map(plan => plan.plan.id));
     const cursors = new Set<string>();
     let cursor = first.nextCursor;
@@ -53,6 +55,11 @@ export function usePublishedCatalog() {
         || page.audience !== first.audience || page.subjectKind !== first.subjectKind
         || JSON.stringify(page.tax) !== JSON.stringify(first.tax)) throw new Error('Published catalog scope differs.');
       if (page.nextCursor !== null && page.nextCursor <= cursor) throw new Error('Published catalog cursor did not advance.');
+      if (page.eligiblePlanId !== null) {
+        if (eligiblePlanId !== null && eligiblePlanId !== page.eligiblePlanId) throw new Error('Promo offer changed while loading. Please refresh.');
+        eligiblePlanId = page.eligiblePlanId;
+        offerAccepted = page.offerAccepted;
+      }
       for (const plan of page.plans) {
         if (ids.has(plan.plan.id)) throw new Error('Published catalog repeated a plan.');
         ids.add(plan.plan.id);
@@ -61,7 +68,7 @@ export function usePublishedCatalog() {
       cursor = page.nextCursor;
     }
     // This is a complete presentation collection; the service response remains unchanged.
-    return {...first, plans, nextCursor: null};
+    return { ...first, plans, nextCursor: null, eligiblePlanId, offerAccepted };
   }, []));
 }
 export function useCurrentSubscription(row: Discovery['items'][number], context: Discovery) {
@@ -292,7 +299,28 @@ export function useSubscriptionCheckout(scope: Pick<Catalog, 'actorId' | 'produc
       const payable = { ...journal, ...('paymentId' in settlementRequest ? { paymentId: proof.razorpay_payment_id } : {}), settlementRequest };
       store(payable, journal); journal = payable;
       await confirm(journal, signal);
-    } catch (error) { update({ status: 'error', message: errorMessage(error), journal }); }
+    } catch (error) {
+      const isDismissal = error instanceof Error && error.message.toLowerCase().includes('dismissed');
+      if (isDismissal && journal && !journal.paymentId && !journal.settlementRequest) {
+        try {
+          update({ status: 'pending', stage: 'status' });
+          const result = await inspectCheckout(journal, signal);
+          journal = result.journal;
+          if (result.status === 'unpaid' || result.status === 'expired' || result.status === 'not_issued') {
+            release(journal);
+            update({ status: 'idle' });
+            return;
+          }
+          if (result.status === 'paid') {
+            update({ status: 'paid', journal });
+            return;
+          }
+        } catch {
+          // If status inspection fails, fall back to default error
+        }
+      }
+      update({ status: 'error', message: errorMessage(error), journal });
+    }
   }
   const pay = async () => {
     if (busy.current || state.status !== 'quoted' || !state.journal.quote) return;
@@ -378,6 +406,22 @@ export function useSubscriptionCheckout(scope: Pick<Catalog, 'actorId' | 'produc
     } catch (error) { update({ status: 'error', message: errorMessage(error), journal }); }
     finally { busy.current = false; }
   };
+  const discardCheckout = async () => {
+    if (busy.current || (state.status !== 'error' && state.status !== 'resumable') || !state.journal) return;
+    busy.current = true; controller.current = new AbortController();
+    let journal = state.journal;
+    try {
+      update({ status: 'pending', stage: 'status' });
+      const result = await inspectCheckout(journal, controller.current.signal); journal = result.journal;
+      if (result.status === 'paid') { update({ status: 'paid', journal }); return; }
+      if (journal.paymentId || journal.settlementRequest) {
+        throw new Error('This checkout has recorded payment evidence. Confirm or reconcile the payment.');
+      }
+      release(journal);
+      update({ status: 'idle' });
+    } catch (error) { update({ status: 'error', message: errorMessage(error), journal }); }
+    finally { busy.current = false; }
+  };
   const reconcileSettlement = async () => {
     if (busy.current || (state.status !== 'error' && state.status !== 'paid') || !state.journal?.quote || !state.journal.order) return;
     busy.current = true;
@@ -412,7 +456,7 @@ export function useSubscriptionCheckout(scope: Pick<Catalog, 'actorId' | 'produc
   const stopCheckout = () => {
     if (state.status === 'pending' && (state.stage === 'sdk' || state.stage === 'checkout')) controller.current?.abort();
   };
-  return { state, quote, purchase, pay, checkPayment, restartExpiredCheckout, resumePayment, reconcileSettlement, cancelQuote, stopCheckout };
+  return { state, quote, purchase, pay, checkPayment, restartExpiredCheckout, resumePayment, discardCheckout, reconcileSettlement, cancelQuote, stopCheckout };
 }
 
 const activationJournal = z.object({

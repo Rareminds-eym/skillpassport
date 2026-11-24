@@ -30,7 +30,6 @@ import { AddLearnerModal } from '@/features/educator';
 import MemberTypeSelector, { MemberType } from './MemberTypeSelector';
 import PricingBreakdown, { PricingBreakdownData } from './PricingBreakdown';
 import SeatSelector from './SeatSelector';
-import HybridPlanCard from './HybridPlanCard';
 import type { HybridCatalogPlan } from '../../lib/hybridPlan';
 
 // Types
@@ -521,7 +520,8 @@ function Step1PlanSelection({
       {/* Plan Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {plans.map((plan) => {
-          if (plan.contactSales) return <HybridPlanCard key={plan.id} plan={plan} compact organizationName={organizationName} />;
+          // Sales-led offers are published catalog plans; this unused legacy wizard no longer renders them.
+          if (plan.contactSales) return null;
           const isSelected = selectedPlan?.id === plan.id;
           const displayPrice = billingCycle === 'annual' 
             ? Math.round(plan.price * 0.83) 

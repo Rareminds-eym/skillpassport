@@ -2,7 +2,8 @@ import { Shield, Sparkles, Calendar, HelpCircle } from 'lucide-react';
 import { ROLE_DASHBOARD_MAP } from '@/features/auth/lib/roleBasedRouter';
 import { ROUTES } from '@/shared/config/constants';
 import { useUser, useUserRole } from '@/shared/model/authStore';
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { lifecycleOperation, lifecycleReferenceFields, type Catalog, type Current, type Discovery, type FeatureGrant, type LifecycleRequest } from '../api/subscriptionExecutionService';
 import { useAcceptPromoOffer, useCatalogPurchaseContext, useCreditHistory, useCreditUsage, useCurrentSubscription, useHistoricalCreditPools, usePublishedCatalog, useSubscriptionAudit, useSubscriptionCheckout, useSubscriptionDiscovery, useSubscriptionExecution, type LoadState } from '../model/useSubscriptionExecution';
@@ -28,10 +29,34 @@ function taxLabel(tax: Catalog['tax'], taxInclusive: boolean) {
 /** Called once after owner-confirmed settlement; the page layer decides where the buyer goes next. */
 type PaymentConfirmed = () => void;
 type CatalogSelection = { managedSubscriptionId?: string; catalogMode?: 'upgrade' | 'renew' };
+const progressMessages: Record<string, string> = {
+  sdk: 'Connecting to Razorpay…', quote: 'Confirming your plan price…', order: 'Creating your payment order…',
+  checkout: 'Complete payment in the Razorpay window. Your plan activates after payment is verified.',
+  settlement: 'Verifying your payment and activating your plan…', status: 'Checking your existing payment…',
+};
+
 function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType<typeof useSubscriptionCheckout>; onPaymentConfirmed?: PaymentConfirmed }) {
   const { state } = checkout;
   const committed = state.status === 'committed';
   useEffect(() => { if (committed) onPaymentConfirmed?.(); }, [committed, onPaymentConfirmed]);
+
+  const toastId = useRef<string | null>(null);
+  useEffect(() => {
+    if (state.status === 'pending') {
+      const msg = progressMessages[state.stage] || 'Processing…';
+      if (toastId.current) {
+        toast.loading(msg, { id: toastId.current });
+      } else {
+        toastId.current = toast.loading(msg);
+      }
+    } else {
+      if (toastId.current) {
+        toast.dismiss(toastId.current);
+        toastId.current = null;
+      }
+    }
+  }, [state.status, state.status === 'pending' ? state.stage : undefined]);
+
   if (state.status === 'idle' && state.notice === 'released') return <div className={styles.notice} role="status">
     <p>No payment was taken. Your previous checkout never created a payment order, so it has been closed.</p>
     <p>You can choose a plan again.</p></div>;
@@ -71,12 +96,8 @@ function CheckoutStatus({ checkout, onPaymentConfirmed }: { checkout: ReturnType
   if (state.status !== 'pending') return <div className={styles.notice} role="alert">
     <p>Your checkout details are incomplete. Check your subscription before starting another payment.</p>
     <a href="/subscription/manage">Review subscription</a></div>;
-  const progress = {
-    sdk: 'Connecting to Razorpay…', quote: 'Confirming your plan price…', order: 'Creating your payment order…',
-    checkout: 'Complete payment in the Razorpay window. Your plan activates after payment is verified.',
-    settlement: 'Verifying your payment and activating your plan…', status: 'Checking your existing payment…',
-  };
-  return <div className={styles.notice} role="status"><p>{progress[state.stage]}</p>
+
+  return <div className="sr-only" role="status"><p>{progressMessages[state.stage]}</p>
     {(state.stage === 'sdk' || state.stage === 'checkout') && <button onClick={checkout.stopCheckout}>
       {state.stage === 'sdk' ? 'Stop connecting' : 'Close payment window'}</button>}</div>;
 }
@@ -96,7 +117,7 @@ function PlanPurchase({ plan, catalog, checkout, current, operations, allowRenew
   // PRD R16/R17: this is the one plan a promo code maps the buyer to, at a locked campaign price.
   // Purchasing it requires explicit acceptance first — a distinct confirmation step, never implied
   // by browsing the catalog or by starting checkout.
-  const needsPromoAcceptance = purpose === 'purchase' && catalog.eligiblePlanId === plan.plan.id && !catalog.offerAccepted;
+  const needsPromoAcceptance = (purpose === 'purchase' || purpose === 'upgrade') && catalog.eligiblePlanId === plan.plan.id && !catalog.offerAccepted;
   const [acceptState, acceptOffer] = useAcceptPromoOffer();
   // The owner fixes the buyer subject per audience: individuals buy for themselves, institutions for their organization.
   const subject = current ? current.state.subject : catalog.subjectKind === 'user' ? { kind: 'user' as const, id: catalog.actorId }
@@ -248,7 +269,8 @@ function PoolUsage({ current, pool, recipientId }: { current: Current; pool: Cur
   return <><ReadPanel state={state} retry={retry}>{usage => <div className={styles.usage}>
     <div><strong>{usage.remaining.toLocaleString()}</strong><span>remaining</span></div>
     <dl><dt>Active allocated</dt><dd>{usage.allocated.toLocaleString()}</dd><dt>Consumed from active allocation</dt><dd>{usage.consumed.toLocaleString()}</dd></dl>
-    <small>As of {new Date(usage.asOf).toLocaleString()} · Recipient {usage.recipient.id}</small>
+    <small>As of {new Date(usage.asOf).toLocaleString()}</small>
+    <details><summary>Support reference</summary><code>{pool.key} · {usage.recipient.id}</code></details>
   </div>}</ReadPanel><button aria-expanded={showHistory} onClick={() => setShowHistory(value => !value)}>{showHistory ? 'Hide allocation history' : 'View allocation history'}</button>
     {showHistory && <PoolHistory current={current} pool={pool} recipientId={recipientId} />}</>;
 }
@@ -257,7 +279,7 @@ export function CreditPool({ current, pool, revisionId }: { current: Current; po
   const [selected, setSelected] = useState('');
   const [invalid, setInvalid] = useState(false);
   const managed = pool.recipient === 'managed_learner';
-  return <article className={styles.pool}><h4>{pool.featureKey.replace(/_/g, ' ')}</h4><p>{pool.key} · {pool.recipient.replace(/_/g, ' ')}</p>
+  return <article className={styles.pool}><h4>{featureName(pool.featureKey)}</h4><p>{enumLabel(pool.recipient)} credits</p>
     {managed && <form onSubmit={event => {
       event.preventDefault(); const result = z.string().uuid().safeParse(recipient.trim());
       setInvalid(!result.success); if (result.success) setSelected(result.data);

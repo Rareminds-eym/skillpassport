@@ -89,15 +89,7 @@ function MemberSubscriptionPage() {
   
   // Handlers
   const handlePurchaseAddOn = useCallback((addOnId: string) => {
-    const addOn = AVAILABLE_ADDONS.find(a => a.id === addOnId);
-    if (addOn) {
-      navigate('/subscription/payment', {
-        state: {
-          plan: addOn,
-          isAddOn: true,
-        },
-      });
-    }
+    navigate('/subscription/manage');
   }, [navigate]);
   
   const handleManageAddOn = useCallback(() => {

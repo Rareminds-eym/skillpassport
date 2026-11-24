@@ -49,14 +49,27 @@ export interface FeatureAccessResult {
   reason?: string;
   planCode?: string;
   requiresUpgrade?: boolean;
+  /** Typed-policy and owner failures must not become boolean purchased add-on grants. */
+  denialIsFinal?: boolean;
 }
 
 export async function checkServerFeatureAccess(
   supabase: SupabaseClient,
   userId: string,
-  feature: string
+  feature: string,
+  acceptedValues?: readonly string[],
 ): Promise<FeatureAccessResult> {
+  let denialIsFinal = true;
   try {
+    // Resolve the feature kind before consulting legacy cached feature names.
+    // A registry failure is not evidence that the feature is an untyped legacy capability.
+    const { data: definition, error: registryError } = await supabase.from('features')
+      .select('feature_type').eq('feature_key', feature).maybeSingle();
+    if (registryError || definition && !['boolean', 'numeric_limit', 'metered', 'enum'].includes(definition.feature_type)) {
+      return { hasAccess: false, reason: 'Unable to verify feature definition', requiresUpgrade: false, denialIsFinal: true };
+    }
+    const typedRequest = definition?.feature_type === 'enum' || acceptedValues !== undefined;
+    denialIsFinal = typedRequest;
     // H5: `.maybeSingle()` errors when two rows match (cancelled history row + fresh
     // resubscription resolve to >1 matches). Fetch newest-active first, then fall back
     // to cancelled/grace_period so the cancelled-preserved-time contract still applies.
@@ -92,6 +105,7 @@ export async function checkServerFeatureAccess(
         hasAccess: false,
         reason: 'Unable to verify subscription',
         requiresUpgrade: false,
+        denialIsFinal,
       };
     }
 
@@ -134,6 +148,19 @@ export async function checkServerFeatureAccess(
       } catch (e) {
         logger.warn('Error resolving organization subscription for user', { error: (e as Error).message, userId });
       }
+    }
+
+    if (typedRequest) {
+      // Grace/cancellation enum semantics are not inferred from a legacy feature-name array.
+      // Only a currently active subscription can supply the typed terms on this path.
+      if (cached?.status !== 'active') {
+        return { hasAccess: false, reason: 'An active subscription with typed terms is required',
+          requiresUpgrade: false, denialIsFinal: true };
+      }
+      const { checkEntitlement } = await import('./entitlement-service');
+      const ent = await checkEntitlement(supabase, orgId || cached.organization_id || userId, feature, acceptedValues);
+      return { hasAccess: ent.allowed, reason: ent.reason, planCode: cached.plan_code,
+        requiresUpgrade: !ent.allowed, denialIsFinal: true };
     }
 
     // Check dynamic Entitlement Engine (Database single source of truth).
@@ -231,6 +258,7 @@ export async function checkServerFeatureAccess(
       hasAccess: false,
       reason: 'Internal error',
       requiresUpgrade: false,
+      denialIsFinal,
     };
   }
 }
@@ -316,12 +344,12 @@ export async function canUpgradeToPlan(
   }
 }
 
-export function requireFeature(feature: string) {
+export function requireFeature(feature: string, acceptedValues?: readonly string[]) {
   return async (
     supabase: SupabaseClient,
     userId: string
   ): Promise<{ allowed: boolean; response?: Response }> => {
-    const accessResult = await checkServerFeatureAccess(supabase, userId, feature);
+    const accessResult = await checkServerFeatureAccess(supabase, userId, feature, acceptedValues);
 
     if (!accessResult.hasAccess) {
       return {
