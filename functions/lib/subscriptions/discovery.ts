@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { applicationFeatureDefinition, catalogInventoryDatabase, readApplicationFeatureInventory } from './catalog-inventory';
 import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponseHeaders } from './current-subscription';
-import { readApplicationPlanProjection } from './publication';
+import { readApplicationPlanProjections } from './publication';
 
 const reference = z.string().uuid().transform(value => value.toLowerCase());
 const text = z.string().min(1).refine(value => value === value.trim());
@@ -124,7 +124,8 @@ export const publishedSubscriptionCatalogEndpoint = subscriptionConsumerEndpoint
   const input = readCursor(context.request);
   if (!input.valid) return subscriptionFailure(400);
   const database = catalogInventoryDatabase(context.env);
-  const features = (await readApplicationFeatureInventory(database)).map(item => {
+  const inventory = await readApplicationFeatureInventory(database);
+  const features = inventory.map(item => {
     const { key, type, ...rest } = applicationFeatureDefinition(item);
     return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
   });
@@ -132,15 +133,19 @@ export const publishedSubscriptionCatalogEndpoint = subscriptionConsumerEndpoint
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
   const page = catalog.parse(raw);
   pageScope(context.actorId, context.productId, page, input.cursor, page.plans.map(item => item.plan.id));
-  await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId);
+  await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId, inventory);
   return Response.json(page, { headers: subscriptionResponseHeaders });
 });
 
 /** Every surface shows terms the application independently stored for the same revision (single catalog source). */
-export async function verifyPublishedTermsAgainstProjections(database: SupabaseClient, plans: readonly z.infer<typeof listedPlanSchema>[], productId: string) {
+export async function verifyPublishedTermsAgainstProjections(database: SupabaseClient, plans: readonly z.infer<typeof listedPlanSchema>[], productId: string,
+  inventory?: Awaited<ReturnType<typeof readApplicationFeatureInventory>>) {
+  if (!plans.length) return;
+  if (plans.some(terms => terms.plan.productId !== productId)) throw new Error('Published product differs');
+  const projections = await readApplicationPlanProjections(database,
+    plans.map(terms => ({ planId: terms.plan.id, revisionId: terms.revisionId })), productId, inventory);
   for (const terms of plans) {
-    if (terms.plan.productId !== productId) throw new Error('Published product differs');
-    const stored = await readApplicationPlanProjection(database, terms.plan.id, terms.revisionId, productId);
+    const stored = projections.get(terms.revisionId)!;
     const { id, schemaVersion: _, ...draft } = stored.projection.bundle.draft;
     const projected = publishedSubscriptionPlanSchema.parse({ ...draft, revisionId: id });
     // Both objects use the same strict schema/key order; compare all declared commercial terms.

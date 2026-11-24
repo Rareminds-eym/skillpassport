@@ -10,7 +10,12 @@ vi.mock('../../auth', () => ({
       (request: Request) => io.authenticated ? handler(request, { user: io.user }) : Response.json({}, { status: 401 })
   })
 }));
-vi.mock('../publication', () => ({ readApplicationPlanProjection: io.projection }));
+vi.mock('../publication', () => ({
+  readApplicationPlanProjections: async (...args: unknown[]) => {
+    const stored = await io.projection(...args);
+    return new Map([[stored.projection.bundle.draft.id, stored]]);
+  }
+}));
 vi.mock('../catalog-inventory', () => ({
   catalogInventoryDatabase: io.database, readApplicationFeatureInventory: io.inventory,
   applicationFeatureDefinition: (value: unknown) => value
@@ -115,7 +120,8 @@ describe('subscription discovery and published catalog HTTP owner contracts', ()
     const response = await run(catalog);
     expect(response.status).toBe(200); expect(await response.json()).toEqual(catalogPage());
     expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', product, [{ key: 'synthetic', type: 'boolean' }], null);
-    expect(io.projection).toHaveBeenCalledExactlyOnceWith({}, plan, revision, product);
+    expect(io.projection).toHaveBeenCalledExactlyOnceWith({}, [{ planId: plan, revisionId: revision }], product, [{ key: 'synthetic', type: 'boolean' }]);
+    expect(io.inventory).toHaveBeenCalledTimes(1);
   });
   it('preserves free offers through owner and application projection without inventing a billing interval', async () => {
     const value = { ...terms(), purchaseMode: 'free', prices: [] };

@@ -123,7 +123,8 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
           }
           if (operation === 'published') {
             const database = catalogInventoryDatabase(context.env);
-            const features = (await readApplicationFeatureInventory(database)).map(item => {
+            const inventory = await readApplicationFeatureInventory(database);
+            const features = inventory.map(item => {
               const { key, type, ...definition } = applicationFeatureDefinition(item);
               return { key, type, ...('options' in definition ? { options: definition.options } : {}) };
             });
@@ -133,7 +134,7 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
             if (denied.success) return failure(denied.data.kind === 'forbidden' ? 403 : 400);
             const page = administrationCatalogSchema.parse(raw);
             if (page.actorId !== claims.data.sub.toLowerCase() || page.productId !== product) throw new Error('Published catalog scope differs');
-            await verifyPublishedTermsAgainstProjections(database, page.plans, product);
+            await verifyPublishedTermsAgainstProjections(database, page.plans, product, inventory);
             return Response.json(page, { headers });
           }
           if (operation === 'drafts') {
