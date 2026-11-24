@@ -9,10 +9,13 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { EnumConfigurationError, enumGrant, enumOptions } from './feature-values';
 
 export interface FeatureEntitlement {
   enabled: boolean;
-  feature_type: 'boolean' | 'numeric_limit' | 'metered';
+  feature_type: 'boolean' | 'numeric_limit' | 'metered' | 'enum';
+  value?: string | null;
+  options?: readonly string[];
   category: string;
   display_name: string;
   limit?: number | null;
@@ -40,7 +43,8 @@ export interface EntitlementManifest {
 export interface EntitlementCheckResult {
   allowed: boolean;
   reason?: string;
-  feature_type?: 'boolean' | 'numeric_limit' | 'metered';
+  feature_type?: 'boolean' | 'numeric_limit' | 'metered' | 'enum';
+  value?: string | null;
   limit?: number | null;
   current_usage?: number;
   remaining?: number;
@@ -164,7 +168,7 @@ export async function getTenantEntitlements(
   // 3. Query all features in catalog
   const { data: featuresList, error: featErr } = await supabase
     .from('features')
-    .select('id, feature_key, display_name, feature_type, category');
+    .select('id, feature_key, display_name, feature_type, category, value_options');
 
   if (featErr) {
     console.error('[getTenantEntitlements] Error querying features catalog:', featErr);
@@ -208,10 +212,13 @@ export async function getTenantEntitlements(
   }
 
   // 5. Query tenant overrides (custom enterprise agreements or pilot grants)
-  const { data: overrides } = await supabase
+  const { data: overrides, error: overrideError } = await supabase
     .from('tenant_entitlement_overrides')
     .select('feature_id, is_enabled, value_numeric, value_text, expires_at')
     .eq('tenant_id', tenantId);
+
+  // A failed override read cannot silently retain a plan enum value that an override may revoke.
+  if (overrideError && (featuresList || []).some(feature => feature.feature_type === 'enum')) throw new EnumConfigurationError();
 
   const now = new Date();
   for (const override of overrides || []) {
@@ -230,7 +237,7 @@ export async function getTenantEntitlements(
   for (const [featureId, featDef] of featureMap.entries()) {
     const ent = resolvedFeatureEntitlements.get(featureId);
     const isEnabled = ent?.is_enabled ?? false;
-    const fType = featDef.feature_type as 'boolean' | 'numeric_limit' | 'metered';
+    const fType = featDef.feature_type as FeatureEntitlement['feature_type'];
 
     const item: FeatureEntitlement = {
       enabled: isEnabled,
@@ -238,6 +245,12 @@ export async function getTenantEntitlements(
       category: featDef.category,
       display_name: featDef.display_name,
     };
+
+    if (fType === 'enum') {
+      item.options = enumOptions(featDef.value_options);
+      item.value = enumGrant(item.options, ent);
+      item.enabled = item.value !== null;
+    }
 
     if (fType === 'numeric_limit') {
       // H4: fail closed. No plan entitlement row for a known numeric-limit feature
@@ -305,9 +318,16 @@ export async function getTenantEntitlements(
 export async function checkEntitlement(
   supabase: SupabaseClient,
   tenantId: string,
-  featureKey: string
+  featureKey: string,
+  acceptedValues?: readonly string[],
 ): Promise<EntitlementCheckResult> {
-  const manifest = await getTenantEntitlements(supabase, tenantId);
+  let manifest: EntitlementManifest;
+  try { manifest = await getTenantEntitlements(supabase, tenantId); }
+  catch (error) {
+    // Return a decisive denial so the existing server gate cannot reinterpret invalid enum terms as legacy access.
+    if (error instanceof EnumConfigurationError) return { allowed: false, feature_type: 'enum', reason: error.message };
+    throw error;
+  }
   const feature = manifest.features[featureKey];
 
   if (!feature) {
@@ -316,6 +336,16 @@ export async function checkEntitlement(
       reason: `Feature '${featureKey}' is not recognized in the capability catalog.`,
     };
   }
+
+  if (feature.feature_type === 'enum') {
+    const validRequest = Array.isArray(acceptedValues) && acceptedValues.length > 0
+      && new Set(acceptedValues).size === acceptedValues.length
+      && acceptedValues.every(value => feature.options?.includes(value));
+    const allowed = validRequest && feature.enabled && typeof feature.value === 'string' && acceptedValues.includes(feature.value);
+    return { allowed, feature_type: 'enum', value: feature.value,
+      reason: allowed ? undefined : 'An enabled enum value accepted by this operation is required' };
+  }
+  if (acceptedValues !== undefined) return { allowed: false, reason: 'Accepted values apply only to enum features' };
 
   if (feature.feature_type === 'boolean') {
     return {

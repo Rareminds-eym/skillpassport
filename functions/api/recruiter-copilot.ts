@@ -7,6 +7,16 @@ import { getServiceClient } from '../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../lib/response';
 import { getActiveOrgId, getOrgOwnedOpportunityIds } from '../lib/org-ownership';
+import { requireSubscriptionAccess, readRecruiterContactPermissions, recruiterCandidateView, prepareRecruiterSubscriptionCredit } from '../shared/lib/subscription-access';
+import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { PagesEnv } from '../lib/types';
+
+// Shortlist generation writes the credit ledger; company actions persist resources.
+const SUBSCRIPTION_WRITE_ACTIONS = new Set([
+  'semantic-find-for-opportunity', 'companies-add', 'companies-update',
+  'companies-update-status', 'companies-delete',
+]);
 
 /**
  * Helper function to validate and extract college ID from authenticated user
@@ -20,45 +30,49 @@ function validateCollegeId(user: any, request: any, startTime: number) {
   return { collegeId };
 }
 
-/**
- * C4 completion: candidate discovery surfaces must not expose contact details
- * for locked candidates. Rows are matched to the caller's unlock ledger by
- * canonical learners.id (or the user_id alias, resolved server-side); contact
- * fields return null unless that org has physically unlocked the candidate.
- * Everything is masked when no org context or no ids are available (fail-closed).
- */
-async function maskLockedContacts(supabase: any, orgId: string | null | undefined, rows: any[]): Promise<any[]> {
-  const safe = rows || [];
-  if (!orgId || safe.length === 0) {
-    return safe.map((r) => ({ ...r, email: null, contact_number: null, phone: null }));
+// Bound PostgREST filters and response pages independently of business entitlements.
+const DISCLOSURE_PAGE_SIZE = 250;
+const DISCLOSURE_PAGE_BUDGET = 100;
+async function allDisclosureRows(query: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>) {
+  const rows: Record<string, unknown>[] = [];
+  for (let page = 0; page < DISCLOSURE_PAGE_BUDGET; page++) {
+    const result = await query(page * DISCLOSURE_PAGE_SIZE, (page + 1) * DISCLOSURE_PAGE_SIZE - 1);
+    if (result.error) throw new Error('Candidate aggregate unavailable');
+    const batch = z.array(z.record(z.unknown())).max(DISCLOSURE_PAGE_SIZE).parse(result.data);
+    rows.push(...batch);
+    if (batch.length < DISCLOSURE_PAGE_SIZE) return rows;
   }
-
-  const directIds = [...new Set(safe.map((r: any) => r?.id).filter(Boolean))];
-  const userIds = [...new Set(safe.filter((r: any) => !r?.id && r?.user_id).map((r: any) => r.user_id))];
-  let aliasIdByUserId = new Map<string, string>();
-  if (userIds.length) {
-    const { data: aliasRows } = await supabase
-      .from('zoho_recruiter_learners')
-      .select('id, user_id')
-      .in('user_id', userIds);
-    aliasIdByUserId = new Map((aliasRows || []).map((r: any) => [r.user_id, r.id]));
-    directIds.push(...(aliasRows || []).map((r: any) => r.id));
+  throw new Error('Candidate aggregate exceeds inspection budget');
+}
+const candidateIdentity = z.object({ id: z.string().uuid(), user_id: z.string().uuid() }).passthrough();
+type DisclosureInput = { database: SupabaseClient; env: PagesEnv; request: Request; actorId: string; organizationId: string };
+/** Resolve RPC/child aliases through the filtered owner before applying current consent. */
+async function candidateViews(input: DisclosureInput, values: unknown[], child = false): Promise<{ source: Record<string, unknown>; candidate: ReturnType<typeof recruiterCandidateView> }[]> {
+  const rows = z.array(z.record(z.unknown())).parse(values);
+  if (rows.length > DISCLOSURE_PAGE_SIZE) {
+    const result: Awaited<ReturnType<typeof candidateViews>> = [];
+    for (let offset = 0; offset < rows.length; offset += DISCLOSURE_PAGE_SIZE) {
+      result.push(...await candidateViews(input, rows.slice(offset, offset + DISCLOSURE_PAGE_SIZE), child));
+    }
+    return result;
   }
-
-  const unlockedIds = new Set<string>();
-  if (directIds.length) {
-    const { data: unlockedRows, error } = await supabase
-      .from('candidate_contact_unlocks')
-      .select('candidate_id')
-      .eq('organization_id', orgId)
-      .in('candidate_id', directIds);
-    if (!error) for (const r of (unlockedRows || [])) unlockedIds.add(r.candidate_id);
+  const references = rows.map(row => z.string().uuid().parse(child ? row.learner_id : row.id ?? row.user_id));
+  const column = child || rows.every(row => row.id !== undefined) ? 'id' : 'user_id';
+  let canonical: z.infer<typeof candidateIdentity>[] = [];
+  if (references.length) {
+    const result = await input.database.from('zoho_recruiter_learners').select('id,user_id,name,email,contact_number,university,universityId,branch_field,college_school_name,course_name,city,state,country,district_name,currentCgpa,expectedGraduationDate,created_at,updated_at,approval_status,college_id').in(column, references);
+    if (result.error) throw new Error('Candidate identity unavailable');
+    canonical = z.array(candidateIdentity).parse(result.data);
+    if (new Set(canonical.map(row => row.id)).size !== canonical.length
+      || canonical.some(row => !references.includes(String(row[column])))) throw new Error('Candidate identity scope differs');
   }
-
-  return safe.map((r: any) => {
-    const canonical = r?.id || (r?.user_id ? aliasIdByUserId.get(r.user_id) : null);
-    if (canonical && unlockedIds.has(canonical)) return r;
-    return { ...r, email: null, contact_number: null, phone: null };
+  const permissions = await readRecruiterContactPermissions(input, canonical, 'discovery');
+  if (permissions instanceof Response) throw permissions;
+  return rows.flatMap((row, index) => {
+    const candidate = canonical.find(item => item[column] === references[index]);
+    const permission = candidate && permissions.get(candidate.id);
+    if (!candidate || !permission?.visible) return [];
+    return [{ source: row, candidate: recruiterCandidateView(candidate, permission) }];
   });
 }
 
@@ -112,6 +126,22 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const startTime = Date.now();
 
   try {
+    const organizationId = await getActiveOrgId(supabase, user);
+    if (!organizationId) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+    const access = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request,
+      actorId: user.id, subject: { kind: 'organization', id: organizationId },
+      mode: SUBSCRIPTION_WRITE_ACTIONS.has(action) ? 'write' : 'read' });
+    if (access instanceof Response) return access;
+    const disclosure: DisclosureInput = { database: supabase, env: context.env as PagesEnv,
+      request: context.request, actorId: user.id, organizationId };
+    const visibleCandidates = async (rows: unknown[]) => (await candidateViews(disclosure, rows)).map(row => row.candidate);
+    const visibleChildren = async (rows: unknown[], fields: readonly string[], nested = false): Promise<Record<string, unknown>[]> =>
+      (await candidateViews(disclosure, rows, true)).map(({ source, candidate }) => ({
+        ...Object.fromEntries(fields.filter(key => Object.hasOwn(source, key)).map(key => [key, source[key]])),
+        ...(nested ? { learners: candidate } : {}),
+        ...(nested && source.opportunities && typeof source.opportunities === 'object' && !Array.isArray(source.opportunities)
+          ? { opportunities: z.object({ job_title: z.string().nullable().optional(), company_name: z.string().nullable().optional() }).strip().parse(source.opportunities) } : {}),
+      }));
     switch (action) {
       // ── Semantic Search ──
       case 'semantic-search-candidates': {
@@ -151,167 +181,37 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         // C4: the RPC's returned columns are not repo-guaranteed — mask any
         // contact fields before they reach the browser.
-        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        const masked = (await candidateViews(disclosure, data || [])).map(({ source, candidate }) => ({ ...candidate,
+          ...(source.similarity === undefined ? {} : { similarity: z.number().finite().parse(source.similarity) }) }));
         return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'semantic-find-for-opportunity': {
-        const { opportunity_id, match_count = 20, min_similarity = 0.65 } = params;
-        if (!user.org_id) {
-          return apiError(400, 'VALIDATION_ERROR', 'Missing college organization ID', context.request, { startTime });
-        }
-
-        // Ownership: a shortlist can only be generated for the caller's own opening
-        const { data: opp, error: oppError } = await supabase
-          .from('opportunities')
-          .select('embedding, title')
-          .eq('id', opportunity_id)
-          .eq('organization_id', user.org_id)
-          .maybeSingle();
-        if (oppError) return apiDbError(oppError, context.request, { startTime });
-        if (!opp) {
-          return apiError(404, 'NOT_FOUND', 'Opportunity not found', context.request, { startTime });
-        }
-        if (!opp?.embedding) return apiSuccess([], context.request, { startTime });
-        const { data, error } = await supabase.rpc('match_candidates_to_opportunity', {
-          opportunity_embedding: opp.embedding,
-          match_count,
-          min_similarity,
+        const parsed = z.object({ opportunity_id: z.number().int().positive(), match_count: z.number().int().min(1).max(50).default(20),
+          min_similarity: z.number().finite().min(0).max(1).default(0.65), requestId: z.string().uuid().optional() }).strict().safeParse(params);
+        if (!parsed.success) return apiError(400, 'VALIDATION_ERROR', 'Invalid shortlist request', context.request, { startTime });
+        const operationId = parsed.data.requestId ?? crypto.randomUUID();
+        const prepared = await prepareRecruiterSubscriptionCredit(disclosure, 'recruiter.shortlist.generate', operationId);
+        if (prepared instanceof Response) return prepared;
+        const { requestId: _requestId, ...query } = parsed.data;
+        // Matching, current consent checks, debit and durable result share one transaction.
+        // A retry returns this operation's retained candidate identities, never a new paid search.
+        const result = await supabase.rpc('generate_subscription_recruiter_shortlist', {
+          p_actor_id: user.id, p_organization_id: organizationId, p_query: query,
+          p_credit_command: prepared.command, p_authorization: prepared.authorization,
         });
-        if (error) return apiDbError(error, context.request, { startTime });
-        if (!data || data.length === 0) return apiSuccess([], context.request, { startTime });
-
-        // AI shortlist is a metered credit (spec §6): 1 ai_credits per generated
-        // shortlist. Charged only after a successful match — an RPC failure must not
-        // burn a credit. Free/Lite tenants (0 balance) get 402; included plans pay
-        // from their plan allocation; add-on packs top the same pool.
-        //
-        // IDEMPOTENCY (Stripe/IETF Idempotency-Key pattern): the client may send a
-        // requestId per logical shortlist operation. The reference_id below keys the
-        // consumption ledger row and ux_credit_ledger_consumption_ref makes replays
-        // un-insertable; without requestId, each run gets a fresh reference so
-        // per-run charging is preserved.
-        const requestId = params?.requestId;
-        if (
-          requestId !== undefined &&
-          (typeof requestId !== 'string' || requestId.length === 0 || requestId.length > 64 || !/^[A-Za-z0-9_-]+$/.test(requestId))
-        ) {
-          return apiError(400, 'VALIDATION_ERROR', 'requestId must be a UUID-like string of at most 64 characters', context.request, { startTime });
+        if (result.error) {
+          if (result.error.code === '42501') return apiError(403, 'FORBIDDEN', 'Shortlist access denied', context.request, { startTime });
+          if (result.error.code === '22023') return apiError(409, 'IDEMPOTENCY_CONFLICT', 'Shortlist operation identity differs', context.request, { startTime });
+          if (String(result.error.message).includes('INSUFFICIENT_SUBSCRIPTION_CREDITS')) return apiError(402, 'INSUFFICIENT_CREDITS', 'Insufficient shortlist credits', context.request, { startTime });
+          return apiDbError(result.error, context.request, { startTime });
         }
-        const creditReference = requestId
-          ? requestId
-          : `sf-${opportunity_id}-${crypto.randomUUID()}`;
-        // Payload binding: ledger notes carry the logical operation so a replayed
-        // key + DIFFERENT payload can be detected (same key + other payload = invalid).
-        const consumptionNotes = JSON.stringify({ generated_by: user.id, role: opp.title || null, opportunity_id });
-
-        const { enforceAndConsumeCredits } = await import('../shared/lib/credit-middleware');
-
-        // Cheap pre-check: a ledger row with this reference means the operation
-        // was already charged — replay the same result instead of double-charging.
-        const findConsumption = () =>
-          supabase
-            .from('credit_ledger')
-            .select('id, notes')
-            .eq('tenant_id', user.org_id)
-            .eq('feature_key', 'ai_credits')
-            .eq('transaction_type', 'consumption')
-            .eq('reference_id', creditReference)
-            .limit(1)
-            .maybeSingle();
-
-        let charged = false;
-        // Same idempotency key + a different logical operation = invalid request
-        // (Stripe analog of its 422 "idempotency key was used with a different body").
-        const detectPayloadConflict = (row: any): boolean => {
-          let priorOppId: any = null;
-          if (typeof row?.notes === 'string') {
-            try { priorOppId = JSON.parse(row.notes)?.opportunity_id; } catch { /* legacy notes */ }
-          }
-          return typeof priorOppId === 'string' && priorOppId !== opportunity_id;
-        };
-
-        const resolveExisting = async () => {
-          const { data: existing } = await findConsumption();
-          return existing || null;
-        };
-
-        const existingCharge = await resolveExisting();
-        let credit: any;
-        if (existingCharge) {
-          if (detectPayloadConflict(existingCharge)) {
-            return apiError(409, 'IDEMPOTENCY_CONFLICT', 'requestId already used for a different shortlist request', context.request, { startTime });
-          }
-          console.info('[recruiter-copilot] idempotent replay: consumption already recorded, skipping charge', {
-            action: 'semantic-find-for-opportunity',
-            reference_id: creditReference,
-          });
-        } else {
-          credit = await enforceAndConsumeCredits(
-            supabase,
-            user.org_id,
-            'ai_credits',
-            1,
-            creditReference,
-            consumptionNotes,
-            context.request
-          );
-          if (credit.allowed && credit.success) {
-            charged = true;
-          } else {
-            // Race window: a concurrent retry may have just committed the same
-            // consumption reference (23505 on ux_credit_ledger_consumption_ref).
-            // Re-check the ledger before failing the request — treat it exactly
-            // like the pre-check replay above.
-            const concurrent = await resolveExisting();
-            if (concurrent) {
-              if (detectPayloadConflict(concurrent)) {
-                return apiError(409, 'IDEMPOTENCY_CONFLICT', 'requestId already used for a different shortlist request', context.request, { startTime });
-              }
-              console.info('[recruiter-copilot] idempotent replay: concurrent consumption won, skipping charge', {
-                action: 'semantic-find-for-opportunity',
-                reference_id: creditReference,
-              });
-            } else {
-              return credit.errorResponse || credit.response || apiError(
-                402,
-                'INSUFFICIENT_CREDITS',
-                'Insufficient AI shortlist credits. Upgrade your plan or purchase the AI shortlist pack.',
-                context.request
-              );
-            }
-          }
-        }
-
-        // C4: mask contact fields on shortlist rows for candidates this org
-        // has not unlocked (the shortlist still conveys the match ranking).
-        // CHARGE-WINDOW COMPENSATION: everything after the credit was consumed
-        // (masking + serialization) can still fail; on throw, refund the charge
-        // so a failed shortlist never burns a credit (best-effort, fail-soft).
-        let masked: any[];
-        try {
-          masked = await maskLockedContacts(supabase, user.org_id, data);
-        } catch (postChargeError) {
-          if (charged) {
-            try {
-              await supabase.from('credit_ledger').insert({
-                tenant_id: user.org_id,
-                feature_key: 'ai_credits',
-                transaction_type: 'refund',
-                amount: 1,
-                reference_id: creditReference,
-                notes: JSON.stringify({ reason: 'compensation: post-charge failure', generated_by: user.id, opportunity_id }),
-              });
-            } catch (refundErr) {
-              console.warn('[recruiter-copilot] Failed to refund credit after post-charge failure:', {
-                reference_id: creditReference,
-                error: refundErr instanceof Error ? refundErr.message : String(refundErr),
-              });
-            }
-          }
-          throw postChargeError;
-        }
-        return apiSuccess(masked, context.request, { startTime });
+        const receipt = z.object({ operationId: z.string().uuid(), query: z.object({ opportunity_id: z.number().int(), match_count: z.number().int(),
+          min_similarity: z.number() }).strict(), candidates: z.array(z.object({ id: z.string().uuid(), similarity: z.number().finite() }).strict()).max(50) }).strict().parse(result.data);
+        if (receipt.operationId !== operationId || receipt.query.opportunity_id !== query.opportunity_id
+          || receipt.query.match_count !== query.match_count || receipt.query.min_similarity !== query.min_similarity) throw new Error('Shortlist acknowledgement differs');
+        const projected = await candidateViews(disclosure, receipt.candidates);
+        return apiSuccess(projected.map(({ source, candidate }) => ({ ...candidate, similarity: z.number().finite().parse(source.similarity) })), context.request, { startTime });
       }
 
       // ── Learners ──
@@ -325,7 +225,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (error) return apiDbError(error, context.request, { startTime });
 
         // C4: discovery surface — contact details only for unlocked candidates
-        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        const masked = await visibleCandidates(data || []);
         return apiSuccess(masked, context.request, { startTime });
       }
 
@@ -340,34 +240,31 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
 
-        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        const masked = await visibleCandidates(data || []);
         return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'fetch-learners-with-location': {
-        const { data, error } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('city, state')
-          .not('city', 'is', null);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+          .select('id,user_id,city,state')
+          .not('city', 'is', null).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).flatMap(row => row.city == null ? [] : [{ city: row.city, state: row.state }]), context.request, { startTime });
       }
 
       case 'fetch-learners-university': {
-        const { data, error } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('university')
-          .not('university', 'is', null);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+          .select('id,user_id,university')
+          .not('university', 'is', null).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).map(row => ({ university: row.university })), context.request, { startTime });
       }
 
       case 'fetch-learners-grad-years': {
-        const { data, error } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('expectedGraduationDate');
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+          .select('id,user_id,expectedGraduationDate').order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).map(row => ({ expectedGraduationDate: row.expectedGraduationDate })), context.request, { startTime });
       }
 
       case 'fetch-learners-enriched': {
@@ -385,37 +282,34 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .limit(limit);
         if (error) return apiDbError(error, context.request, { startTime });
 
-        const masked = await maskLockedContacts(supabase, user.org_id, data || []);
+        const masked = await visibleCandidates(data || []);
         return apiSuccess(masked, context.request, { startTime });
       }
 
       case 'count-learners': {
-        const { error, count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('user_id', { count: 'exact', head: true })
-          .not('name', 'is', null);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(count || 0, context.request, { startTime });
+          .select('id,user_id,name,city,currentCgpa')
+          .not('name', 'is', null).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).length, context.request, { startTime });
       }
 
       case 'count-learners-with-location': {
-        const { error, count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('user_id', { count: 'exact', head: true })
+          .select('id,user_id,name,city,currentCgpa')
           .not('name', 'is', null)
-          .not('city', 'is', null);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(count || 0, context.request, { startTime });
+          .not('city', 'is', null).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).filter(row => row.city != null).length, context.request, { startTime });
       }
 
       case 'count-learners-with-cgpa': {
-        const { error, count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_learners')
-          .select('user_id', { count: 'exact', head: true })
+          .select('id,user_id,name,city,currentCgpa')
           .not('name', 'is', null)
-          .not('currentCgpa', 'is', null);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(count || 0, context.request, { startTime });
+          .not('currentCgpa', 'is', null).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleCandidates(data || [])).length, context.request, { startTime });
       }
 
       // ── Skills ──
@@ -427,44 +321,41 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (limit) query = query.limit(limit);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','name','type','level','enabled','verified']), context.request, { startTime });
       }
 
       case 'fetch-skills-learner-ids': {
-        const { data, error } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_skills')
-          .select('learner_id')
-          .eq('enabled', true);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+          .select('id,learner_id')
+          .eq('enabled', true).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['learner_id'])).map(row => ({ learner_id: row.learner_id })), context.request, { startTime });
       }
 
       case 'fetch-skills-names': {
-        const { data, error } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_skills')
-          .select('name')
-          .eq('enabled', true);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+          .select('id,learner_id,name')
+          .eq('enabled', true).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['name'])).map(row => ({ name: row.name })), context.request, { startTime });
       }
 
       case 'count-skills': {
-        const { error, count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_skills')
-          .select('id', { count: 'exact', head: true })
-          .eq('enabled', true);
-        if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(count || 0, context.request, { startTime });
+          .select('id,learner_id')
+          .eq('enabled', true).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['id'])).length, context.request, { startTime });
       }
 
       case 'count-skill-by-name': {
         const { skill_name } = params;
-        const { count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_skills')
-          .select('id', { count: 'exact', head: true })
+          .select('id,learner_id')
           .eq('enabled', true)
-          .ilike('name', `%${skill_name}%`);
-        return apiSuccess((count || 0) > 0, context.request, { startTime });
+          .ilike('name', `%${skill_name}%`).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['id'])).length > 0, context.request, { startTime });
       }
 
       // ── Trainings ──
@@ -474,16 +365,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learner_ids) query = query.in('learner_id', learner_ids);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['learner_id','trainingName','organization','completedDate']), context.request, { startTime });
       }
 
       case 'count-trainings': {
         const { learner_id } = params;
-        const { count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_trainings')
-          .select('id', { count: 'exact', head: true })
-          .eq('learner_id', learner_id);
-        return apiSuccess(count || 0, context.request, { startTime });
+          .select('id,learner_id')
+          .eq('learner_id', learner_id).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['id'])).length, context.request, { startTime });
       }
 
       // ── Certificates ──
@@ -493,17 +384,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (learner_ids) query = query.in('learner_id', learner_ids);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['learner_id','title','issuer','issued_on','level','enabled']), context.request, { startTime });
       }
 
       case 'count-certificates': {
         const { learner_id } = params;
-        const { count } = await supabase
+        const data = await allDisclosureRows((from, to) => supabase
           .from('zoho_recruiter_certificates')
-          .select('id', { count: 'exact', head: true })
+          .select('id,learner_id')
           .eq('learner_id', learner_id)
-          .eq('enabled', true);
-        return apiSuccess(count || 0, context.request, { startTime });
+          .eq('enabled', true).order('id', { ascending: true }).range(from, to));
+        return apiSuccess((await visibleChildren(data || [], ['id'])).length, context.request, { startTime });
       }
 
       // ── Opportunities ──
@@ -615,7 +506,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         query = query.in('opportunity_id', orgIds); // org gate
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','opportunity_id','stage','status','stage_changed_at','created_at','updated_at','application_status','applied_at','next_action_date'], true), context.request, { startTime });
       }
 
       case 'fetch-pipeline-with-learners': {
@@ -630,7 +521,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .order('created_at', { ascending: false })
           .limit(limit);
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','opportunity_id','stage','status','stage_changed_at','created_at','updated_at','application_status','applied_at','next_action_date'], true), context.request, { startTime });
       }
 
       case 'fetch-pipeline-with-opportunities': {
@@ -648,7 +539,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         query = query.order('stage_changed_at', { ascending: false }).limit(limit);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','opportunity_id','stage','status','stage_changed_at','created_at','updated_at','application_status','applied_at','next_action_date'], true), context.request, { startTime });
       }
 
       case 'fetch-pipeline-needs-action': {
@@ -663,7 +554,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           .or(`next_action_date.lte.${today},next_action_date.is.null`)
           .not('next_action', 'is', null);
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','opportunity_id','stage','status','stage_changed_at','created_at','updated_at','application_status','applied_at','next_action_date'], true), context.request, { startTime });
       }
 
       // ── Applied Jobs ──
@@ -681,7 +572,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         query = query.order('applied_at', { ascending: false }).limit(limit);
         const { data, error } = await query;
         if (error) return apiDbError(error, context.request, { startTime });
-        return apiSuccess(data || [], context.request, { startTime });
+        return apiSuccess(await visibleChildren(data || [], ['id','learner_id','opportunity_id','stage','status','stage_changed_at','created_at','updated_at','application_status','applied_at','next_action_date'], true), context.request, { startTime });
       }
 
       // ── Recruiters ──
@@ -922,6 +813,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiError(400, 'UNKNOWN_ACTION', `Unknown action: ${action}`, context.request, { startTime });
     }
   } catch (error: any) {
+    if (error instanceof Response) return error;
     console.error(`[recruiter-copilot] Action "${action}" failed:`, error?.message || error);
     return apiError(500, 'INTERNAL_ERROR', 'An internal error occurred', context.request, { startTime });
   }

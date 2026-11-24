@@ -26,7 +26,6 @@ import { apiGet, apiPost } from '@/shared/api/apiClient';
 import { enrollmentService } from '@/features/courses';
 import { courseProgressService as progressService } from '@/features/courses';
 import { getAuthenticatedMediaUrl, needsAuthentication } from '@/shared/api/authenticatedMediaService';
-import { supabase } from '@/shared/api/supabaseClient';
 
 const CoursePlayer = () => {
   const { courseId } = useParams();
@@ -970,13 +969,11 @@ const CoursePlayer = () => {
 
       // Fetch learner_type from database to determine certificate template
       console.log('📋 Fetching learner type from database...');
-      const { data: learnerData, error: learnerError } = await supabase
-        .from('learners')
-        .select('learner_type, college_school_name, school_name')
-        .eq('id', user.id)
-        .single();
-
-      if (learnerError) {
+      let learnerData = null;
+      try {
+        const profile = await apiGet('/learners/profile');
+        learnerData = profile?.learner || null;
+      } catch (learnerError) {
         console.warn('Could not fetch learner type, using default:', learnerError);
       }
 

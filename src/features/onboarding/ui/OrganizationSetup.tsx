@@ -1,8 +1,8 @@
+import { waitForOrganizationReadiness } from '../api/organizationReadiness';
 import {
     AlertCircle,
     ArrowRight,
     Building2,
-    CheckCircle,
     Globe,
     GraduationCap,
     Landmark,
@@ -41,8 +41,9 @@ interface OrganizationSetupProps {
 
 const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType }) => {
   const user = useUser();
-  const [step, setStep] = useState<'form' | 'creating' | 'success' | 'error'>('form');
+  const [step, setStep] = useState<'form' | 'creating' | 'error'>('form');
   const [error, setError] = useState<string | null>(null);
+  const [organizationSaved, setOrganizationSaved] = useState(false);
   const [formData, setFormData] = useState<OrganizationFormData>({
     name: '',
     address: '',
@@ -141,6 +142,22 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
     }
   };
 
+  const checkReadiness = async () => {
+    setStep('creating');
+    setError(null);
+    try {
+      await waitForOrganizationReadiness(async () => {
+        const params = new URLSearchParams({ action: 'getOrganizationByAdminId', adminId: user!.id, orgType: organizationType });
+        const result = await apiGet<{ data: unknown }>(`/organization?${params}`);
+        return result.data !== null && result.data !== undefined;
+      });
+      window.location.href = DASHBOARD_PATHS[organizationType];
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Organization readiness could not be verified.');
+      setStep('error');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -159,7 +176,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
 
     try {
       // Check if organization with same name already exists
-      const { data: existingOrg } = await apiGet(
+      const { data: existingOrg } = await apiGet<{ data: unknown }>(
         '/organization?action=checkOrganizationNameExists&name=' + 
         encodeURIComponent(formData.name.trim()) + 
         '&orgType=' + organizationType
@@ -174,7 +191,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
       }
 
       // Create the organization
-      const response = await apiPost('/organization', {
+      const response = await apiPost<{ error?: string }>('/organization', {
         action: 'createOrganization',
         ...formData,
         organization_type: organizationType,
@@ -186,49 +203,8 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
         throw new Error(response?.error || 'Failed to create organization');
       }
 
-      setStep('success');
-
-      // Poll until org is accessible, then redirect
-      const pollForOrg = async () => {
-        const maxAttempts = 20; // 10 seconds max (500ms * 20)
-        let attempt = 0;
-        
-        const checkOrg = async (): Promise<boolean> => {
-          try {
-            const params = new URLSearchParams({ 
-              action: 'getOrganizationByAdminId', 
-              adminId: user.id, 
-              orgType: organizationType 
-            });
-            const result = await apiGet(`/organization?${params.toString()}`);
-            return result?.data !== null && result?.data !== undefined;
-          } catch (err) {
-            console.warn(`[poll] Attempt ${attempt + 1} failed:`, err);
-            return false;
-          }
-        };
-        
-        while (attempt < maxAttempts) {
-          const found = await checkOrg();
-          if (found) {
-            // Success! Redirect now
-            window.location.href = DASHBOARD_PATHS[organizationType] || '/';
-            return;
-          }
-          attempt++;
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        // Polling timed out - redirect anyway and let guard handle it
-        console.warn('[poll] Timeout reached, redirecting to dashboard');
-        window.location.href = DASHBOARD_PATHS[organizationType] || '/';
-      };
-      
-      await pollForOrg().catch(err => {
-        console.error('[poll] Polling failed:', err);
-        // Still redirect on error - guard will handle missing org
-        window.location.href = DASHBOARD_PATHS[organizationType] || '/';
-      });
+      setOrganizationSaved(true);
+      await checkReadiness();
 
     } catch (err) {
       console.error('[org-setup] Error:', err);
@@ -245,20 +221,8 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className={`h-16 w-16 animate-spin text-${colors.primary}-600 mx-auto mb-4`} />
-          <h2 className="text-xl font-semibold text-gray-900">Creating your {getOrganizationLabel().toLowerCase()}...</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{organizationSaved ? 'Preparing your dashboard' : `Creating your ${getOrganizationLabel().toLowerCase()}…`}</h2>
           <p className="text-gray-500 mt-2">Please wait while we set everything up</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'success') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900">{getOrganizationLabel()} Created Successfully!</h2>
-          <p className="text-gray-500 mt-2">Redirecting to your dashboard...</p>
         </div>
       </div>
     );
@@ -273,10 +237,10 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Something went wrong</h2>
             <p className="text-gray-600 mb-6">{error}</p>
             <button
-              onClick={() => setStep('form')}
+              onClick={() => organizationSaved ? void checkReadiness() : setStep('form')}
               className={`px-6 py-2 ${colors.button} text-white rounded-lg transition-colors`}
             >
-              Try Again
+              {organizationSaved ? 'Check organization status' : 'Try Again'}
             </button>
           </div>
         </div>

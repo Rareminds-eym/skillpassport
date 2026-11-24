@@ -94,7 +94,7 @@ const LearnerCard = ({ learner, onViewProfile, onAddNote, onViewCareerPath, load
         <div>
           <h3 className="font-medium text-gray-900">{learner.name}</h3>
           <p className="text-sm text-gray-500">{learner.email}</p>
-          <p className="text-xs text-gray-400">{learner.profile?.contact_number || learner.phone || '0'}</p>
+          <p className="text-xs text-gray-400">{learner.phone || 'Missing'}</p>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-center mb-1">
@@ -182,18 +182,21 @@ const LearnerAdmissions = () => {
     maxScore: 100
   });
 
-  const { learners, loading, error, totalCount } = useLearners({
+  const { learners, loading: pageLoading, error: pageError, totalCount } = useLearners({
     searchTerm: debouncedSearch,
     page: currentPage,
     pageSize: itemsPerPage
   });
 
-  // Fetch all learners for filter options (lightweight query - only needed fields)
-  const { learners: alllearnersForFilters } = useLearners({
+  // Load complete filter data through the authorized paginated reader.
+  const { learners: alllearnersForFilters, loading: filterLoading, error: filterError } = useLearners({
     searchTerm: '', // No search filter for getting all filter options
     page: 1,
-    pageSize: 1000 // Get more learners for accurate filter counts
+    loadAll: true
   });
+
+  const loading = pageLoading || filterLoading;
+  const error = pageError || filterError;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -273,7 +276,7 @@ const LearnerAdmissions = () => {
       result = result.filter(learner =>
         learner.name?.toLowerCase().includes(searchLower) ||
         learner.email?.toLowerCase().includes(searchLower) ||
-        learner.contact_number?.toLowerCase().includes(searchLower) ||
+        learner.phone?.toLowerCase().includes(searchLower) ||
         learner.grade?.toLowerCase().includes(searchLower) ||
         learner.section?.toLowerCase().includes(searchLower) ||
         learner.roll_number?.toLowerCase().includes(searchLower)

@@ -352,9 +352,9 @@ class RecruiterInsightsService {
   }
 
   async analyzeApplicantsForRecommendation(applicants: Array<{
-    id: number;
+    id: string | number;
     learner_id: string;
-    opportunity_id: number;
+    opportunity_id: string | number;
     pipeline_stage?: string;
     learner: {
       id: string;
@@ -365,13 +365,13 @@ class RecruiterInsightsService {
       branch_field?: string;
     };
     opportunity: {
-      id: number;
+      id: string | number;
       job_title: string;
       skills_required?: any;
     };
   }>): Promise<{
     topRecommendations: Array<{
-      applicantId: number;
+      applicantId: string | number;
       learnerName: string;
       positionTitle: string;
       matchScore: number;

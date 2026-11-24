@@ -300,6 +300,7 @@ class OpportunitiesService {
       if (filters.experienceLevel?.length) params.set('experienceLevel', filters.experienceLevel.join(','));
       if (filters.mode?.length) params.set('mode', filters.mode.join(','));
       if (filters.department?.length) params.set('department', filters.department.join(','));
+      if (filters.location?.length) params.set('location', filters.location.join(','));
       if (filters.salaryMin) params.set('salaryMin', filters.salaryMin);
       if (filters.salaryMax) params.set('salaryMax', filters.salaryMax);
       if (filters.postedWithin) params.set('postedWithin', filters.postedWithin);
@@ -381,6 +382,46 @@ class OpportunitiesService {
     } catch (error) {
       console.error('Error in getOpportunitiesStats:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Fetch distinct filter values and counts from active jobs.
+   * Used by the AdvancedFilters UI so its options always match real DB data with item counts.
+   */
+  async getFacets(): Promise<{
+    departments: string[];
+    experienceLevels: string[];
+    locations?: string[];
+    counts?: {
+      employmentType?: Record<string, number>;
+      experienceLevel?: Record<string, number>;
+      mode?: Record<string, number>;
+      department?: Record<string, number>;
+      skills?: Record<string, number>;
+      location?: Record<string, number>;
+    };
+  }> {
+    try {
+      const response = await apiGet<ApiResponse<{
+        departments: string[];
+        experienceLevels: string[];
+        locations?: string[];
+        counts?: {
+          employmentType?: Record<string, number>;
+          experienceLevel?: Record<string, number>;
+          mode?: Record<string, number>;
+          department?: Record<string, number>;
+          skills?: Record<string, number>;
+          location?: Record<string, number>;
+        };
+      }>>(
+        '/opportunities/facets',
+      );
+      return response?.data ?? { departments: [], experienceLevels: [] };
+    } catch (error) {
+      console.error('[opportunitiesService] Failed to load facets:', error);
+      return { departments: [], experienceLevels: [] };
     }
   }
 }

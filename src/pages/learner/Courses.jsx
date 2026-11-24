@@ -1102,7 +1102,7 @@ const Courses = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between mb-2">
                       {/* <div className="flex gap-2 flex-wrap">
-                        <Badge className={`${getStatusColor(course.status)} border`}>
+                        <Badge variant="outline" className={`${getStatusColor(course.status)} border`}>
                           {course.status}
                         </Badge>
                       </div> */}

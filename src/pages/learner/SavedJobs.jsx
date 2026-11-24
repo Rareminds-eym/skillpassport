@@ -1,3 +1,4 @@
+import { useResumeApplicationReview } from '@/features/opportunities/ui/ResumeApplicationReview';
 import {
     Bookmark,
     BookmarkCheck,
@@ -59,8 +60,20 @@ const SavedJobs = () => {
     setSelectedOpportunity,
     setShowActiveOnly,
     handleUnsave,
-    handleApply,
+    handleApply: submitApplication,
   } = useSavedJobs({ learnerId });
+
+  const { requestReview, resumeReview } = useResumeApplicationReview(learnerId);
+  const handleApply = (opportunity) => {
+    if (!learnerId || appliedJobs.has(opportunity.id)) return submitApplication(opportunity);
+    return requestReview(opportunity, () => submitApplication(opportunity));
+  };
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const openJobDetails = (job) => {
+    setSelectedOpportunity(job);
+    setDetailsOpen(true);
+  };
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -124,6 +137,7 @@ const SavedJobs = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {resumeReview}
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 py-3 sm:py-8">
         {/* Header */}
         <div className="mb-6">
@@ -280,10 +294,12 @@ const SavedJobs = () => {
                     <OpportunityCard
                       key={job.id}
                       opportunity={job}
-                      onClick={() => setSelectedOpportunity(job)}
+                      onClick={() => openJobDetails(job)}
                       isSelected={selectedOpportunity?.id === job.id}
                       isApplied={appliedJobs.has(job.id)}
                       isSaved={true}
+                      isApplying={isApplying}
+                      onApply={() => handleApply(job)}
                       onToggleSave={() => handleUnsave(job)}
                     />
                   ))}
@@ -294,7 +310,7 @@ const SavedJobs = () => {
                     <OpportunityListItem
                       key={job.id}
                       opportunity={job}
-                      onClick={() => setSelectedOpportunity(job)}
+                      onClick={() => openJobDetails(job)}
                       isSelected={selectedOpportunity?.id === job.id}
                       isApplied={appliedJobs.has(job.id)}
                       isSaved={true}
@@ -364,6 +380,8 @@ const SavedJobs = () => {
                 isApplied={appliedJobs.has(selectedOpportunity?.id || filteredAndSortedJobs[0]?.id)}
                 isSaved={true}
                 isApplying={isApplying}
+                detailsOpen={detailsOpen}
+                onDetailsOpenChange={setDetailsOpen}
               />
             </div>
           </div>

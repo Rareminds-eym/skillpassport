@@ -1,0 +1,178 @@
+// Dedicated disposable Docker database only. Never reads application credentials or DATABASE_URL.
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+const container = 'rm2-course-ai-test';
+function docker(args, input) {
+  const result = spawnSync('docker', args, { input, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  return result.stdout.trim();
+}
+if (docker(['inspect','--format','{{index .Config.Labels "rm2.task"}}', container]) !== 'course-ai') throw new Error('Dedicated test container label required');
+const database = `course_ai_${Date.now()}`;
+docker(['exec',container,'createdb','-U','postgres', database]);
+const sql = input => docker(['exec','-i',container,'psql','-U','postgres','-d',database,'-v','ON_ERROR_STOP=1'], input);
+try {
+  sql(`DO $$ BEGIN CREATE ROLE anon; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE authenticated; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE ROLE service_role; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+CREATE SCHEMA extensions; CREATE EXTENSION vector WITH SCHEMA extensions;
+CREATE TABLE users(id uuid PRIMARY KEY,role text);
+CREATE TABLE courses(course_id uuid PRIMARY KEY,educator_id uuid,deleted_at timestamptz,status text DEFAULT 'Active',school_id uuid,title text DEFAULT 'Course',code text DEFAULT 'CODE');
+CREATE TABLE course_modules(module_id uuid PRIMARY KEY,course_id uuid);
+CREATE TABLE lessons(lesson_id uuid PRIMARY KEY,module_id uuid,content text);
+CREATE TABLE video_summaries(lesson_id uuid,transcript text,summary text,processing_status text);
+CREATE TABLE lesson_resources(resource_id uuid PRIMARY KEY,lesson_id uuid,name text,type text,url text,content text);
+CREATE TABLE school_educators(id uuid,user_id uuid,account_status text,school_id uuid);
+CREATE TABLE college_lecturers(user_id uuid,"collegeId" uuid,"accountStatus" text);
+CREATE TABLE organization_staff(user_id uuid,organization_id uuid,account_status text);
+CREATE TABLE course_enrollments(course_id uuid,learner_id uuid,educator_id uuid,status text);
+CREATE TABLE tutor_conversations(id uuid PRIMARY KEY,learner_id uuid,course_id uuid,messages jsonb);
+CREATE TABLE learners(id uuid PRIMARY KEY,name text DEFAULT 'Test learner',user_id uuid UNIQUE,school_class_id uuid,program_section_id uuid);
+CREATE TABLE school_classes(id uuid PRIMARY KEY,school_id uuid);
+CREATE TABLE departments(id uuid PRIMARY KEY,college_id uuid);
+CREATE TABLE program_sections(id uuid PRIMARY KEY,department_id uuid,program_id uuid,status text);
+CREATE TABLE organization_members(organization_id uuid,user_id uuid,status text);
+CREATE TABLE assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,instructions text,course_name text,course_code text,educator_id uuid,total_points numeric,assignment_type text,school_class_id uuid,assign_classes text,due_date timestamptz,available_from timestamptz,allow_late_submission boolean);
+CREATE TABLE college_assignments(assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),title text,instructions text,course_name text,course_code text,college_id uuid,college_educator_id uuid,program_section_id uuid,department_id uuid,program_id uuid,total_points numeric,assignment_type text,due_date timestamptz,available_from timestamptz,allow_late_submission boolean);
+CREATE TABLE learner_assignments(learner_assignment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),assignment_id uuid,learner_id uuid REFERENCES learners(user_id),status text DEFAULT 'todo',grade_received numeric,grade_percentage numeric,instructor_feedback text,graded_by uuid,graded_date timestamptz,feedback_date timestamptz,started_date timestamptz,submission_date timestamptz,completed_date timestamptz,is_late boolean,updated_date timestamptz,UNIQUE(assignment_id,learner_id));
+CREATE TABLE college_learner_assignments(LIKE learner_assignments INCLUDING ALL);
+CREATE TABLE notifications(id uuid DEFAULT gen_random_uuid(),recipient_id uuid,type text,title text,message text,read boolean DEFAULT false,created_at timestamptz DEFAULT now());
+CREATE FUNCTION ai_worksheet_eligible_learners(p_user uuid) RETURNS TABLE(id uuid) LANGUAGE sql AS $$ SELECT l.id FROM learners l JOIN organization_members om ON om.user_id=l.user_id WHERE om.organization_id IN (SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active') AND om.status='active' $$;
+`);
+
+  sql(`CREATE FUNCTION ai_worksheet_educator_scope(p_user uuid) RETURNS TABLE(organization_id uuid) LANGUAGE sql AS $$ SELECT organization_id FROM organization_members WHERE user_id=p_user AND status='active' LIMIT 1 $$;`);
+  for(const file of ['20270318000002_course_content_index.sql','20270318000003_ai_saved_assignments.sql','20270318000006_ai_assignment_notifications.sql']) sql(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+  sql(`DO $$
+DECLARE teacher uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); outsider uuid:=gen_random_uuid(); school uuid:=gen_random_uuid(); class_id uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); course uuid:=gen_random_uuid(); material uuid; recipient uuid; submission uuid:=gen_random_uuid(); result uuid; question uuid:=gen_random_uuid(); conv uuid:=gen_random_uuid(); msg uuid:=gen_random_uuid(); amount integer; deadline timestamptz:=now()+interval '1 day'; storage text;
+BEGIN
+ INSERT INTO users VALUES(teacher,'school_educator'),(student,'learner'),(outsider,'learner');
+ INSERT INTO organization_members VALUES(school,teacher,'active'),(school,student,'active');
+ INSERT INTO school_classes VALUES(class_id,school); INSERT INTO school_educators VALUES(gen_random_uuid(),teacher,'active',school);
+ INSERT INTO learners(id,user_id,school_class_id) VALUES(learner,student,class_id);
+ INSERT INTO courses(course_id,educator_id) VALUES(course,teacher);
+ INSERT INTO ai_assignments(course_id,title,content,grading_rules,request_fingerprint,context_fingerprint) VALUES(course,'Saved worksheet',jsonb_build_object('questions',jsonb_build_array(jsonb_build_object('id',question,'prompt','Choose A','maxMarks',2))),'[]','request','context') RETURNING id INTO material;
+ BEGIN UPDATE ai_assignments SET title='Changed' WHERE id=material; RAISE EXCEPTION 'Immutable assignment changed'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Immutable assignment changed' THEN RAISE; END IF; END;
+ amount:=allocate_saved_ai_assignment(teacher,material,ARRAY[learner],deadline);
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[learner],deadline);
+ IF amount<>1 OR (SELECT count(*) FROM assignments WHERE saved_ai_assignment_id=material)<>1 OR (SELECT count(*) FROM ai_assignment_learners)<>1 THEN RAISE EXCEPTION 'Duplicate allocation'; END IF;
+ SELECT id INTO recipient FROM ai_assignment_learners WHERE assignment_id=material;
+ BEGIN UPDATE learner_assignments SET status='submitted'; RAISE EXCEPTION 'Submission bypass'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Submission bypass' THEN RAISE; END IF; END;
+ storage:='courses/'||course||'/ai-assignments/'||material||'/submissions/'||recipient||'/'||submission||'/file.txt';
+ BEGIN PERFORM commit_ai_submission(outsider,recipient,submission,storage,'answer.txt','text/plain'); RAISE EXCEPTION 'Unauthorized submission'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Unauthorized submission' THEN RAISE; END IF; END;
+ PERFORM commit_ai_submission(student,recipient,submission,storage,'answer.txt','text/plain');
+ IF (SELECT status FROM learner_assignments LIMIT 1)<>'submitted' THEN RAISE EXCEPTION 'Missing submission mirror'; END IF;
+ SELECT id INTO result FROM ai_assignment_results WHERE submission_id=submission;
+ BEGIN UPDATE learner_assignments SET status='graded',grade_received=2; RAISE EXCEPTION 'Premature grade'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Premature grade' THEN RAISE; END IF; END;
+ UPDATE ai_assignment_results SET status='review_required',question_results='[]' WHERE id=result;
+ BEGIN PERFORM release_saved_ai_result(outsider,result,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1,'reason','Reviewed')),'Feedback'); RAISE EXCEPTION 'Unauthorized release'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Unauthorized release' THEN RAISE; END IF; END;
+ PERFORM release_saved_ai_result(teacher,result,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1,'reason','Reviewed answer')),'Improve detail');
+ IF (SELECT grade_received FROM learner_assignments LIMIT 1)<>1 OR (SELECT status FROM ai_assignment_results WHERE id=result)<>'released' THEN RAISE EXCEPTION 'Released result not synchronized'; END IF;
+ BEGIN UPDATE learner_assignments SET grade_received=99; RAISE EXCEPTION 'Grade bypass'; EXCEPTION WHEN OTHERS THEN IF SQLERRM='Grade bypass' THEN RAISE; END IF; END;
+ INSERT INTO tutor_conversations VALUES(conv,teacher,course,jsonb_build_array(jsonb_build_object('id',msg,'role','assistant')));
+ IF set_ai_material_choice(outsider,conv,msg,'{}') THEN RAISE EXCEPTION 'Unauthorized save choice'; END IF;
+ IF NOT set_ai_material_choice(teacher,conv,msg,'{"state":"deferred"}') THEN RAISE EXCEPTION 'Choice not persisted'; END IF;
+ IF has_table_privilege('authenticated','ai_assignments','SELECT') OR has_table_privilege('anon','ai_assignment_results','SELECT') THEN RAISE EXCEPTION 'Private records exposed'; END IF;
+END $$;`);
+  sql(`DO $$
+DECLARE teacher uuid:=gen_random_uuid(); student uuid:=gen_random_uuid(); college uuid:=gen_random_uuid(); dep uuid:=gen_random_uuid(); program uuid:=gen_random_uuid(); section uuid:=gen_random_uuid(); learner uuid:=gen_random_uuid(); course uuid; material uuid; recipient uuid; submission uuid:=gen_random_uuid(); result uuid; question uuid:=gen_random_uuid(); deadline timestamptz:=now()+interval '2 days'; key text;
+BEGIN
+ SELECT course_id INTO course FROM courses LIMIT 1;
+ INSERT INTO users VALUES(teacher,'college_educator'),(student,'learner');
+ INSERT INTO organization_members VALUES(college,teacher,'active'),(college,student,'active');
+ INSERT INTO college_lecturers VALUES(teacher,college,'active'); INSERT INTO departments VALUES(dep,college); INSERT INTO program_sections VALUES(section,dep,program,'active');
+ INSERT INTO learners(id,user_id,program_section_id) VALUES(learner,student,section);
+ INSERT INTO ai_assignments(course_id,title,content,grading_rules,request_fingerprint,context_fingerprint) VALUES(course,'College worksheet',jsonb_build_object('questions',jsonb_build_array(jsonb_build_object('id',question,'prompt','Answer','maxMarks',3))),'[]','college','context') RETURNING id INTO material;
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[learner],deadline);
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[learner],deadline);
+ IF (SELECT count(*) FROM college_assignments WHERE saved_ai_assignment_id=material)<>1 THEN RAISE EXCEPTION 'Duplicate college task'; END IF;
+ SELECT id INTO recipient FROM ai_assignment_learners WHERE assignment_id=material;
+ key:='courses/'||course||'/ai-assignments/'||material||'/submissions/'||recipient||'/'||submission||'/file.txt';
+ PERFORM commit_ai_submission(student,recipient,submission,key,'answer.txt','text/plain');
+ SELECT id INTO result FROM ai_assignment_results WHERE submission_id=submission;
+ UPDATE ai_assignment_results SET status='failed' WHERE id=result;
+ PERFORM release_saved_ai_result(teacher,result,jsonb_build_array(jsonb_build_object('questionId',question,'marks',2,'reason','Manually checked after extraction failed')),'Reviewed');
+ IF (SELECT grade_received FROM college_learner_assignments WHERE learner_id=student)<>2 THEN RAISE EXCEPTION 'College grade not synchronized'; END IF;
+END $$;`);
+  sql(`DO $$
+DECLARE kind text; teacher uuid; school_class uuid; material uuid; first_learner uuid:=gen_random_uuid(); second_learner uuid:=gen_random_uuid(); first_user uuid:=gen_random_uuid(); second_user uuid:=gen_random_uuid(); org uuid; baseline integer; event_count integer;
+BEGIN
+ FOREACH kind IN ARRAY ARRAY['assignment_assigned','assignment_allocation_complete','assignment_submission_received','assignment_submitted','assignment_evaluated'] LOOP
+  IF (SELECT count(*) FROM notifications WHERE type=kind)<>2 THEN RAISE EXCEPTION 'Expected two events for %',kind; END IF;
+ END LOOP;
+ IF EXISTS(SELECT 1 FROM notifications WHERE type='assignment_evaluation_complete') THEN RAISE EXCEPTION 'Unwanted educator result notification'; END IF;
+ IF EXISTS(SELECT 1 FROM notifications WHERE type='assignment_evaluated' AND recipient_id IN (SELECT id FROM users WHERE role<>'learner')) THEN RAISE EXCEPTION 'Result delivered to educator'; END IF;
+ UPDATE ai_assignment_results SET status='released';
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>2 THEN RAISE EXCEPTION 'Duplicate result notification'; END IF;
+ SELECT a.id,s.assigned_by,l.school_class_id INTO material,teacher,school_class FROM ai_assignments a JOIN ai_assignment_learners s ON s.assignment_id=a.id JOIN learners l ON l.id=s.learner_id WHERE l.school_class_id IS NOT NULL LIMIT 1;
+ SELECT organization_id INTO org FROM organization_members WHERE user_id=teacher LIMIT 1;
+ INSERT INTO users VALUES(first_user,'learner'),(second_user,'learner');
+ INSERT INTO learners(id,user_id,school_class_id) VALUES(first_learner,first_user,school_class),(second_learner,second_user,school_class);
+ INSERT INTO organization_members VALUES(org,first_user,'active'),(org,second_user,'active');
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[first_learner,second_learner],(SELECT due_at FROM ai_assignment_learners WHERE assignment_id=material LIMIT 1));
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_allocation_complete' AND (metadata->>'learner_count')::int=2)<>1 THEN RAISE EXCEPTION 'Batch summary not aggregated'; END IF;
+ SELECT count(*) INTO baseline FROM notifications;
+ PERFORM allocate_saved_ai_assignment(teacher,material,ARRAY[first_learner,second_learner],(SELECT due_at FROM ai_assignment_learners WHERE assignment_id=material LIMIT 1));
+ IF (SELECT count(*) FROM notifications)<>baseline THEN RAISE EXCEPTION 'Duplicate allocation notification'; END IF;
+ BEGIN
+  UPDATE ai_assignment_results SET status='failed';
+  UPDATE ai_assignment_results SET status='released';
+  RAISE EXCEPTION 'rollback test';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'rollback test' THEN RAISE; END IF;
+ END;
+ IF (SELECT count(*) FROM notifications)<>baseline THEN RAISE EXCEPTION 'Rolled back notification persisted'; END IF;
+END $$;`);
+  sql(readFileSync(new URL('../supabase/migrations/20270318000005_auto_release_ai_assignment_results.sql',import.meta.url),'utf8'));
+  sql(`DO $$
+DECLARE allocation ai_assignment_learners; submission uuid:=gen_random_uuid(); result uuid; question uuid; claim timestamptz:=clock_timestamp(); baseline int; recipient_user uuid; path text; course uuid;
+BEGIN
+ SELECT al.* INTO allocation FROM ai_assignment_learners al WHERE NOT EXISTS(SELECT 1 FROM ai_assignment_submissions s WHERE s.assignment_learner_id=al.id) LIMIT 1;
+ SELECT user_id INTO recipient_user FROM learners WHERE id=allocation.learner_id;
+ SELECT course_id,(content->'questions'->0->>'id')::uuid INTO course,question FROM ai_assignments WHERE id=allocation.assignment_id;
+ path:='courses/'||course||'/ai-assignments/'||allocation.assignment_id||'/submissions/'||allocation.id||'/'||submission||'/answer.txt';
+ PERFORM commit_ai_submission(recipient_user,allocation.id,submission,path,'answer.txt','text/plain');
+ SELECT id INTO result FROM ai_assignment_results WHERE submission_id=submission;
+ SELECT count(*) INTO baseline FROM notifications WHERE type='assignment_evaluated';
+ UPDATE ai_assignment_results SET status='failed' WHERE id=result;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline THEN RAISE EXCEPTION 'Failed evaluation announced'; END IF;
+ UPDATE ai_assignment_results SET status='evaluating',updated_at=claim WHERE id=result;
+ IF complete_ai_assignment_evaluation(result,claim-interval '1 second',jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Stale evaluator committed'; END IF;
+ IF NOT complete_ai_assignment_evaluation(result,claim,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Evaluation did not auto release'; END IF;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Missing learner auto-release notification'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM notifications WHERE event_key='ai:evaluated:'||result AND recipient_id=recipient_user) THEN RAISE EXCEPTION 'Wrong result recipient'; END IF;
+ IF complete_ai_assignment_evaluation(result,claim,jsonb_build_array(jsonb_build_object('questionId',question,'marks',1)),'test') THEN RAISE EXCEPTION 'Duplicate evaluator committed'; END IF;
+ IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Duplicate auto-release event'; END IF;
+END $$;`);
+  sql(`ALTER TABLE college_learner_assignments ADD COLUMN is_deleted boolean DEFAULT false, ADD COLUMN external_educator_graded_by uuid;`);
+  sql(readFileSync(new URL('../supabase/migrations/20270327000001_college_ai_grade_updates.sql',import.meta.url),'utf8'));
+  sql(`DO $$
+DECLARE allocation ai_assignment_learners; result ai_assignment_results; outsider uuid:=gen_random_uuid(); original jsonb;
+BEGIN
+ SELECT al.* INTO allocation FROM ai_assignment_learners al WHERE al.college_allocation_id IS NOT NULL LIMIT 1;
+ IF allocation.id IS NULL THEN RAISE EXCEPTION 'Missing college fixture'; END IF;
+ -- Link a released result to this allocation using fixture data, bypassing no production guards.
+ INSERT INTO ai_assignment_submissions(id,assignment_learner_id,file_key,file_name,mime_type)
+ VALUES(gen_random_uuid(),allocation.id,'test/college.docx','college.docx','application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+ ON CONFLICT(assignment_learner_id) DO NOTHING;
+ INSERT INTO ai_assignment_results(submission_id,status,total_marks,maximum_marks,feedback,question_results)
+ SELECT s.id,'released',1,2,'Original feedback','{"review":[{"marks":1}]}'::jsonb
+ FROM ai_assignment_submissions s WHERE s.assignment_learner_id=allocation.id ON CONFLICT(submission_id)
+ DO UPDATE SET status='released',total_marks=1,maximum_marks=2,question_results='{"review":[{"marks":1}]}'::jsonb;
+ SELECT r.* INTO result FROM ai_assignment_results r JOIN ai_assignment_submissions s ON s.id=r.submission_id WHERE s.assignment_learner_id=allocation.id;
+ original:=result.question_results->'review';
+ BEGIN PERFORM update_college_ai_grade(outsider,allocation.college_allocation_id,0,'Denied'); RAISE EXCEPTION 'Unauthorized update allowed';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Assignment educator access required' THEN RAISE; END IF; END;
+ BEGIN PERFORM update_college_ai_grade(allocation.assigned_by,allocation.college_allocation_id,3,'Invalid'); RAISE EXCEPTION 'Invalid marks allowed';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Score outside assignment range' THEN RAISE; END IF; END;
+ PERFORM update_college_ai_grade(allocation.assigned_by,allocation.college_allocation_id,0,'Educator feedback');
+ IF NOT EXISTS(SELECT 1 FROM college_learner_assignments WHERE learner_assignment_id=allocation.college_allocation_id AND grade_received=0 AND grade_percentage=0 AND instructor_feedback='Educator feedback') THEN RAISE EXCEPTION 'College grade not synchronized'; END IF;
+ SELECT * INTO result FROM ai_assignment_results WHERE id=result.id;
+ IF result.total_marks<>0 OR result.question_results->'review' IS DISTINCT FROM original OR jsonb_array_length(result.question_results->'grade_history')<>1 THEN RAISE EXCEPTION 'Missing audit or changed question scores'; END IF;
+ BEGIN UPDATE college_learner_assignments SET grade_received=1 WHERE learner_assignment_id=allocation.college_allocation_id; RAISE EXCEPTION 'Guard bypass';
+ EXCEPTION WHEN OTHERS THEN IF SQLERRM<>'Released AI result is authoritative' THEN RAISE; END IF; END;
+ IF has_function_privilege('authenticated','update_college_ai_grade(uuid,uuid,numeric,text)','EXECUTE') THEN RAISE EXCEPTION 'Untrusted RPC access'; END IF;
+END $$;`);
+  process.stdout.write('PASS: college grade synchronization, zero marks, ownership, range, audit preservation and guard protections.\n');
+  console.log('PASS: automatic result release, failed/stale evaluator suppression and result retries.');
+  console.log('PASS: all five notification types, school/college delivery, learner-only results, batch summaries, idempotency and rollback.');
+  console.log('PASS: five-table migration, immutable materials, idempotent school/college allocation, owned file submission, grade guards, review/release, regular task synchronization and privacy.');
+} finally { docker(['exec',container,'dropdb','-U','postgres',database]); }

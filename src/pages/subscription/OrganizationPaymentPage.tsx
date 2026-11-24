@@ -77,7 +77,7 @@ function OrganizationPaymentPage() {
   const isAuthenticated = useIsAuthenticated();
   
   const state = location.state as LocationState | null;
-  const { plan, organizationConfig, organizationId: stateOrgId } = state || {};
+  const { plan, organizationConfig, organizationId: stateOrgId, mode, existingSubscriptionId } = state || {};
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -156,6 +156,10 @@ function OrganizationPaymentPage() {
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (loading || !plan || !organizationConfig) return;
+    if (mode === 'add-seats' || existingSubscriptionId) {
+      setError('Additional seats require an agreed contract update. Contact your administrator before purchasing.');
+      return;
+    }
     
     // Validate required fields
     if (!billingDetails.name.trim()) {
@@ -216,7 +220,7 @@ function OrganizationPaymentPage() {
       setLoading(false);
       setError(err instanceof Error ? err.message : 'Failed to process payment. Please try again.');
     }
-  }, [loading, plan, organizationConfig, organizationId, billingDetails, navigate, basePath]);
+  }, [loading, plan, organizationConfig, organizationId, billingDetails, navigate, basePath, mode, existingSubscriptionId]);
   
   const handleBack = useCallback(() => {
     navigate(`${basePath}/subscription/bulk-purchase`);

@@ -34,7 +34,7 @@ interface Learner {
 }
 
 interface Opportunity {
-  id: number;
+  id: string;
   job_title: string;
   title: string;
   company_name: string;
@@ -96,26 +96,7 @@ const ApplicantsList: React.FC = () => {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
 
   // AI Recommendations state
-  const [aiRecommendations, setAiRecommendations] = useState<{
-    topRecommendations: Array<{
-      applicantId: number;
-      learnerName: string;
-      positionTitle: string;
-      matchScore: number;
-      confidence: 'high' | 'medium' | 'low';
-      reasons: string[];
-      nextAction: string;
-      suggestedStage: string;
-      matchedSkills: string[];
-      missingSkills: string[];
-    }>;
-    summary: {
-      totalAnalyzed: number;
-      highPotential: number;
-      mediumPotential: number;
-      lowPotential: number;
-    };
-  } | null>(null);
+  const [aiRecommendations, setAiRecommendations] = useState<Awaited<ReturnType<typeof recruiterInsights.analyzeApplicantsForRecommendation>> | null>(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   // Controls visibility of the AI recommendation panel.
   // Default: hidden, surfaced via a floating UX entry point.
@@ -124,7 +105,7 @@ const ApplicantsList: React.FC = () => {
   const [showAllRecommendations, setShowAllRecommendations] = useState(false);
 
   // Get recruiter ID from auth context
-  const recruiterId = user?.id;
+  const recruiterId = user?.id ?? null;
   const queryClient = useQueryClient();
 
   // Function to refresh applicants list
@@ -135,9 +116,9 @@ const ApplicantsList: React.FC = () => {
   // Enable real-time message notifications
   useMessageNotifications({
     userId: recruiterId,
-    userType: 'recruiter',
+    userRole: 'recruiter',
     enabled: true,
-    onMessageReceived: (message) => {
+    onMessageReceived: () => {
       // Optionally refresh conversations or update UI
     }
   });
@@ -172,7 +153,7 @@ const ApplicantsList: React.FC = () => {
                 let pipelineStage = null;
                 let pipelineCandidateId = null;
 
-                if (pipelineData) {
+                if (pipelineData && applicant.application_status !== 'rejected') {
                   for (const [stage, candidates] of Object.entries(pipelineData)) {
                     const found = (candidates as any[]).find(c => c.learner_id === applicant.learner_id && c.status!=='rejected');
                     if (found) {
@@ -190,7 +171,7 @@ const ApplicantsList: React.FC = () => {
                   opportunity_id: applicant.opportunity_id
                 };
               } catch (error) {
-                logger.error('Error fetching pipeline data for opportunity', error, { opportunityId: applicant.opportunity_id });
+                logger.error('Error fetching pipeline data for opportunity', error instanceof Error ? error : new Error(String(error)), { opportunityId: applicant.opportunity_id });
                 return applicant;
               }
             }
@@ -203,7 +184,7 @@ const ApplicantsList: React.FC = () => {
 
         return applicantsWithPipeline;
       } catch (error) {
-        logger.error('Error fetching applicants', error);
+        logger.error('Error fetching applicants', error instanceof Error ? error : new Error(String(error)));
         throw error;
       }
     },
@@ -221,7 +202,7 @@ const ApplicantsList: React.FC = () => {
     };
 
     applicantsList.forEach(app => {
-      if (app.pipeline_stage && counts.hasOwnProperty(app.pipeline_stage)) {
+      if (app.pipeline_stage && Object.prototype.hasOwnProperty.call(counts, app.pipeline_stage)) {
         counts[app.pipeline_stage as keyof typeof counts]++;
       }
     });
@@ -283,12 +264,12 @@ const ApplicantsList: React.FC = () => {
         const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(enrichedApplicants);
         setAiRecommendations(recommendations);
       } catch (apiErr) {
-        logger.error('Error fetching opportunities skills', apiErr);
+        logger.error('Error fetching opportunities skills', apiErr instanceof Error ? apiErr : new Error(String(apiErr)));
         const recommendations = await recruiterInsights.analyzeApplicantsForRecommendation(applicantsForAnalysis);
         setAiRecommendations(recommendations);
       }
     } catch (error) {
-      logger.error('Error fetching AI recommendations', error);
+      logger.error('Error fetching AI recommendations', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoadingRecommendations(false);
     }
@@ -310,6 +291,10 @@ const ApplicantsList: React.FC = () => {
   };
 
   const handleMoveToPipelineStage = async (applicant: Applicant, newStage: string) => {
+    if (applicant.application_status === 'rejected' || applicant.pipeline_stage === 'rejected') {
+      toast.error('Reset the rejected application status before moving this candidate.');
+      return;
+    }
     logger.info('[ApplicantsList] handleMoveToPipelineStage called', {
       applicant: {
         id: applicant.id,
@@ -365,7 +350,7 @@ const ApplicantsList: React.FC = () => {
         fetchApplicants();
 
       } catch (error) {
-        logger.error('Error adding candidate to pipeline', error);
+        logger.error('Error adding candidate to pipeline', error instanceof Error ? error : new Error(String(error)));
         const errorMsg = (error as any)?.message || 'Failed to add candidate to pipeline';
         toast.error(errorMsg);
         return;
@@ -402,7 +387,7 @@ const ApplicantsList: React.FC = () => {
         fetchApplicants();
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Failed to move candidate. Please try again.';
-        logger.error('[ApplicantsList] Error moving candidate', error);
+        logger.error('[ApplicantsList] Error moving candidate', error instanceof Error ? error : new Error(String(error)));
         toast.error(errorMsg);
         return;
       }
@@ -501,32 +486,6 @@ const ApplicantsList: React.FC = () => {
     if (diffInDays < 14) return '1 week ago';
     if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
     return date.toLocaleDateString();
-  };
-
-  const getExperienceYears = (applicant: Applicant) => {
-    const yearOfPassing = applicant.learner?.year_of_passing;
-    if (!yearOfPassing) return 'N/A';
-
-    const currentYear = new Date().getFullYear();
-    const passingYear = parseInt(yearOfPassing);
-    const years = currentYear - passingYear;
-
-    if (years <= 0) return 'Fresher';
-    return `${years} year${years > 1 ? 's' : ''}`;
-  };
-
-  const renderStars = (score: number = 0) => {
-    // Convert employability_score (0-100) to 5-star rating
-    const rating = Math.round((score / 100) * 5);
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <span key={i} className={i <= rating ? 'text-yellow-400' : 'text-gray-300'}>
-          ★
-        </span>
-      );
-    }
-    return <div className="flex">{stars}</div>;
   };
 
   const filteredApplicants = applicants.filter((applicant) => {
@@ -1085,7 +1044,7 @@ const ApplicantsList: React.FC = () => {
                             <ActionButton label={`Message ${applicant.learner?.name||'candidate'}`} icon={ChatBubbleLeftIcon} disabled={!recruiterId} onClick={()=>{setSelectedApplicant(applicant);setMessageModalOpen(true)}}/>
 
                             {/* Pipeline Stage Actions */}
-                            {(applicant.pipeline_candidate_id || applicant.application_status === 'applied' || applicant.application_status === 'viewed') && (
+                            {applicant.application_status !== 'rejected' && applicant.pipeline_stage !== 'rejected' && (applicant.pipeline_candidate_id || applicant.application_status === 'applied' || applicant.application_status === 'viewed') && (
                               <DropdownMenu.Root><DropdownMenu.Trigger asChild><button type="button" aria-label={`Move ${applicant.learner?.name||'candidate'} to stage`} title="Move to stage" className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-purple-300 text-purple-800 focus-visible:ring-2 focus-visible:ring-primary-500"><ChevronRightIcon className="h-5 w-5"/></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content align="end" sideOffset={6} className="z-50 w-52 rounded-lg border border-gray-200 bg-white p-1 shadow-xl"><DropdownMenu.Label className="px-3 py-2 text-xs font-medium text-gray-600">Move to stage</DropdownMenu.Label>{getNextStageOptions(applicant).map(stage=><DropdownMenu.Item key={stage} onSelect={()=>handleMoveToPipelineStage(applicant,stage)} className="cursor-pointer rounded px-3 py-2 text-sm text-gray-800 outline-none focus:bg-gray-100">{pipelineStages.find(s=>s.stage===stage)?.label||stage}</DropdownMenu.Item>)}<DropdownMenu.Separator className="my-1 border-t border-gray-200"/><DropdownMenu.Item onSelect={()=>handleMoveToPipelineStage(applicant,'rejected')} className="cursor-pointer rounded px-3 py-2 text-sm text-red-800 outline-none focus:bg-red-50">Reject application</DropdownMenu.Item></DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
                             )}
                           </div>

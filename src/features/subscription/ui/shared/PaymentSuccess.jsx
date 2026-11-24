@@ -34,8 +34,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import { getRouteForRole } from '@/features/auth/lib/roleBasedRouter';
 import { useSubscription } from '@/features/subscription/model/subscriptionStore';
-import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
-import { queryKeys } from '@/shared/lib/queryKeys';
+import { getSubscriptionScope, subscriptionQueryKey, useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
+import { confirmedPaymentSubscription } from '@/features/subscription/lib/paymentActivation';
 import { useAuthStore, useUser, useUserRole } from '@/shared/model/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 // ============================================================================
@@ -235,7 +235,7 @@ function useNavigationState(cacheRefresh, getDashboardUrl, navigate) {
       // since the payment verification response updated it.
       const currentUser = useAuthStore.getState().user;
       const cachedSub = currentUser?.id
-        ? queryClient.getQueryData(queryKeys.subscription.data.byOrganization(currentUser.id))
+        ? queryClient.getQueryData(subscriptionQueryKey(currentUser.id, getSubscriptionScope(getDashboardUrl())))
         : null;
       const storeHasAccess = cachedSub?.status === 'active';
 
@@ -378,14 +378,16 @@ const ErrorScreen = ({ message, onRetry }) => (
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       </div>
-      <h2 className="text-lg font-bold text-gray-900 mb-1">Verification Failed</h2>
-      <p className="text-sm text-gray-500 mb-5">{message || 'Please try again'}</p>
+      <h2 className="text-lg font-bold text-gray-900 mb-1">Unable to confirm activation</h2>
+      <p className="text-sm text-gray-500 mb-5">{message || 'Activation has not been confirmed yet.'}</p>
+      <p className="text-sm text-gray-600 mb-5">Do not pay again. Retry verification for this payment or contact support.</p>
       <button
         onClick={onRetry}
         className="w-full py-2.5 bg-[#2663EB] text-white rounded-lg font-medium text-sm hover:bg-[#1D4ED8] flex items-center justify-center gap-2"
       >
-        <RefreshCw className="w-4 h-4" /> Retry
+        <RefreshCw className="w-4 h-4" /> Retry verification
       </button>
+      <Link to="/contact" className="inline-block mt-4 text-sm text-[#2663EB]">Contact support</Link>
     </div>
   </div>
 );
@@ -394,7 +396,7 @@ const ErrorScreen = ({ message, onRetry }) => (
 // MAIN COMPONENT
 // ============================================================================
 
-function PaymentSuccess() {
+function PaymentSuccessContent() {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useUser();
@@ -404,18 +406,20 @@ function PaymentSuccess() {
   const queryClient = useQueryClient();
 
   // ── Read exclusively from location.state (set by initiateRazorpayPayment callbacks) ──
-  const stateData = location.state || {};
-  const [verificationStatus, setVerificationStatus] = useState(stateData.verificationResult ? 'success' : 'loading');
-  const [transactionDetails, setTransactionDetails] = useState(stateData.verificationResult?.data ?? stateData.verificationResult ?? null);
-  const [verificationError, setVerificationError] = useState(null);
-  const verificationAttempted = useRef(false);
+  const stateData = useMemo(() => location.state || {}, [location.state]);
+  const ownsPayment = (!stateData.paymentUserId || stateData.paymentUserId === user?.id)
+    && (stateData.paymentOrganizationId === undefined || stateData.paymentOrganizationId === (user?.orgId || null));
+  const ownershipError = 'Sign in with the account that made this payment before verifying it.';
+  const [verificationStatus, setVerificationStatus] = useState(!ownsPayment ? 'error' : confirmedPaymentSubscription(stateData.verificationResult) ? 'success' : 'error');
+  const [transactionDetails, setTransactionDetails] = useState(ownsPayment ? stateData.verificationResult?.data ?? stateData.verificationResult ?? null : null);
+  const [verificationError, setVerificationError] = useState(ownsPayment ? null : new Error(ownershipError));
   const verificationInFlight = useRef(false);
   const isUpgrade = transactionDetails?.is_upgrade || stateData.isUpgrade || false;
-  const paymentParams = {
+  const paymentParams = useMemo(() => ({
     razorpay_payment_id: stateData.razorpay_payment_id || '',
     razorpay_order_id: stateData.razorpay_order_id || '',
     razorpay_signature: stateData.razorpay_signature || '',
-  };
+  }), [stateData.razorpay_payment_id, stateData.razorpay_order_id, stateData.razorpay_signature]);
 
   // Extract primitives for stable useCallback dependencies
   const razorpayPaymentId = paymentParams.razorpay_payment_id;
@@ -438,6 +442,9 @@ function PaymentSuccess() {
 
   const retry = useCallback(async () => {
     if (verificationInFlight.current) return;
+    if (!ownsPayment) {
+      setVerificationStatus('error'); setVerificationError(new Error(ownershipError)); return;
+    }
     const { razorpay_payment_id, razorpay_order_id, razorpay_signature, plan } = stateData;
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !plan?.id) {
       setVerificationStatus('error');
@@ -450,7 +457,8 @@ function PaymentSuccess() {
     try {
       const result = await verifyPayment({ razorpay_payment_id, razorpay_order_id, razorpay_signature, plan });
       if (!mountedRef.current) return;
-      setTransactionDetails(result);
+      if (!confirmedPaymentSubscription(result)) throw new Error('Activation has not been confirmed yet.');
+      setTransactionDetails(result?.data ?? result);
       setVerificationStatus('success');
     } catch (error) {
       if (!mountedRef.current) return;
@@ -459,14 +467,7 @@ function PaymentSuccess() {
     } finally {
       verificationInFlight.current = false;
     }
-  }, [stateData]);
-
-  useEffect(() => {
-    if (!stateData.verificationResult && !verificationAttempted.current) {
-      verificationAttempted.current = true;
-      void retry();
-    }
-  }, [stateData.verificationResult, retry]);
+  }, [stateData, ownsPayment]);
 
   // Memoized values
   const managePath = useMemo(() => {
@@ -535,7 +536,8 @@ function PaymentSuccess() {
       email_sent: transactionDetails.email_sent,
     });
 
-    const subscription = transactionDetails?.subscription;
+    const subscription = confirmedPaymentSubscription(stateData.verificationResult)
+      || confirmedPaymentSubscription(transactionDetails);
 
     if (subscription) {
       setActivationStatus(ACTIVATION_STATES.ACTIVATED);
@@ -560,25 +562,25 @@ function PaymentSuccess() {
           autoRenew: true,
         };
         if (user?.id) {
-          queryClient.setQueryData(
-            queryKeys.subscription.data.byOrganization(user.id),
-            formattedSub
-          );
+          const scopes = new Set([undefined, getSubscriptionScope(getDashboardUrl())]);
+          // Stop older in-flight reads before publishing the authoritative
+          // verification result at the exact keys consumed by these routes.
+          for (const scope of scopes) {
+            const key = subscriptionQueryKey(user.id, scope);
+            void queryClient.cancelQueries({ queryKey: key, exact: true });
+            queryClient.setQueryData(key, formattedSub);
+          }
         }
         log.info('✅ Directly updated React Query cache with subscription data');
       } catch (cacheErr) {
         log.error('Failed to directly update React Query cache:', cacheErr);
       }
 
-      // Also trigger cache refresh as a secondary mechanism
-      cacheRefresh.refresh().catch(err => {
-        log.error('Initial cache refresh failed (non-critical — store already updated):', err);
-      });
-
-      // Invalidate React Query cache so useSubscriptionQuery() consumers
-      // (MySubscription, SubscriptionStatusWidget, dashboard, etc.) get fresh data
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.subscription.data.all,
+      // The verified response is current subscription data. Normal query
+      // freshness rules govern subsequent reads; an immediate stale shadow
+      // fetch must not overwrite the result we just received from activation.
+      void refreshAccess().catch(err => {
+        log.error('Initial entitlement refresh failed (non-critical)', err);
       });
 
       const isExistingOrAlreadyProcessed = transactionDetails.already_processed || transactionDetails.is_existing_subscription;
@@ -635,31 +637,12 @@ function PaymentSuccess() {
           toast.success('Your subscription is already active!', { duration: 3000, icon: '✅' });
         }
       }
-    } else if (transactionDetails.subscription_created === true) {
-      // Subscription was created but details weren't in the response
-      setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.subscription.data.all,
-      });
-      log.info('✅ Subscription created flag detected, invalidated React Query cache');
-      setEmailStatus(EMAIL_STATES.SENT);
-    } else if (transactionDetails.subscription_error) {
-      log.warn('Subscription creation issue:', transactionDetails.subscription_error);
-      setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-
-      setEmailStatus(EMAIL_STATES.SENT);
-      toast('Payment successful! Your subscription will be activated shortly.', { duration: 5000, icon: '⏳' });
     } else {
-      // Payment verified but no subscription object — still mark as active
-      // This handles the case where verification succeeded inline in Razorpay handler
-      setActivationStatus(ACTIVATION_STATES.ACTIVATED);
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.subscription.data.all,
-      });
-      log.info('✅ Payment verified, hasAccess true (no subscription object in response)');
-      setEmailStatus(EMAIL_STATES.SENT);
+      setVerificationStatus('error');
+      setVerificationError(new Error('Activation has not been confirmed yet.'));
+      setActivationStatus(ACTIVATION_STATES.PENDING);
     }
-  }, [verificationStatus, transactionDetails, activationStatus, user, queryClient]);
+  }, [verificationStatus, transactionDetails, activationStatus, user, queryClient, getDashboardUrl, isUpgrade, paymentParams.razorpay_payment_id, refreshAccess, stateData.verificationResult]);
 
   // Redirect if no payment params — but check location.state first since
   // PaymentCompletion passes data via React Router state, not URL params
@@ -887,6 +870,14 @@ function PaymentSuccess() {
       `}</style>
     </div>
   );
+}
+
+function PaymentSuccess() {
+  const location = useLocation();
+  const user = useUser();
+  const identity = JSON.stringify([location.key, user?.id, user?.orgId,
+    location.state?.razorpay_order_id, location.state?.razorpay_payment_id]);
+  return <PaymentSuccessContent key={identity} />;
 }
 
 export default PaymentSuccess;

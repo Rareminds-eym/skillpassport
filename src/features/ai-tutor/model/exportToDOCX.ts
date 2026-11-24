@@ -1,6 +1,6 @@
 import { saveAs } from 'file-saver';
 import { getLogger } from '@/shared/config';
-import { loadLogo, WATERMARK_CONFIG } from './logoLoader';
+import { loadLogo } from './logoLoader';
 import { parseMarkdownLines, type ParsedLine } from '@/shared/utils';
 import type {
   IParagraphOptions,
@@ -246,7 +246,6 @@ export async function exportToDOCX({
       TextRun,
       AlignmentType,
       ImageRun,
-      Header,
       BorderStyle,
       Footer,
       PageNumber,
@@ -270,8 +269,7 @@ export async function exportToDOCX({
         const finalHeightPx = Math.min(rawHeight, MAX_LOGO_HEIGHT_PX);
         const finalWidthPx = Math.round(finalHeightPx / aspectRatio);
         
-        // Convert pixels to EMUs (English Metric Units) for DOCX
-        const PX_TO_EMU = 9525;
+        // ImageRun accepts pixels and converts them to EMUs internally.
         
         sections.push(
           new Paragraph({
@@ -282,8 +280,8 @@ export async function exportToDOCX({
                 data: logo.arrayBuffer,
                 type: 'png',
                 transformation: {
-                  width: finalWidthPx * PX_TO_EMU,
-                  height: finalHeightPx * PX_TO_EMU,
+                  width: finalWidthPx,
+                  height: finalHeightPx,
                 },
               }),
             ],
@@ -371,39 +369,9 @@ export async function exportToDOCX({
     });
     sections.push(...contentParagraphs);
 
-    // Create watermark paragraph for header
-    const watermarkParagraph = new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [
-        new TextRun({
-          text: WATERMARK_CONFIG.text,
-          bold: true,
-          size: 72,        // 36pt
-          color: 'E0E0E0', // lighter gray
-          font: 'Arial',
-        }),
-      ],
-      frame: {
-        position: { x: 2400, y: 4800 }, // better centered
-        width: 6000,
-        height: 1800,
-        anchor: {
-          horizontal: 'page',
-          vertical: 'page',
-        },
-        type: 'absolute',
-      },
-    });
-
-    // Create document with watermark in header and page numbers in footer
     const doc = new Document({
       sections: [
         {
-          headers: {
-            default: new Header({
-              children: [watermarkParagraph],
-            }),
-          },
           footers: {
             default: new Footer({
               children: [

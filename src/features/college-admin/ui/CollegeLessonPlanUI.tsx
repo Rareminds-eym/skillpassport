@@ -28,12 +28,43 @@ import SearchBar from '@/shared/ui/SearchBar';
 import { Pagination } from '@/shared/ui';
 import { FileTextIcon } from "lucide-react";
 import { uploadFile, validateFile, deleteFile, getDocumentUrl } from '@/shared/api/fileUploadService';
+import { ssoClient } from '@/shared/api/ssoClient';
 import { getLogger } from '@/shared/config/logging';
 import { formatProgramLabel } from '@/shared/lib';
+import toast from 'react-hot-toast';
+import type { CollegeLessonPlan } from '@/features/college-admin';
 
 const logger = getLogger('college-admin:CollegeLessonPlanUI');
-import type { CollegeLessonPlan } from '@/features/college-admin';
-import toast from 'react-hot-toast';
+
+/**
+ * Open a storage document that requires authentication.
+ * Fetches through ssoClient (which injects the JWT) then opens a blob URL.
+ */
+async function openAuthenticatedFile(fileUrl: string, fileName: string, mode: 'inline' | 'download') {
+  try {
+    const proxyUrl = getDocumentUrl(fileUrl, mode);
+    const response = await ssoClient.fetch(proxyUrl);
+    if (!response.ok) {
+      toast.error('Could not open file. You may not have permission to access it.');
+      return;
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    if (mode === 'download') {
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      a.click();
+    } else {
+      window.open(blobUrl, '_blank');
+    }
+    // Revoke after a short delay to allow the browser to start the download/view
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+  } catch (err) {
+    logger.error('openAuthenticatedFile error', err as Error);
+    toast.error('Failed to open file.');
+  }
+}
 
 /* ==============================
    TYPES & INTERFACES (College-adapted)
@@ -245,7 +276,10 @@ const LessonPlanCard = ({
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <BookOpenIcon className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">
-            {getPlanProperty(plan, 'courseName') || getPlanProperty(plan, 'course')}
+            {getPlanProperty(plan, 'courseName') ||
+              (typeof getPlanProperty(plan, 'course') === 'string'
+                ? getPlanProperty(plan, 'course')
+                : getPlanProperty(plan, 'course')?.course_name) || 'No course'}
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -493,25 +527,24 @@ const ViewLessonPlanModal = ({
                         </div>
                         {file.url && (
                           <div className="flex items-center gap-1">
-                            <a
-                              href={getDocumentUrl(file.url, 'inline')}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => openAuthenticatedFile(file.url!, file.name, 'inline')}
                               className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                               title="View file"
                             >
                               <EyeIcon className="h-4 w-4" />
                               View
-                            </a>
-                            <a
-                              href={getDocumentUrl(file.url, 'download')}
-                              download={file.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openAuthenticatedFile(file.url!, file.name, 'download')}
                               className="flex items-center gap-1 px-3 py-1.5 text-sm text-green-600 hover:bg-green-100 rounded-lg transition-colors"
                               title="Download file"
                             >
                               <ArrowUpTrayIcon className="h-4 w-4 rotate-180" />
                               Download
-                            </a>
+                            </button>
                           </div>
                         )}
                       </div>
@@ -678,6 +711,7 @@ interface CollegeLessonPlanProps {
   onSemesterChange?: (semester: string, programId: string) => Promise<{ courses: any[]; }>;
   onCurriculumContextChange?: (courseId: string, programId: string, academicYear: string) => Promise<void>;
   onUnitChange?: (unitId: string) => Promise<void>;
+  headerActions?: React.ReactNode;
 }
 
 /* ==============================
@@ -689,6 +723,9 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
   const departments = props.departments ?? [];
   const semesters = props.semesters ?? [];
   const academicYears = props.academicYears ?? [];
+  const now = new Date();
+  const academicStartYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  const defaultAcademicYear = props.selectedAcademicYear || `${academicStartYear}-${academicStartYear + 1}`;
   const units = props.units ?? [];
   const learningOutcomes = props.learningOutcomes ?? [];
   const loading = props.loading ?? false;
@@ -1174,7 +1211,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         // Validate file
         const validation = validateFile(file, {
           maxSize: 50, // 50MB max
-          allowedTypes: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
+          allowedTypes: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'mkv', 'webm']
         });
 
         if (!validation.valid) {
@@ -1221,7 +1258,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
         try {
           const uploadResult = await uploadFile(
             tempFile.tempFile,
-            'college-lesson-plans'
+            'college-lesson-plans', undefined, 'course_resource'
           );
           
           if (uploadResult.success && uploadResult.url) {
@@ -1657,23 +1694,26 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
           </div>
 
           {!showEditor && (
-            <button
-              onClick={() => {
-                resetForm();
-                // Set current academic year as default (2025-2026)
-                const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
-                setFormData(prev => ({ 
-                  ...prev, 
-                  academicYear: "2025-2026",
-                  sessionDate: today // Set today as default session date
-                }));
-                setShowEditor(true);
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
-            >
-              <PlusCircleIcon className="h-5 w-5" />
-              New Session Plan
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              {props.headerActions}
+              <button
+                onClick={() => {
+                  resetForm();
+                  // Follow the selected academic year instead of a fixed past year.
+                  const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    academicYear: defaultAcademicYear,
+                    sessionDate: today // Set today as default session date
+                  }));
+                  setShowEditor(true);
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-indigo-700 active:scale-95 transition-all"
+              >
+                <PlusCircleIcon className="h-5 w-5" />
+                New Session Plan
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1954,7 +1994,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                         const today = new Date().toISOString().split('T')[0];
                         setFormData(prev => ({ 
                           ...prev, 
-                          academicYear: "2025-2026",
+                          academicYear: defaultAcademicYear,
                           sessionDate: today
                         }));
                         setShowEditor(true);
@@ -2190,7 +2230,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       </option>
                       {Array.isArray(formPrograms) && formPrograms.map((program) => (
                         <option key={program.id} value={program.id}>
-                          {program.name} ({program.code})
+                          {formatProgramLabel(program.name, program)}
                         </option>
                       ))}
                     </select>
@@ -2329,6 +2369,11 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                         </option>
                       ))}
                     </select>
+                    {!loadingUnits && formData.course && formData.program && formData.academicYear && availableUnits.length === 0 && (
+                      <p className="mt-2 text-sm text-amber-700">
+                        No curriculum units found for this course and program in {formData.academicYear}. Select the year used in Curriculum Builder, or add units there first.
+                      </p>
+                    )}
                     {errors.unitId && (
                       <p className="mt-1 text-xs text-red-600">{errors.unitId}</p>
                     )}
@@ -2480,7 +2525,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                       <input
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4,.mov,.avi,.wmv,.mkv,.webm"
                         onChange={handleFileUpload}
                         className="hidden"
                         id="file-upload"
@@ -2497,7 +2542,7 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                           {uploadingFiles ? 'Uploading...' : 'Click to upload files'}
                         </span>
                         <span className="text-xs text-gray-500 mt-1">
-                          PDF, DOC, PPT, Images, Videos (Max 50MB each)
+                          PDF, Word, Excel, CSV, PowerPoint, images and videos (max 50MB each)
                         </span>
                       </label>
                     </div>
@@ -2555,25 +2600,24 @@ const CollegeLessonPlanUI: React.FC<CollegeLessonPlanProps> = (props) => {
                                 <div className="flex items-center gap-2">
                                   {file.url && !isTemporary && (
                                     <div className="flex items-center gap-1">
-                                      <a
-                                        href={getDocumentUrl(file.url, 'inline')}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                      <button
+                                        type="button"
+                                        onClick={() => openAuthenticatedFile(file.url!, file.name, 'inline')}
                                         className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:bg-blue-100 rounded transition-colors"
                                         title="View file"
                                       >
                                         <EyeIcon className="h-3 w-3" />
                                         View
-                                      </a>
-                                      <a
-                                        href={getDocumentUrl(file.url, 'download')}
-                                        download={file.name}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => openAuthenticatedFile(file.url!, file.name, 'download')}
                                         className="flex items-center gap-1 px-2 py-1 text-xs text-green-600 hover:bg-green-100 rounded transition-colors"
                                         title="Download file"
                                       >
                                         <ArrowUpTrayIcon className="h-3 w-3 rotate-180" />
                                         Download
-                                      </a>
+                                      </button>
                                     </div>
                                   )}
                                   {isTemporary && (

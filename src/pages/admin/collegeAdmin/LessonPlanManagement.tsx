@@ -1,11 +1,78 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
+import * as Dialog from '@radix-ui/react-dialog';
+import { ClipboardDocumentCheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { getLogger } from '@/shared/config/logging';
 
 // Import the college lesson plan UI
 import { CollegeLessonPlanUI } from '@/features/college-admin';
 import { lessonPlanService, type CollegeLessonPlan } from '@/features/college-admin';
+import { CollegeLessonPlanReviewDrawer } from '@/features/college-admin/ui';
+
+function SessionPlanToolDialog({
+  title,
+  description,
+  children,
+  icon,
+  drawer = false,
+  reviewNotifications = false,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  icon: React.ReactNode;
+  drawer?: boolean;
+  reviewNotifications?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const routeOpen = reviewNotifications && Boolean(searchParams.get('reviewChange'));
+
+  return (
+    <Dialog.Root
+      open={open || routeOpen}
+      onOpenChange={value => {
+        setOpen(value);
+        if (!value && routeOpen) {
+          const next = new URLSearchParams(searchParams);
+          next.delete('reviewChange');
+          setSearchParams(next, { replace: true });
+        }
+      }}
+    >
+      <Dialog.Trigger className="inline-flex h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600">
+        {icon}
+        {title}
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-gray-900/60" />
+        <Dialog.Content
+          className={
+            drawer
+              ? 'fixed inset-y-0 right-0 z-50 flex h-dvh w-full max-w-2xl flex-col overflow-hidden bg-white shadow-xl focus:outline-none'
+              : 'fixed left-1/2 top-1/2 z-50 flex max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl bg-white shadow-xl focus:outline-none'
+          }
+        >
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-4 py-5 sm:px-6">
+            <div>
+              <Dialog.Title className="text-xl font-semibold text-gray-900">{title}</Dialog.Title>
+              <Dialog.Description className="mt-1 text-sm text-gray-600">{description}</Dialog.Description>
+            </div>
+            <Dialog.Close
+              aria-label={`Close ${title}`}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </Dialog.Close>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
 
 /**
  * CollegeLessonPlanManagement - Lesson plan management for college faculty
@@ -31,6 +98,8 @@ const CollegeLessonPlanManagement: React.FC = () => {
 
   // Current lesson plan data
   const [lessonPlans, setLessonPlans] = useState<CollegeLessonPlan[]>([]);
+  const planRequest = useRef(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [units, setUnits] = useState<any[]>([]);
   const [learningOutcomes, setLearningOutcomes] = useState<any[]>([]);
   const [currentCurriculumId, setCurrentCurriculumId] = useState<string | undefined>(undefined);
@@ -74,15 +143,15 @@ const CollegeLessonPlanManagement: React.FC = () => {
     }
   }, [selectedProgram, selectedSemester]);
 
-  // Load lesson plans when filters change
+  // The list owns its visible filters. Fetch all college plans so the form's
+  // academic-year default does not silently filter the list.
   useEffect(() => {
-    loadLessonPlans();
-  }, [selectedDepartment, selectedProgram, selectedCourse, selectedSemester, selectedAcademicYear]);
+    void loadLessonPlans();
+    return () => { planRequest.current += 1; };
+  }, []);
 
   const loadConfigurationData = async () => {
     try {
-      setLoading(true);
-
       // Load departments
       const deptResult = await lessonPlanService.getDepartments();
       if (deptResult.success) {
@@ -95,8 +164,9 @@ const CollegeLessonPlanManagement: React.FC = () => {
       const years = lessonPlanService.getAcademicYears();
       setAcademicYears(years);
       
-      // Auto-select current academic year (2025-2026 is the current academic year)
-      const currentYear = years.find(year => year === '2025-2026') || years[0];
+      const now = new Date();
+      const start = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+      const currentYear = years.find(year => year === `${start}-${start + 1}`);
       
       if (currentYear) {
         setSelectedAcademicYear(currentYear);
@@ -105,8 +175,6 @@ const CollegeLessonPlanManagement: React.FC = () => {
     } catch (error: any) {
       logger.error('Error loading configuration', error);
       toast.error('Failed to load configuration data');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -159,29 +227,23 @@ const CollegeLessonPlanManagement: React.FC = () => {
   };
 
   const loadLessonPlans = async () => {
+    const request = ++planRequest.current;
     try {
       setLoading(true);
-      
-      const filters: any = {};
-      if (selectedDepartment) filters.department_id = selectedDepartment;
-      if (selectedProgram) filters.program_id = selectedProgram;
-      if (selectedCourse) filters.course_id = selectedCourse;
-      if (selectedSemester) filters.semester = parseInt(selectedSemester);
-      if (selectedAcademicYear) filters.academic_year = selectedAcademicYear;
-
-      const result = await lessonPlanService.getLessonPlans(filters);
+      setLoadError(null);
+      const result = await lessonPlanService.getLessonPlans();
+      if (request !== planRequest.current) return;
       if (result.success) {
         setLessonPlans(result.data || []);
       } else {
-        toast.error('Failed to load lesson plans');
-        setLessonPlans([]);
+        setLoadError(result.error?.message || 'Failed to load lesson plans');
       }
     } catch (error) {
+      if (request !== planRequest.current) return;
       logger.error('Error loading lesson plans', error as Error);
-      toast.error('Failed to load lesson plans');
-      setLessonPlans([]);
+      setLoadError(error instanceof Error ? error.message : 'Failed to load lesson plans');
     } finally {
-      setLoading(false);
+      if (request === planRequest.current) setLoading(false);
     }
   };
 
@@ -299,17 +361,13 @@ const CollegeLessonPlanManagement: React.FC = () => {
       // Validate required fields before sending to service
       const sessionDate = lessonPlan.sessionDate || lessonPlan.session_date;
       if (!sessionDate || sessionDate.trim() === '') {
-        toast.error('Session date is required');
-        setSaveStatus("idle");
-        return;
+        throw new Error('Session date is required');
       }
       
       // Validate date format
       const dateObj = new Date(sessionDate);
       if (isNaN(dateObj.getTime())) {
-        toast.error('Please enter a valid session date');
-        setSaveStatus("idle");
-        return;
+        throw new Error('Please enter a valid session date');
       }
       
       if (lessonPlan.id && lessonPlans.find(lp => lp.id === lessonPlan.id)) {
@@ -345,15 +403,7 @@ const CollegeLessonPlanManagement: React.FC = () => {
         } else {
           setSaveStatus("idle");
           const errorMessage = result.error?.message || 'Failed to update lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          throw new Error(errorMessage);
         }
       } else {
         // Create new lesson plan
@@ -389,24 +439,17 @@ const CollegeLessonPlanManagement: React.FC = () => {
         } else {
           setSaveStatus("idle");
           const errorMessage = result.error?.message || 'Failed to create lesson plan';
-          
-          // Handle specific database errors
-          if (errorMessage.includes('session_date') && errorMessage.includes('not-null')) {
-            toast.error('Session date is required and cannot be empty');
-          } else if (errorMessage.includes('violates not-null constraint')) {
-            toast.error('Please fill in all required fields');
-          } else {
-            toast.error(errorMessage);
-          }
+          throw new Error(errorMessage);
         }
       }
       
+      await loadLessonPlans();
       // Reset save status after a delay
       setTimeout(() => setSaveStatus("idle"), 2000);
     } catch (error: any) {
       logger.error('Error saving lesson plan', error);
       setSaveStatus("idle");
-      toast.error('Failed to save lesson plan');
+      throw error;
     }
   };
 
@@ -447,7 +490,21 @@ const CollegeLessonPlanManagement: React.FC = () => {
   };
 
   return (
+    <>
+    {loadError && <div role="alert" className="m-4 rounded-xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"><p>Session plans could not be loaded: {loadError}</p><button type="button" disabled={loading} className="mt-2 min-h-11 rounded-lg px-3 font-semibold underline disabled:opacity-50" onClick={() => { void loadLessonPlans(); }}>Retry loading plans</button></div>}
+    {(!loadError || lessonPlans.length > 0) &&
     <CollegeLessonPlanUI
+      headerActions={
+        <SessionPlanToolDialog
+          drawer
+          reviewNotifications
+          title="Educator changes"
+          description="Review proposed session plan changes. Content is updated only after approval."
+          icon={<ClipboardDocumentCheckIcon className="h-5 w-5" />}
+        >
+          <CollegeLessonPlanReviewDrawer onReviewed={() => { void loadLessonPlans(); }} />
+        </SessionPlanToolDialog>
+      }
       // College-specific selections
       selectedCourse={selectedCourse}
       setSelectedCourse={setSelectedCourse}
@@ -484,6 +541,8 @@ const CollegeLessonPlanManagement: React.FC = () => {
       onCurriculumContextChange={handleCurriculumContextChange}
       onUnitChange={handleUnitChange}
     />
+    }
+    </>
   );
 };
 

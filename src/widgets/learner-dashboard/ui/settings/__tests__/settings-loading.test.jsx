@@ -4,12 +4,15 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import MainSettings from '../MainSettings';
 import { apiPost } from '@/shared/api/apiClient';
+import toast from 'react-hot-toast';
+vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn(), loading: vi.fn(), dismiss: vi.fn() } }));
 
 const mocks = vi.hoisted(() => ({
   notifications: vi.fn(), activities: vi.fn(),
   learner: { id: 'learner-1', email: 'learner@example.test', name: 'Learner', school_id: 'school-1' },
   profileLoading: false, collectionsLoading: false,
   updateProfile: vi.fn(),
+  updateInstitutionProfile: vi.fn(),
 }));
 vi.mock('@/shared/api/apiClient', () => ({ apiPost: vi.fn() }));
 vi.mock('@/shared/model/authStore', () => ({
@@ -18,7 +21,7 @@ vi.mock('@/shared/model/authStore', () => ({
 }));
 vi.mock('@/entities/learner/model/useLearnerRealtimeActivities', () => ({ useLearnerRealtimeActivities: mocks.activities }));
 vi.mock('@/entities/learner', () => ({
-  useLearnerSettings: () => ({ learnerData: mocks.learner, loading: mocks.profileLoading, updateProfile: mocks.updateProfile }),
+  useLearnerSettings: () => ({ learnerData: mocks.learner, loading: mocks.profileLoading, updateProfile: mocks.updateProfile, updateInstitutionProfile: mocks.updateInstitutionProfile }),
   useLearnerDataByEmail: () => ({ learnerData: {}, loading: mocks.collectionsLoading }),
   useLearnerCertificates: () => ({ certificates: [] }),
   useLearnerProjects: () => ({ projects: [] }),
@@ -35,6 +38,7 @@ beforeEach(() => {
   mocks.profileLoading = false;
   mocks.collectionsLoading = false;
   mocks.updateProfile.mockResolvedValue({ success: true });
+  mocks.updateInstitutionProfile.mockResolvedValue({ success: true });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
   apiPost.mockResolvedValue({ data: {} });
 });
@@ -111,4 +115,41 @@ it('retries failed institution requests without discarding the personal draft', 
   await screen.findByRole('heading', { name: 'Institution Details' });
   fireEvent.click(screen.getByRole('button', { name: /Personal Info/ }));
   expect(screen.getByPlaceholderText('Enter your full name')).toHaveValue('Unsaved draft');
+});
+
+it('reports failed institution saves without showing success', async () => {
+  mocks.updateInstitutionProfile.mockResolvedValue({ success: false, error: 'Institution save denied' });
+  mount({ activeTab: 'profile', activeSubTab: 'institution' });
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Institution save denied'));
+  expect(toast.success).not.toHaveBeenCalled();
+  expect(mocks.updateProfile).not.toHaveBeenCalled();
+});
+
+it('acknowledges successful institution saves through the dedicated owner workflow', async () => {
+  mount({ activeTab: 'profile', activeSubTab: 'institution' });
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+  await waitFor(() => expect(toast.success).toHaveBeenCalledWith('Institution details updated successfully'));
+  expect(mocks.updateInstitutionProfile).toHaveBeenCalledTimes(1);
+  expect(mocks.updateProfile).not.toHaveBeenCalled();
+});
+
+
+it('rehydrates the saved custom school section independently of the grade after reload', async () => {
+  Object.assign(mocks.learner, { schoolId: 'school-1', schoolClassId: '', userRole: 'learner', learner_type: 'school_student', grade: 'Grade 10', section: 'QA-A' });
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: /Institution Details/ }));
+  expect(await screen.findByPlaceholderText('Enter your section (e.g., A, B, C, Section-1)')).toHaveValue('QA-A');
+  expect(screen.queryByDisplayValue('10')).toBeNull();
+});
+
+
+it('keeps an assigned school class on the class selector instead of converting its section to custom text', async () => {
+  Object.assign(mocks.learner, { schoolId: 'school-1', schoolClassId: 'class-1', userRole: 'learner', learner_type: 'school_student', grade: 'Grade 10', section: 'QA-A' });
+  mount();
+  fireEvent.click(screen.getByRole('button', { name: /Institution Details/ }));
+  await screen.findByRole('heading', { name: 'Institution Details' });
+  expect(screen.queryByPlaceholderText('Enter your section (e.g., A, B, C, Section-1)')).toBeNull();
 });

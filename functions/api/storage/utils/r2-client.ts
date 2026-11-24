@@ -143,14 +143,14 @@ export class R2Client {
 
     try {
       if (value.includes('?key=')) {
-        const urlObj = new URL(value);
+        const urlObj = new URL(value, 'https://storage.invalid');
         const key = urlObj.searchParams.get('key');
-        return key ? decodeURIComponent(key) : null;
+        return key || null;
       }
 
       if (value.includes('?url=')) {
-        const urlObj = new URL(value);
-        const originalUrl = decodeURIComponent(urlObj.searchParams.get('url') || '');
+        const urlObj = new URL(value, 'https://storage.invalid');
+        const originalUrl = urlObj.searchParams.get('url') || '';
         return R2Client.extractKeyFromUrl(originalUrl);
       }
 

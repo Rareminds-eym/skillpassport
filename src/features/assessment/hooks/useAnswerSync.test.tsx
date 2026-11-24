@@ -108,3 +108,15 @@ describe('answer sync acknowledgements', () => {
     expect(hook.result.current.hasPendingAnswers).toBe(false);
   });
 });
+
+it('cancels queued and retrying progress writes when the caller detaches a submitted attempt',async()=>{
+  const pending=deferred();mocks.update.mockReturnValueOnce(pending.promise);
+  const hook=renderHook(({id}:{id:string|null})=>useAnswerSync(id),{initialProps:{id:'owned' as string|null}});
+  act(()=>{mocks.store.answers={q1:'A'};hook.rerender({id:'owned'});});
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(mocks.update).toHaveBeenCalledTimes(1);
+  act(()=>hook.rerender({id:null}));
+  await act(async()=>{pending.reject(new Error('Attempt already submitted'));await Promise.resolve();await vi.advanceTimersByTimeAsync(15000);});
+  expect(mocks.update).toHaveBeenCalledTimes(1);
+  expect(hook.result.current.hasPendingAnswers).toBe(false);
+});

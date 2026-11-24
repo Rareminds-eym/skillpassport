@@ -1,0 +1,47 @@
+// @vitest-environment node
+import {beforeEach,it,expect,vi} from 'vitest';
+const mocks=vi.hoisted(()=>({access:vi.fn(),extract:vi.fn(),get:vi.fn(),row:{} as any}));
+vi.mock('../course-index',()=>({requireCourseAccess:mocks.access}));
+vi.mock('../assignment-document',()=>({SUBMISSION_MAX_BYTES:5242880,extractSubmittedDocument:mocks.extract}));
+import {guideHistory,loadGuideEvidence} from '../guide-evidence';
+const id='00000000-0000-4000-8000-000000000001';
+const query:any={select:()=>query,eq:()=>query,single:async()=>({data:mocks.row,error:null})};
+const db={from:()=>query} as any;
+const env={R2_BUCKET:{get:mocks.get}} as any;
+beforeEach(()=>{vi.clearAllMocks();mocks.access.mockResolvedValue(true);mocks.extract.mockResolvedValue('My submitted answer: plan tasks.');mocks.get.mockResolvedValue({size:30,arrayBuffer:async()=>new ArrayBuffer(1)});mocks.row={id,file_key:'private/key',file_name:'response.txt',recipient:{assigned_by:'teacher',learner:{name:'Alex'},assignment:{course_id:'course',title:'Planning',content:{questions:[{prompt:'Explain planning'}]},grading_rules:[{rubric:'Prioritize tasks'}]}},results:{status:'released',total_marks:2}};});
+it('loads the actual submitted response, rubric and saved evaluation',async()=>{
+ const result=await loadGuideEvidence(db,env,'teacher','course',id);
+ expect(result).toContain('My submitted answer: plan tasks.');expect(result).toContain('Prioritize tasks');expect(result).toContain('"total_marks":2');expect(result).toContain('untrusted evidence');
+});
+it.each(['other-educator','other-course'])('rejects %s before accessing private storage',async(kind)=>{
+ if(kind==='other-educator')mocks.row.recipient.assigned_by='other';else mocks.row.recipient.assignment.course_id='other';
+ await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:403});expect(mocks.get).not.toHaveBeenCalled();
+});
+it('rejects course access failure and invalid selection',async()=>{
+ mocks.access.mockResolvedValue(false);await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:403});
+ await expect(loadGuideEvidence(db,env,'teacher','course','invalid')).rejects.toMatchObject({status:400});expect(mocks.get).not.toHaveBeenCalled();
+});
+it('reports an unreadable response instead of fabricating evidence',async()=>{
+ mocks.extract.mockRejectedValue(new Error('unreadable'));await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:422});
+});
+
+it('distinguishes a missing storage object from an oversized document',async()=>{
+ mocks.get.mockResolvedValue(null);
+ await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:409,message:expect.stringContaining('could not be found in storage')});
+ expect(mocks.extract).not.toHaveBeenCalled();
+});
+it('reports the 5 MiB limit only for an object above that limit',async()=>{
+ mocks.get.mockResolvedValue({size:5242881});
+ await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:413,message:expect.stringContaining('5 MiB')});
+ expect(mocks.extract).not.toHaveBeenCalled();
+});
+
+it('isolates previous feedback by submission ID, never learner name or assignment title',()=>{
+ const history=[{role:'user',guideSubmissionId:'high',content:'Anusha Intermediate'}, {role:'assistant',content:'75 marks'}, {role:'user',guideSubmissionId:'zero',content:'Anusha Intermediate'}, {role:'assistant',content:'0 marks'}, {role:'user',content:'Generate something else'}, {role:'assistant',content:'Unrelated'}];
+ expect(guideHistory(history,'zero').map(item=>item.content)).toEqual(['Anusha Intermediate','0 marks']);
+});
+it('keeps a saved zero score and verifies the exact selected submission',async()=>{
+ mocks.row.results={status:'released',total_marks:0,maximum_marks:100};
+ expect(await loadGuideEvidence(db,env,'teacher','course',id)).toContain('"total_marks":0');
+ mocks.row.id='different';await expect(loadGuideEvidence(db,env,'teacher','course',id)).rejects.toMatchObject({status:404});
+});

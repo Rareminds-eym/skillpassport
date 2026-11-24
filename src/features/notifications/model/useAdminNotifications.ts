@@ -27,6 +27,8 @@ export type AdminNotificationType =
 export type AdminNotification = {
   id: string;
   recipient_id: string;
+  curriculum_change_id?: string | null;
+  action_url?: string | null;
   type: AdminNotificationType;
   title: string;
   message: string;
@@ -149,7 +151,7 @@ export function useAdminNotifications(
       if (event.type !== 'change') return;
       const row = event.payload as AdminNotification;
       if (event.event === 'INSERT') {
-        setItems((prev) => [row, ...prev]);
+        setItems((prev) => prev.some(item => item.id === row.id) ? prev : [row, ...prev]);
       }
     });
 

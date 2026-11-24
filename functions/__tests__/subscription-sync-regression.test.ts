@@ -17,7 +17,7 @@ function makeDbMock(existing: any | null, upsertResp: any = { error: null }, upd
             return Promise.resolve(upsertResp);
           },
           update: (payload: any) => ({
-            eq: () => Promise.resolve(updateResp),
+            eq: () => { calls.updatePayload = payload; return Promise.resolve(updateResp); },
           }),
         };
       }
@@ -92,5 +92,41 @@ describe('subscription sync regression — seat_count preservation', () => {
     });
     expect(res.success).toBe(true);
     expect(calls.upsertPayload.seat_count).toBe(1);
+  });
+});
+
+describe('subscription sync revision binding', () => {
+  const id = '10000000-0000-4000-8000-000000000001';
+  const plan = '20000000-0000-4000-8000-000000000001';
+  const revision = '30000000-0000-4000-8000-000000000001';
+  const product = '40000000-0000-4000-8000-000000000001';
+  const user = '50000000-0000-4000-8000-000000000001';
+  const state = { id, planId: plan, revisionId: revision, productId: product, subject: { kind: 'user', id: user },
+    version: 1, status: 'active', periodStartsAt: 1, periodEndsAt: null, validity: 'perpetual', trialEndsAt: null,
+    renewalEnabled: false, cancelledAt: null, paymentFailedAt: null, scheduledChange: null };
+  const payload = { id, user_id: user, plan_id: plan, product_id: product, plan_code: 'synthetic', status: 'active',
+    plan_revision_id: revision, lifecycle_state: state, lifecycle_policy: { schemaVersion: 1 },
+    lifecycle_activated_at: '2026-11-22T00:00:00Z' };
+
+  it.each(['created', 'updated'] as const)('retains the exact complete binding for %s events', async action => {
+    const { db, calls } = makeDbMock({ seat_count: 1, assigned_seats: 0 });
+    const svc: any = new SyncService(dummyEnv); svc.db = db;
+    const result = action === 'created' ? await svc.syncSubscriptionCreated(payload) : await svc.syncSubscriptionUpdated(payload);
+    expect(result.success).toBe(true);
+    expect(action === 'created' ? calls.upsertPayload : calls.updatePayload).toMatchObject({
+      plan_revision_id: revision, lifecycle_state: state, lifecycle_policy: payload.lifecycle_policy,
+      lifecycle_activated_at: payload.lifecycle_activated_at,
+    });
+  });
+
+  it.each([
+    { lifecycle_state: null }, { lifecycle_policy: null }, { lifecycle_activated_at: null },
+    { lifecycle_state: { ...state, planId: product } }, { lifecycle_state: { ...state, status: 'cancelled' } },
+  ])('rejects incomplete or foreign binding before persistence', async change => {
+    const { db, calls } = makeDbMock(null);
+    const svc: any = new SyncService(dummyEnv); svc.db = db;
+    expect((await svc.syncSubscriptionCreated({ ...payload, ...change })).success).toBe(false);
+    expect((await svc.syncSubscriptionUpdated({ ...payload, ...change })).success).toBe(false);
+    expect(calls.upsertPayload).toBeNull(); expect(calls.updatePayload).toBeNull();
   });
 });

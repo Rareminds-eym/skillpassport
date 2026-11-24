@@ -95,6 +95,8 @@ function makeSupabaseMock(opts: {
             },
             in() { return chain; },
             gt() { return chain; },
+            or() { return chain; },
+            order() { return chain; },
             limit() { return chain; },
             maybeSingle() {
                 if (table === 'subscription_cache') {

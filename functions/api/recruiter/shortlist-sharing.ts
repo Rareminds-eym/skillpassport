@@ -12,6 +12,7 @@ import {
   apiDbError,
   apiMethodNotAllowed,
 } from "../../lib/response";
+import { requireSubscriptionAccess } from "../../shared/lib/subscription-access";
 const digest = async (token: string) =>
   Array.from(
     new Uint8Array(
@@ -64,17 +65,31 @@ export async function onRequest(context: any) {
     const ids = result.data.map((row) => row.learner_id);
     const learners = ids.length
       ? await db
-          .from("learners")
-          .select("name,university,branch_field")
+          .from("zoho_recruiter_learners")
+          .select("id,user_id,name,university,branch_field")
           .in("id", ids)
       : { data: [], error: null };
     if (learners.error) return apiDbError(learners.error, context.request);
+    const candidates=z.array(z.object({id:z.string().uuid(),user_id:z.string().uuid(),name:z.string().nullable(),
+      university:z.string().nullable(),branch_field:z.string().nullable()}).strict()).safeParse(learners.data);
+    if(!candidates.success)return apiError(503,'SERVICE_UNAVAILABLE','Shared candidate identity is unavailable',context.request);
+    if(candidates.data.some(candidate=>!ids.includes(candidate.id)))return apiError(503,'SERVICE_UNAVAILABLE','Shared candidate scope differs',context.request);
+    const settings=candidates.data.length?await db.from('user_settings').select('user_id,privacy_settings')
+      .in('user_id',[...new Set(candidates.data.map(candidate=>candidate.user_id))]):{data:[],error:null};
+    if(settings.error)return apiDbError(settings.error,context.request);
+    const consent=z.array(z.object({user_id:z.string().uuid(),privacy_settings:z.unknown()}).strict()).safeParse(settings.data);
+    if(!consent.success||new Set(consent.data.map(row=>row.user_id)).size!==consent.data.length
+      ||consent.data.some(row=>!candidates.data.some(candidate=>candidate.user_id===row.user_id)))return apiError(503,'SERVICE_UNAVAILABLE','Shared candidate consent is unavailable',context.request);
+    const publicCandidates=candidates.data.filter(candidate=>{
+      const value=z.object({profileVisibility:z.literal('public')}).passthrough().safeParse(consent.data.find(row=>row.user_id===candidate.user_id)?.privacy_settings);
+      return value.success;
+    }).map(({name,university,branch_field})=>({name,university,branch_field}));
     const response = apiSuccess(
       {
         name: list.name,
         description: list.description,
         expiresAt: list.share_expiry,
-        candidates: learners.data,
+        candidates: publicCandidates,
       },
       context.request,
     );
@@ -89,6 +104,9 @@ const authenticated = withAuth(async (context) => {
     const db = getServiceClient(context.env as any),
       user = getContextUser(context),
       scope = await recruitmentScope(db, user, PERMISSIONS.MANAGE_CANDIDATES);
+    const access=await requireSubscriptionAccess({env:context.env,request:context.request,actorId:user.id,
+      subject:{kind:'organization',id:scope.orgId},mode:'write'});
+    if(access instanceof Response)return access;
     const parsed = z
       .object({
         action: z.enum(["generate", "revoke"]),

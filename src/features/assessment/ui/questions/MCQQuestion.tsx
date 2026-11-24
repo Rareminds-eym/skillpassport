@@ -7,8 +7,9 @@
  * @module features/assessment/career-test/components/questions/MCQQuestion
  */
 
-import React from 'react';
+import type { FC } from 'react';
 import { motion } from 'framer-motion';
+import { questionDisplayText } from '../../lib/questionDisplayText';
 
 interface MCQQuestionProps {
   questionId: string;
@@ -25,8 +26,7 @@ interface MCQQuestionProps {
 /**
  * Multiple choice question component with animated options
  */
-export const MCQQuestion: React.FC<MCQQuestionProps> = ({
-  questionId,
+export const MCQQuestion: FC<MCQQuestionProps> = ({
   questionText,
   options,
   selectedAnswer,
@@ -56,7 +56,7 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
 
       {/* Question Text */}
       <h3 className="text-xl md:text-2xl font-medium text-gray-800 leading-snug" data-tour="question-content">
-        {questionText}
+        {questionDisplayText(questionText)}
       </h3>
 
       {/* Options */}
@@ -111,7 +111,7 @@ export const MCQQuestion: React.FC<MCQQuestionProps> = ({
                         : 'text-gray-700'
                   }
                 `}>
-                  {option}
+                  {questionDisplayText(option)}
                 </p>
               </div>
             </motion.button>

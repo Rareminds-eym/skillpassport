@@ -782,7 +782,7 @@ const AssessmentTestPage: React.FC = () => {
   }, [store]);
 
   // Use the sync hook at top level (not conditionally)
-  const syncStatus = useAnswerSync(store.attemptId, showSectionIntro);
+  const syncStatus = useAnswerSync(store.status === 'inProgress' ? store.attemptId : null, showSectionIntro);
 
   // Initialize adaptive test when reaching adaptive section
   useEffect(() => {
@@ -1151,7 +1151,7 @@ const AssessmentTestPage: React.FC = () => {
                 elapsedTime={adaptiveElapsedTime}
                 perQuestionTimer={adaptiveTimer}
                 showPerQuestionTimer={false}
-                showNoWrongAnswers={true}
+                showNoWrongAnswers={false}
                 isAnswered={!!selectedAnswer}
                 isLastQuestion={adaptiveHook.isTestComplete}
                 isSubmitting={adaptiveHook.loading}
@@ -1239,7 +1239,7 @@ const AssessmentTestPage: React.FC = () => {
                 currentQuestionIndex={store.currentQuestionIndex}
                 totalQuestions={currentSection.questions.length}
                 elapsedTime={elapsedTime}
-                showNoWrongAnswers={true}
+                showNoWrongAnswers={!isCurrentAISection}
                 isAnswered={isCurrentAnswered}
                 isLastQuestion={isLastQuestion}
                 canGoPrevious={store.currentQuestionIndex > 0}

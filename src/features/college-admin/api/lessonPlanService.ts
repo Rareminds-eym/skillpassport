@@ -54,7 +54,7 @@ export interface CollegeLessonPlan {
 export const lessonPlanService = {
   async getDepartments(): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const result = await apiPost<any>('/college-admin/lesson-plans', {
+      const result = await apiPost<any>('/college-admin/curriculum', {
         action: 'get-departments'
       });
 
@@ -76,7 +76,7 @@ export const lessonPlanService = {
 
   async getPrograms(departmentId: string): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const result = await apiPost<any>('/college-admin/lesson-plans', {
+      const result = await apiPost<any>('/college-admin/curriculum', {
         action: 'get-programs',
         department_id: departmentId
       });
@@ -99,7 +99,7 @@ export const lessonPlanService = {
 
   async getSemesters(programId: string): Promise<{ success: boolean; data?: number[]; error?: any }> {
     try {
-      const result = await apiPost<any>('/college-admin/lesson-plans', {
+      const result = await apiPost<any>('/college-admin/curriculum', {
         action: 'get-semesters',
         program_id: programId
       });
@@ -122,7 +122,7 @@ export const lessonPlanService = {
 
   async getCourses(programId: string, semester: number): Promise<{ success: boolean; data?: any[]; error?: any }> {
     try {
-      const result = await apiPost<any>('/college-admin/lesson-plans', {
+      const result = await apiPost<any>('/college-admin/curriculum', {
         action: 'get-courses',
         program_id: programId,
         semester

@@ -1,3 +1,4 @@
+import { submitLinkedMaterial } from '@/features/ai-tutor/api/materialService';
 import { apiPost } from '@/shared/api/apiClient';
 import { uploadMultipleFiles } from '@/shared/api/fileUploadService';
 import type {
@@ -61,6 +62,7 @@ export const submitCollegeAssignment = async (
     submissionFiles?: File[]
 ): Promise<ServiceResponse<boolean>> => {
     try {
+        if (await submitLinkedMaterial(learnerAssignmentId, submissionFiles || [])) return { data: true, error: null };
         let uploadedFiles: UploadedFile[] = [];
 
         if (submissionFiles && submissionFiles.length > 0) {

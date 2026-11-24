@@ -15,7 +15,13 @@ const GuestOnlyRoute: React.FC<GuestOnlyRouteProps> = ({ children }) => {
   const location = useLocation();
   const signupInProgress = useAuthStore(state => state.signupInProgress);
 
+  const loginInProgress = useAuthStore(state => state.loginInProgress);
+
   if (signupInProgress && location.pathname === '/signup') return <>{children}</>;
+
+  // While UnifiedLogin is still validating the selected role, keep the login page
+  // mounted so it can reject a mismatched role instead of being redirected away.
+  if (loginInProgress && location.pathname === '/login') return <>{children}</>;
 
   // Show a loader while authentication state is being initialized
   if (authLoading) {

@@ -5,40 +5,58 @@ import { apiError } from './response';
 export type AdminOrganizationType = 'college' | 'school' | 'university';
 export class HybridAccessError extends Error {}
 
-async function checked<T>(query: PromiseLike<{ data: T; error: unknown }>): Promise<T> {
+async function checked<T>(query: PromiseLike<{ data: T | null; error: unknown }>): Promise<T | null> {
   const { data, error } = await query;
   if (error) throw new HybridAccessError('Unable to verify organization feature access');
   return data;
 }
 
-async function resolveAdminOrganizationId(
+async function checkedRows<T>(query: PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const rows = await checked(query);
+  if (rows === null) throw new HybridAccessError('Organization feature data is unavailable');
+  return rows;
+}
+
+export async function resolveAdminOrganizationId(
   supabase: SupabaseClient, userId: string, type: AdminOrganizationType, verifiedOrgId?: string,
 ): Promise<string | null> {
   // org_id comes exclusively from the verified JWT, never the request body.
   if (verifiedOrgId) {
-    const org = await checked<any>(supabase.from('organizations').select('id, organization_type').eq('id', verifiedOrgId).maybeSingle());
+    const org = await checked<{ id: string; organization_type: string }>(supabase.from('organizations').select('id, organization_type').eq('id', verifiedOrgId).maybeSingle());
     if (!org || org.organization_type !== type) throw new HybridAccessError('Unable to verify organization scope');
     return org.id;
   }
-  const memberships = await checked<any[]>(supabase.from('organization_members').select('organization_id')
+  const memberships = await checkedRows<{ organization_id: string }>(supabase.from('organization_members').select('organization_id')
     .eq('user_id', userId).eq('status', 'active'));
-  const owned = await checked<any[]>(supabase.from('organizations').select('id').eq('admin_id', userId).eq('organization_type', type));
+  const owned = await checkedRows<{ id: string }>(supabase.from('organizations').select('id').eq('admin_id', userId).eq('organization_type', type));
   const ids = [...new Set([...memberships.map(m => m.organization_id), ...owned.map(o => o.id)])];
   if (!ids.length) throw new HybridAccessError('Unable to resolve organization');
-  const orgs = await checked<any[]>(supabase.from('organizations').select('id').in('id', ids).eq('organization_type', type));
+  const orgs = await checkedRows<{ id: string }>(supabase.from('organizations').select('id').in('id', ids).eq('organization_type', type));
   if (orgs.length !== 1) throw new HybridAccessError('An unambiguous organization scope is required');
   return orgs[0].id;
 }
 
+/**
+ * The adopted Hybrid catalog plan (env HYBRID_PLAN_ID). Its canonical code is opaque, so contracts are identified by
+ * plan id only. Missing configuration is unavailable, never "not Hybrid": non-Hybrid plans are unrestricted here.
+ */
+function hybridPlanIdentity(value: unknown): string {
+  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    throw new HybridAccessError('Hybrid plan identity is not configured');
+  }
+  return value.toLowerCase();
+}
 export async function getHybridOrganizationAccess(
-  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, verifiedOrgId?: string,
+  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, hybridPlanId: string | undefined,
+  verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<{ isHybrid: boolean; features: string[]; organizationId: string | null }> {
+  const hybrid = hybridPlanIdentity(hybridPlanId);
   const organizationId = await resolveAdminOrganizationId(supabase, userId, type, verifiedOrgId);
   // Cache timestamps describe replication, not which contract is effective.
   // Keep paused/cancelled/expired contracts in the selection: changing status
   // must never turn a restricted Hybrid organization into an unrestricted one.
-  const subscription = await checked<any>(supabase.from('subscription_cache')
-    .select('plan_code, features, status, subscription_start_date')
+  const subscription = effectiveContract ?? await checked<{ plan_id: string | null; features: unknown }>(supabase.from('subscription_cache')
+    .select('plan_id, features, status, subscription_start_date')
     .eq('organization_id', organizationId).eq('is_organization_subscription', true)
     .neq('status', 'pending')
     .or(`subscription_start_date.lte.${new Date().toISOString()},subscription_start_date.is.null`)
@@ -46,23 +64,26 @@ export async function getHybridOrganizationAccess(
     .order('id', { ascending: false }).limit(1).maybeSingle());
   return {
     organizationId,
-    isHybrid: subscription?.plan_code === 'hybrid',
+    isHybrid: typeof subscription?.plan_id === 'string' && subscription.plan_id.toLowerCase() === hybrid,
     features: Array.isArray(subscription?.features) ? subscription.features.filter((f: unknown) => typeof f === 'string') : [],
   };
 }
 
+export interface EffectiveHybridContract { plan_id: string | null; features?: unknown }
+
 export interface HybridGateResult { allowed: boolean; reason?: string; unavailable?: boolean }
 
 export async function checkHybridFeatureAccess(
-  supabase: SupabaseClient, userId: string, type: AdminOrganizationType,
-  featureKeys: string | readonly string[], verifiedOrgId?: string,
+  supabase: SupabaseClient, userId: string, type: AdminOrganizationType, hybridPlanId: string | undefined,
+  featureKeys: string | readonly string[], verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<HybridGateResult> {
   try {
-    const access = await getHybridOrganizationAccess(supabase, userId, type, verifiedOrgId);
+    // A covered request supplies its exact contract to both navigation and mutations.
+    const access = await getHybridOrganizationAccess(supabase, userId, type, hybridPlanId, verifiedOrgId, effectiveContract);
     if (!access.isHybrid) return { allowed: true };
     const keys = typeof featureKeys === 'string' ? [featureKeys] : featureKeys;
     if (!keys.length) return { allowed: false, reason: 'This operation is not available on your plan' };
-    const catalog = await checked<any[]>(supabase.from('feature_keys_cache').select('key, is_active')
+    const catalog = await checkedRows<{ key: string; is_active: boolean }>(supabase.from('feature_keys_cache').select('key, is_active')
       .eq('role', `${type}_admin`).eq('product_code', 'skillpassport'));
     if (!catalog.length) throw new HybridAccessError('Feature catalog has not been synchronized');
     // Explicit inactive rows are tombstones. A missing row is not evidence that
@@ -79,10 +100,10 @@ export async function checkHybridFeatureAccess(
 }
 
 export async function requireHybridFeature(
-  supabase: SupabaseClient, request: Request, type: AdminOrganizationType,
-  featureKeys: string | readonly string[], userId: string, verifiedOrgId?: string,
+  supabase: SupabaseClient, request: Request, type: AdminOrganizationType, hybridPlanId: string | undefined,
+  featureKeys: string | readonly string[], userId: string, verifiedOrgId?: string, effectiveContract?: EffectiveHybridContract,
 ): Promise<Response | null> {
-  const result = await checkHybridFeatureAccess(supabase, userId, type, featureKeys, verifiedOrgId);
+  const result = await checkHybridFeatureAccess(supabase, userId, type, hybridPlanId, featureKeys, verifiedOrgId, effectiveContract);
   if (result.allowed) return null;
   return apiError(result.unavailable ? 503 : 403, result.unavailable ? 'FEATURE_ACCESS_UNAVAILABLE' : 'FEATURE_ACCESS_DENIED',
     result.reason!, request);

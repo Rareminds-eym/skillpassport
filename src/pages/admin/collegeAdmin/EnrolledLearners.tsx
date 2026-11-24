@@ -423,6 +423,7 @@ const EnrolledLearners: FC = () => {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Roll Number</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Department</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Program</th>
+                    <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Specialization</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Semester</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Section</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
@@ -440,6 +441,7 @@ const EnrolledLearners: FC = () => {
                       <td className="px-4 py-3 text-sm text-gray-900">{learner.roll_number || "N/A"}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{learner.department_name}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{learner.program_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-center">{learner.specialization || <span className="text-gray-400">—</span>}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">Semester {learner.semester}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{learner.section ? `Section ${learner.section}` : "Not Assigned"}</td>
                       <td className="px-4 py-3">{getStatusBadge('active')}</td>

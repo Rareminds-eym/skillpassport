@@ -1803,8 +1803,8 @@ const AssessmentResult = () => {
                                             roadmap={roadmap}
                                             results={results}
                                             attemptId={effectiveAttemptId}
-                                            assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
-                                            learnerId={learnerInfo?.id || ''}
+                                            assessmentResultId={resultData?.id || resultData?._original?.id || resultData?._rawDatabaseFields?.id || ''}
+                                            learnerId={results?.learnerId || learnerInfo?.id || ''}
                                         />
                                     )}
                                 </div>
@@ -2373,8 +2373,8 @@ const AssessmentResult = () => {
                                     roadmap={roadmap}
                                     results={results}
                                     attemptId={effectiveAttemptId}
-                                    assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
-                                    learnerId={learnerInfo?.id || ''}
+                                    assessmentResultId={resultData?.id || resultData?._original?.id || resultData?._rawDatabaseFields?.id || ''}
+                                    learnerId={results?.learnerId || learnerInfo?.id || ''}
                                 />
                             )}
                         </div>
@@ -2415,8 +2415,8 @@ const AssessmentResult = () => {
                                     roadmap={roadmap}
                                     results={results}
                                     attemptId={effectiveAttemptId}
-                                    assessmentResultId={resultData?._rawDatabaseFields?.id || ''}
-                                    learnerId={learnerInfo?.id || ''}
+                                    assessmentResultId={resultData?.id || resultData?._original?.id || resultData?._rawDatabaseFields?.id || ''}
+                                    learnerId={results?.learnerId || learnerInfo?.id || ''}
                                 />
                             )}
                         </div>

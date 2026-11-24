@@ -53,6 +53,8 @@ export const AI_MODELS = {
     GPT_4O_LATEST: 'openai/chatgpt-4o-latest',
     GPT_4O: 'openai/gpt-4o',
     GPT_4O_MINI: 'openai/gpt-4o-mini',
+    // Multimodal course resource analysis
+    GEMINI_3_1_FLASH_LITE: 'google/gemini-3.1-flash-lite',
     
     // Free Models - Fallback choices
     GEMINI_2_FLASH: 'google/gemini-2.0-flash-001',
@@ -74,9 +76,8 @@ export const AI_MODELS = {
 
 // Standard model chain - using models that actually exist on OpenRouter
 const STANDARD_MODELS = {
-    primary: 'openai/gpt-3.5-turbo',                 // Reliable and affordable
+    primary: 'openai/gpt-4o-mini',                   // Available model
     fallbacks: [
-        'openai/gpt-4o-mini',                        // Backup OpenAI model
         'google/gemini-2.0-flash-001',               // Google fallback
     ],
 };
@@ -445,7 +446,6 @@ export async function callOpenRouterWithRetry(
 ): Promise<string> {
     const {
         models = [
-            'openai/gpt-3.5-turbo',                  // Reliable and affordable
             'openai/gpt-4o-mini',                    // Backup OpenAI model
             'google/gemini-2.0-flash-001',           // Gemini 2.0 Flash stable
             'meta-llama/llama-3.2-3b-instruct:free', // FREE - Smaller Llama

@@ -1,3 +1,4 @@
+import { addOnCostSummary } from '../lib/subscriptionPresentation';
 import { useAuthStore } from '@/shared/model/authStore';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
@@ -33,8 +34,8 @@ export interface Entitlement {
 }
 
 export interface SubscriptionCost {
-  monthly: number;
-  annual: number;
+  monthly: number | null;
+  annual: number | null;
 }
 
 // ============================================================================
@@ -42,6 +43,7 @@ export interface SubscriptionCost {
 // ============================================================================
 
 interface SubscriptionState {
+  entitlementsUserId: string | null;
   userEntitlements: Entitlement[];
   activeEntitlements: Entitlement[];
   totalAddOnCost: SubscriptionCost;
@@ -68,9 +70,10 @@ interface SubscriptionState {
 
 export const useSubscriptionStore = create<SubscriptionState>()(
   immer((set, get) => ({
+    entitlementsUserId: null,
     userEntitlements: [],
     activeEntitlements: [],
-    totalAddOnCost: { monthly: 0, annual: 0 },
+    totalAddOnCost: { monthly: null, annual: null },
     isLoadingEntitlements: false,
     entitlementsError: null,
 
@@ -84,6 +87,11 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       const userId = explicitUserId || useAuthStore.getState().user?.id;
       if (!userId) return;
 
+      if (userId !== useAuthStore.getState().user?.id) throw new Error('Entitlement account scope differs.');
+      if (get().entitlementsUserId !== userId) set(s => {
+        s.entitlementsUserId = userId; s.userEntitlements = []; s.activeEntitlements = [];
+        s.totalAddOnCost = { monthly: null, annual: null }; s._fetchEntitlementsPromise = null;
+      });
       if (get()._fetchEntitlementsPromise) {
         return get()._fetchEntitlementsPromise;
       }
@@ -92,12 +100,14 @@ export const useSubscriptionStore = create<SubscriptionState>()(
         set((s) => { s.isLoadingEntitlements = true; s.entitlementsError = null; });
         try {
           const result = await entitlementService.getUserEntitlements(userId);
+          if (get().entitlementsUserId !== userId || useAuthStore.getState().user?.id !== userId) return;
 
           if (result.success && result.data) {
             const entitlements = result.data;
             const now = new Date();
             set((s) => {
               s.userEntitlements = entitlements as any;
+              s.totalAddOnCost = addOnCostSummary(entitlements);
               s.activeEntitlements = (entitlements as any[]).filter((ent) => {
                 if (ent.status === 'active' || ent.status === 'grace_period') return true;
                 if (ent.status === 'cancelled' && ent.end_date && new Date(ent.end_date) >= now) return true;
@@ -112,12 +122,13 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             });
           }
         } catch (err) {
+          if (get().entitlementsUserId !== userId) return;
           set((s) => {
             s.isLoadingEntitlements = false;
             s.entitlementsError = err instanceof Error ? err : new Error(String(err));
           });
         } finally {
-          set((s) => { s._fetchEntitlementsPromise = null; });
+          if (get().entitlementsUserId === userId) set((s) => { s._fetchEntitlementsPromise = null; });
         }
       })();
 
@@ -130,6 +141,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       set((state) => {
         if (data.userEntitlements) {
           state.userEntitlements = data.userEntitlements;
+          state.totalAddOnCost = addOnCostSummary(data.userEntitlements);
           const now = new Date();
           state.activeEntitlements = data.userEntitlements.filter((ent) => {
             if (ent.status === 'active' || ent.status === 'grace_period') return true;
@@ -154,7 +166,9 @@ export const useSubscriptionStore = create<SubscriptionState>()(
     clearAccessCache: () => {
       clearFeatureAccessCache();
       set((state) => {
+        state.entitlementsUserId = null;
         state.userEntitlements = [];
+        state.totalAddOnCost = { monthly: null, annual: null };
         state.activeEntitlements = [];
         state._fetchEntitlementsPromise = null;
       });
@@ -176,6 +190,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
 // ============================================================================
 
 export const useUserEntitlements = () => {
+  const entitlementsUserId = useSubscriptionStore(s => s.entitlementsUserId);
   const userEntitlements = useSubscriptionStore((s) => s.userEntitlements);
   const activeEntitlements = useSubscriptionStore((s) => s.activeEntitlements);
   const totalAddOnCost = useSubscriptionStore((s) => s.totalAddOnCost);
@@ -184,7 +199,7 @@ export const useUserEntitlements = () => {
   const hasAddOnAccessSync = useSubscriptionStore((s) => s.hasAddOnAccessSync);
   const fetchUserEntitlements = useSubscriptionStore((s) => s.fetchUserEntitlements);
 
-  return { userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError, hasAddOnAccessSync, fetchUserEntitlements };
+  return { entitlementsUserId, userEntitlements, activeEntitlements, totalAddOnCost, isLoadingEntitlements, entitlementsError, hasAddOnAccessSync, fetchUserEntitlements };
 };
 
 export const useSubscriptionPurchase = () => {
@@ -250,7 +265,10 @@ export const useSubscription = () => {
       await useSubscriptionStore.getState().fetchUserEntitlements();
     },
     cancelAddOn: async (entitlementId: string) => {
-      return entitlementService.cancelAddOn(entitlementId);
+      const result = await entitlementService.cancelAddOn(entitlementId);
+      if (!result.success) throw new Error(result.error || 'Unable to cancel add-on.');
+      await useSubscriptionStore.getState().fetchUserEntitlements();
+      return result;
     },
   };
 };

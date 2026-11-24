@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { ssoClient } from '@/shared/api/ssoClient';
 import { useAuthStore } from '@/shared/model/authStore';
 import React, { useEffect, useState } from 'react';
@@ -62,6 +63,7 @@ interface CareerAIToolsGridProps {
   variant?: 'full' | 'compact';
   animated?: boolean;
   navigateOnClick?: boolean;
+  disabled?: boolean;
 }
 
 const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
@@ -69,44 +71,53 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
   variant = 'full',
   animated = true,
   navigateOnClick = false,
+  disabled = false,
 }) => {
   const navigate = useNavigate();
   const [actions, setActions] = useState<CareerAIAction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGradeAppropriateActions();
   }, []);
 
   const fetchGradeAppropriateActions = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const isAuthenticated = useAuthStore.getState().isAuthenticated;
       if (!isAuthenticated) {
-        setLoading(false);
-        return;
+        throw new Error('Sign in to load career tools.');
       }
 
       const response = await ssoClient.fetch('/api/career/get-actions');
 
+      if (!response.ok) throw new Error('Unable to load career tools.');
       if (response.ok) {
-        const data = await response.json();
+        const data = z.object({ success: z.boolean(), data: z.object({ actions: z.array(z.object({
+          id: z.string(), label: z.string(), icon: z.string(), prompt: z.string(), iconBg: z.string(), iconColor: z.string()
+        })) }) }).parse(await response.json());
         if (data.success && data.data?.actions) {
           // Map icon strings to actual icon components
-          const mappedActions = data.data.actions.map((action: any) => ({
+          const mappedActions = data.data.actions.map((action) => ({
             ...action,
             icon: iconMap[action.icon] || Lightbulb,
           }));
           setActions(mappedActions);
-        }
+        } else throw new Error('Invalid career tools response.');
       }
     } catch (error) {
       logger.error('Error fetching grade-appropriate actions', error as Error);
+      setError(error instanceof z.ZodError ? 'Career tools returned an invalid response. Please try again.'
+        : error instanceof Error ? error.message : 'Unable to load career tools.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleClick = (action: CareerAIAction) => {
+    if (disabled) return;
     if (onAction) {
       onAction(action.prompt, action.label);
     } else if (navigateOnClick) {
@@ -142,6 +153,8 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
     );
   }
 
+  if (error) return <div role="alert" className="p-3 text-sm text-red-700">{error} <button onClick={fetchGradeAppropriateActions} className="underline">Retry career tools</button></div>;
+  if (!actions.length) return <p className="text-sm text-gray-500 text-center">No career tools are available.</p>;
   return (
     <Container 
       {...containerProps}
@@ -149,6 +162,7 @@ const CareerAIToolsGrid: React.FC<CareerAIToolsGridProps> = ({
     >
       {actions.map((action, index) => (
         <Wrapper
+          disabled={disabled}
           key={action.id}
           {...getButtonProps(index)}
           onClick={() => handleClick(action)}

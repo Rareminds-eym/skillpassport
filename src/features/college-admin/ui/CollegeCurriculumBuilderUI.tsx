@@ -21,6 +21,7 @@ import SearchBar from '@/shared/ui/SearchBar';
 import { Pagination } from '@/shared/ui';
 import { KPICard } from '@/features/analytics';
 import toast from "react-hot-toast";
+import { curriculumService } from '../api/curriculumService';
 import { curriculumApprovalService } from '@/features/college-admin';
 import { curriculumChangeRequestService } from '@/features/college-admin';
 import { getWSClient } from '@/shared/api/wsRealtimeClient';
@@ -115,7 +116,7 @@ const ModalWrapper = ({
 /* ==============================
    ADD UNIT MODAL (College-adapted)
    ============================== */
-const AddUnitModal = ({
+export const AddUnitModal = ({
   isOpen,
   onClose,
   onCreated,
@@ -123,7 +124,7 @@ const AddUnitModal = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (unit: Unit) => void;
+  onCreated: (unit: Unit) => void | Promise<void>;
   editUnit?: Unit | null;
 }) => {
   const [name, setName] = useState("");
@@ -167,17 +168,21 @@ const AddUnitModal = ({
     resetForm();
     onClose();
   };
-  const handleSubmit = () => {
-    if (!name || name.length < 3) {
+  const handleSubmit = async () => {
+    if (name.trim().length < 3) {
       setError("Unit name must be at least 3 characters long");
       return;
     }
 
+    if (!description.trim()) {
+      setError('Unit description is required');
+      return;
+    }
     setError(null);
     setSubmitting(true);
 
-    setTimeout(() => {
-      onCreated({
+    try {
+      await onCreated({
         id: editUnit?.id || Date.now().toString(),
         name: name.trim(),
         code: code.trim() || undefined,
@@ -187,9 +192,12 @@ const AddUnitModal = ({
         durationUnit: estimatedDuration ? durationUnit : undefined,
         credits: credits ? parseFloat(credits) : undefined,
       });
-      setSubmitting(false);
       handleClose();
-    }, 400);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to save. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -329,7 +337,7 @@ const AddUnitModal = ({
 /* ==============================
    ADD LEARNING OUTCOME MODAL (College-adapted)
    ============================== */
-const AddLearningOutcomeModal = ({
+export const AddLearningOutcomeModal = ({
   isOpen,
   onClose,
   onCreated,
@@ -337,14 +345,16 @@ const AddLearningOutcomeModal = ({
   editOutcome,
   assessmentTypes,
   selectedUnitForOutcome,
+  onCreateAssessmentType,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: (outcome: LearningOutcome) => void;
+  onCreated: (outcome: LearningOutcome) => void | Promise<void>;
   units: Unit[];
   editOutcome?: LearningOutcome | null;
   assessmentTypes: AssessmentType[];
   selectedUnitForOutcome?: string | null;
+  onCreateAssessmentType?: (name: string, description: string) => Promise<{ id: string; name: string }>;
 }) => {
   const bloomLevels = [
     "Remember",
@@ -361,6 +371,11 @@ const AddLearningOutcomeModal = ({
   const [assessmentMappings, setAssessmentMappings] = useState<AssessmentMapping[]>([]);
   const [currentAssessmentType, setCurrentAssessmentType] = useState("");
   const [currentWeightage, setCurrentWeightage] = useState("");
+  const [creatingType, setCreatingType] = useState(false);
+  const [typeName, setTypeName] = useState('');
+  const [typeDescription, setTypeDescription] = useState('');
+  const [savingType, setSavingType] = useState(false);
+  const [typeError, setTypeError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -380,6 +395,29 @@ const AddLearningOutcomeModal = ({
     setCurrentAssessmentType("");
     setCurrentWeightage("");
   }, [editOutcome, isOpen, selectedUnitForOutcome]);
+  useEffect(() => {
+    setCreatingType(false);
+    setTypeName('');
+    setTypeDescription('');
+    setTypeError(null);
+  }, [isOpen]);
+
+  const handleCreateType = async () => {
+    if (!onCreateAssessmentType || !typeName.trim() || savingType) return;
+    setSavingType(true);
+    setTypeError(null);
+    try {
+      const type = await onCreateAssessmentType(typeName.trim(), typeDescription.trim());
+      setCurrentAssessmentType(type.name);
+      setCreatingType(false);
+      setTypeName('');
+      setTypeDescription('');
+    } catch (error) {
+      setTypeError(error instanceof Error ? error.message : 'Could not save assessment type.');
+    } finally {
+      setSavingType(false);
+    }
+  };
   const resetForm = () => {
     setUnitId("");
     setOutcome("");
@@ -391,6 +429,7 @@ const AddLearningOutcomeModal = ({
   };
 
   const handleClose = () => {
+    if (savingType) return;
     resetForm();
     onClose();
   };
@@ -422,16 +461,17 @@ const AddLearningOutcomeModal = ({
     setAssessmentMappings(assessmentMappings.filter(m => m.assessmentType !== assessmentType));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!unitId) {
       setError("Please select a unit");
       return;
     }
+    if (savingType || submitting) return;
     if (!outcome.trim()) {
       setError("Learning Outcome required.");
       return;
     }
-    if (assessmentMappings.length === 0) {
+    if (assessmentTypes.length > 0 && assessmentMappings.length === 0) {
       setError("Please add at least one assessment type mapping");
       return;
     }
@@ -439,17 +479,20 @@ const AddLearningOutcomeModal = ({
     setError(null);
     setSubmitting(true);
 
-    setTimeout(() => {
-      onCreated({
+    try {
+      await onCreated({
         id: editOutcome?.id || Date.now().toString(),
         unitId,
         outcome: outcome.trim(),
         assessmentMappings,
         bloomLevel: bloomLevel || undefined,
       });
-      setSubmitting(false);
       handleClose();
-    }, 400);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to save. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
     <ModalWrapper
@@ -528,14 +571,24 @@ const AddLearningOutcomeModal = ({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Assessment Type Mappings <span className="text-red-500">*</span>
-          </label>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-medium text-gray-700">
+            Assessment Type Mappings {assessmentTypes.length > 0 && <span className="text-red-500">*</span>}
+          </span>
+          {onCreateAssessmentType && !creatingType && (
+            <button type="button" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-indigo-200 px-3 text-sm font-medium text-indigo-700 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600" onClick={() => setCreatingType(true)}>
+              <PlusCircleIcon className="h-4 w-4" aria-hidden="true" /> Add assessment type
+            </button>
+          )}
+          </div>
           <p className="text-xs text-gray-500 mb-3">
-            Map this learning outcome to one or more assessment types
+            {assessmentTypes.length === 0
+              ? 'No assessment types yet. Choose “Add assessment type” to create your first type, then map it to this outcome.'
+              : 'Select an existing assessment type below, or add a new type if it is missing.'}
           </p>
 
           {/* Add Assessment Mapping */}
+          {assessmentTypes.length > 0 && !creatingType && (
           <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 mb-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
               <div>
@@ -549,7 +602,7 @@ const AddLearningOutcomeModal = ({
                   disabled={assessmentTypes.length === 0}
                 >
                   <option value="">
-                    {assessmentTypes.length === 0 ? "Loading assessment types..." : "Select Type"}
+                    {assessmentTypes.length === 0 ? "No assessment types configured" : "Select Type"}
                   </option>
                   {assessmentTypes.map((type) => (
                     <option key={type.id} value={type.name}>
@@ -559,7 +612,7 @@ const AddLearningOutcomeModal = ({
                 </select>
                 {assessmentTypes.length === 0 && (
                   <p className="mt-1 text-xs text-amber-600">
-                    Loading available assessment types...
+                    Add an assessment type below to complete the mappings required for approval.
                   </p>
                 )}
               </div>
@@ -586,9 +639,29 @@ const AddLearningOutcomeModal = ({
               className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium inline-flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               <PlusCircleIcon className="h-4 w-4" />
-              {assessmentTypes.length === 0 ? "Loading..." : "Add Assessment Mapping"}
+              {assessmentTypes.length === 0 ? "No assessment types available" : "Add Assessment Mapping"}
             </button>
           </div>
+          )}
+
+          {onCreateAssessmentType && creatingType && (
+            <div className="mt-3">
+                <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+                  <label className="block text-sm font-medium text-gray-700">Assessment type name
+                    <input autoFocus maxLength={100} disabled={savingType} value={typeName} onChange={event => setTypeName(event.target.value)} placeholder="e.g. Internal Assessment" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Description (optional)
+                    <textarea maxLength={1000} rows={2} disabled={savingType} value={typeDescription} onChange={event => setTypeDescription(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-indigo-500" />
+                  </label>
+                  <p className="text-xs text-gray-500">Available for learning outcome mappings throughout your college.</p>
+                  {typeError && <p role="alert" className="text-sm text-red-700">{typeError}</p>}
+                  <div className="flex flex-wrap justify-end gap-3">
+                    <button type="button" disabled={savingType} onClick={() => setCreatingType(false)} className="min-h-11 rounded-lg border border-gray-300 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                    <button type="button" disabled={savingType || !typeName.trim()} onClick={handleCreateType} className="min-h-11 rounded-lg bg-indigo-600 px-4 text-sm font-medium text-white disabled:opacity-50">{savingType ? 'Saving...' : 'Save assessment type'}</button>
+                  </div>
+                </div>
+            </div>
+          )}
 
           {/* Display Added Mappings */}
           {assessmentMappings.length > 0 && (
@@ -629,11 +702,11 @@ const AddLearningOutcomeModal = ({
             </div>
           )}
 
-          {assessmentMappings.length === 0 && (
+          {assessmentTypes.length > 0 && assessmentMappings.length === 0 && (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <p className="text-sm text-amber-800">
                 ⚠️ Please add at least one assessment type mapping
-                {assessmentTypes.length === 0 && " (Loading assessment types...)"}
+
               </p>
             </div>
           )}
@@ -649,7 +722,7 @@ const AddLearningOutcomeModal = ({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={submitting}
+          disabled={submitting || savingType}
           className="rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed transition-colors inline-flex items-center gap-2"
         >
           {submitting ? (
@@ -757,14 +830,13 @@ const CloneCurriculumModal = ({
   academicYears,
   semesters,
   currentCurriculumId,
-  currentAcademicYear,
   currentDepartment,
   currentProgram,
   currentCourse,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onClone: (targetData: any) => void;
+  onClone: (targetData: any) => void | Promise<void>;
   departments: Array<{ id: string; name: string }>;
   programs: Array<{ id: string; name: string; code?: string; specializations?: unknown }>;
   academicYears: string[];
@@ -795,22 +867,16 @@ const CloneCurriculumModal = ({
   const loadAvailableSourceCurriculums = async () => {
     setLoadingSources(true);
     try {
-      // This would call the getCurriculumsForCloning service
-      // For now, we'll use a placeholder
-      const mockSources = [
-        {
-          id: currentCurriculumId,
-          course_name: currentCourse,
-          academic_year: currentAcademicYear,
-          department_name: departments.find(d => d.id === currentDepartment)?.name,
-          program_name: programs.find(p => p.id === currentProgram)?.name,
-          status: 'published'
-        }
-      ];
-      setAvailableSourceCurriculums(mockSources);
-      setSelectedSourceId(currentCurriculumId || "");
+      const sources = await curriculumService.getCurriculums({
+        department_id: currentDepartment || undefined,
+        program_id: currentProgram || undefined,
+        course_id: currentCourse || undefined,
+      });
+      setAvailableSourceCurriculums(sources);
+      setSelectedSourceId(sources.some(source => source.id === currentCurriculumId) ? currentCurriculumId || '' : sources[0]?.id || '');
     } catch (error) {
       logger.error('Failed to load source curriculums', error as Error);
+      setError('Unable to load saved curricula. Please try again.');
     } finally {
       setLoadingSources(false);
     }
@@ -830,7 +896,7 @@ const CloneCurriculumModal = ({
     onClose();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedSourceId) {
       setError("Please select a source curriculum to clone");
       return;
@@ -854,17 +920,20 @@ const CloneCurriculumModal = ({
     setError(null);
     setSubmitting(true);
 
-    setTimeout(() => {
-      onClone({
+    try {
+      await onClone({
         sourceId: selectedSourceId,
         academic_year: targetAcademicYear,
         department_id: targetDepartment || undefined,
         program_id: targetProgram || undefined,
         semester: targetSemester ? parseInt(targetSemester) : undefined,
       });
-      setSubmitting(false);
       handleClose();
-    }, 400);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unable to clone curriculum.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1039,6 +1108,7 @@ const CloneCurriculumModal = ({
 };
 
 interface CollegeCurriculumBuilderProps {
+  headerActions?: React.ReactNode;
   // College-specific selections
   selectedCourse?: string;
   setSelectedCourse?: (value: string) => void;
@@ -1061,6 +1131,7 @@ interface CollegeCurriculumBuilderProps {
   units?: Unit[]; // Changed from chapters
   learningOutcomes?: LearningOutcome[];
   assessmentTypes?: AssessmentType[];
+  onCreateAssessmentType?: (name: string, description: string) => Promise<{ id: string; name: string }>;
   status?: "draft" | "submitted" | "pending_approval" | "approved" | "published" | "archived" | "rejected";
   loading?: boolean;
   isRealTimeConnected?: boolean;
@@ -1109,7 +1180,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     data: any;
   } | null>(null);
   const [isRefreshingChanges, setIsRefreshingChanges] = useState(false);
-  
+
   // Enhanced auto-refresh state
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
@@ -1152,6 +1223,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const selectedSemester = props.selectedSemester ?? localSelectedSemester;
   const setSelectedSemester = props.setSelectedSemester ?? localSetSelectedSemester;
   const selectedAcademicYear = props.selectedAcademicYear ?? localSelectedAcademicYear;
+  const contextReady = Boolean(selectedAcademicYear && selectedDepartment && selectedProgram && selectedSemester && selectedCourse);
   const setSelectedAcademicYear = props.setSelectedAcademicYear ?? localSetSelectedAcademicYear;
   const units = props.units ?? localUnits;
   const setUnits = localSetUnits;
@@ -1161,9 +1233,9 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   const setStatus = localSetStatus;
   const searchQuery = props.searchQuery ?? localSearchQuery;
   const setSearchQuery = props.setSearchQuery ?? localSetSearchQuery;
-  
+
   const [approvedBy] = useState<string | undefined>();
-  
+
   // State for outcomes search
   const [outcomesSearchQuery, setOutcomesSearchQuery] = useState("");
 
@@ -1203,10 +1275,10 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     const checkAffiliation = async () => {
       try {
         setCollegeAffiliation({ isAffiliated: false, loading: true });
-        
+
         // Use the improved service function
         const affiliationResult = await curriculumApprovalService.checkCollegeAffiliation();
-        
+
         if (affiliationResult.success && affiliationResult.data) {
           setCollegeAffiliation({
             isAffiliated: affiliationResult.data.isAffiliated,
@@ -1238,7 +1310,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
           setIsRefreshingChanges(true);
           setIsAutoRefreshing(true);
         }
-        
+
         try {
           const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
           if (result.success && result.data) {
@@ -1255,7 +1327,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         }
       }
     };
-    
+
     fetchPendingChanges();
 
     // Set up auto-refresh every 5 seconds to check for approved changes (more frequent)
@@ -1279,7 +1351,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         setIsAutoRefreshing(true);
         fetchPendingChanges();
         setTimeout(() => setIsAutoRefreshing(false), 1000);
-        
+
         // Check if changes were approved and refresh curriculum data
         const payload = event.payload;
         if (payload?.pending_changes) {
@@ -1444,11 +1516,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Filtered units that have matching outcomes
   const unitsWithFilteredOutcomes = useMemo(() => {
     if (!outcomesSearchQuery) return units;
-    
+
     const outcomeUnitIds = new Set(
       filteredLearningOutcomes.map(o => o.unitId)
     );
-    
+
     return units.filter(unit => outcomeUnitIds.has(unit.id));
   }, [units, filteredLearningOutcomes, outcomesSearchQuery]);
 
@@ -1528,7 +1600,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
       const unitToDelete = units.find(u => u.id === id);
       if (!unitToDelete) return;
-      
+
       // Store the action and show modal
       setPendingChangeAction({
         type: 'unit_delete',
@@ -1606,7 +1678,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     if (status === 'published' && collegeAffiliation.isAffiliated && props.curriculumId) {
       const outcomeToDelete = learningOutcomes.find(o => o.id === id);
       if (!outcomeToDelete) return;
-      
+
       // Store the action and show modal
       setPendingChangeAction({
         type: 'outcome_delete',
@@ -1641,7 +1713,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
     try {
       let result;
-      
+
       switch (pendingChangeAction.type) {
         case 'unit_add':
           result = await curriculumChangeRequestService.submitUnitAdd(
@@ -1650,7 +1722,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         case 'unit_edit':
           result = await curriculumChangeRequestService.submitUnitEdit(
             props.curriculumId,
@@ -1660,7 +1732,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         case 'unit_delete':
           result = await curriculumChangeRequestService.submitUnitDelete(
             props.curriculumId,
@@ -1669,7 +1741,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         case 'outcome_add':
           result = await curriculumChangeRequestService.submitOutcomeAdd(
             props.curriculumId,
@@ -1677,7 +1749,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         case 'outcome_edit':
           result = await curriculumChangeRequestService.submitOutcomeEdit(
             props.curriculumId,
@@ -1687,7 +1759,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         case 'outcome_delete':
           result = await curriculumChangeRequestService.submitOutcomeDelete(
             props.curriculumId,
@@ -1696,21 +1768,21 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             changeRequestMessage
           );
           break;
-          
+
         default:
           toast.error('Unknown change type');
           return;
       }
-      
+
       if (result.success) {
         toast.success('Change request submitted for approval!');
-        
+
         // Refresh pending changes
         const updatedChanges = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
         if (updatedChanges.success && updatedChanges.data) {
           setPendingChanges(updatedChanges.data);
         }
-        
+
         setShowChangeRequestModal(false);
         setChangeRequestMessage('');
         setPendingChangeAction(null);
@@ -1726,7 +1798,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Manual refresh function for pending changes
   const handleManualRefresh = async () => {
     if (!props.curriculumId || status !== 'published') return;
-    
+
     setIsRefreshingChanges(true);
     try {
       const result = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
@@ -1745,15 +1817,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // NEW: Handle cancel change request
   const handleCancelChangeRequest = async (changeId: string) => {
     if (!props.curriculumId) return;
-    
+
     const result = await curriculumChangeRequestService.cancelChange(
       props.curriculumId,
       changeId
     );
-    
+
     if (result.success) {
       toast.success('Change request cancelled');
-      
+
       // Refresh pending changes
       const updatedChanges = await curriculumChangeRequestService.getPendingChanges(props.curriculumId);
       if (updatedChanges.success && updatedChanges.data) {
@@ -1775,17 +1847,17 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
   // Check if there's content to save
   const hasContentToSave = units.length > 0 || learningOutcomes.length > 0;
-  
+
   // Check if Save Draft should be disabled
   const isSaveDraftDisabled = !hasContentToSave;
-  
+
   // Check if Approve button should be disabled
   const approvalValidation = validateForApproval();
   const isApproveDisabled = !approvalValidation.isValid;
-  
+
   // Content validation for error banner (only when context is complete)
   const contentValidation = validateContentOnly();
-  
+
   // Determine save draft button text and state
   const getSaveDraftButtonText = () => {
     if (!hasContentToSave) {
@@ -1821,7 +1893,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       } else if (props.curriculumId) {
         // Use the curriculum approval service
         const result = await curriculumApprovalService.submitForApproval(props.curriculumId, approvalMessage);
-        
+
         if (result.success) {
           setStatus("pending_approval");
           toast.success(`Curriculum submitted for approval to ${collegeAffiliation.universityName}!`);
@@ -1839,7 +1911,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       toast.error("Failed to submit curriculum for approval");
       return;
     }
-    
+
     setShowRequestApprovalModal(false);
     setApprovalMessage("");
   };
@@ -1850,7 +1922,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     } else {
       // Create CSV export
       const csvData = [];
-      
+
       // Header
       csvData.push([
         'Unit Order',
@@ -1867,7 +1939,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       // Data rows
       units.forEach(unit => {
         const unitOutcomes = learningOutcomes.filter(lo => lo.unitId === unit.id);
-        
+
         if (unitOutcomes.length === 0) {
           // Unit without outcomes
           csvData.push([
@@ -1887,7 +1959,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             const assessmentTypes = outcome.assessmentMappings
               .map(m => `${m.assessmentType}${m.weightage ? ` (${m.weightage}%)` : ''}`)
               .join('; ');
-              
+
             csvData.push([
               index === 0 ? unit.order : '', // Only show unit details on first row
               index === 0 ? unit.name : '',
@@ -1933,7 +2005,6 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   };
 
   // Stats with auto-update tracking
-  const [statsUpdateTimestamp, setStatsUpdateTimestamp] = useState(Date.now());
   const [previousStats, setPreviousStats] = useState({
     totalUnits: 0,
     totalOutcomes: 0,
@@ -1958,16 +2029,15 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
   // Auto-update stats tracking
   useEffect(() => {
     const currentStats = { totalUnits, totalOutcomes, totalCredits, completionRate };
-    
+
     // Check if stats have changed
     const hasChanged = Object.keys(currentStats).some(
       key => currentStats[key as keyof typeof currentStats] !== previousStats[key as keyof typeof previousStats]
     );
 
     if (hasChanged) {
-      setStatsUpdateTimestamp(Date.now());
       setPreviousStats(currentStats);
-      
+
       // Show subtle update notification for significant changes
       if (previousStats.totalUnits > 0 || previousStats.totalOutcomes > 0) {
         const changes = [];
@@ -1983,7 +2053,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         if (currentStats.completionRate !== previousStats.completionRate) {
           changes.push(`Completion: ${previousStats.completionRate}% → ${currentStats.completionRate}%`);
         }
-      
+
       }
     }
   }, [totalUnits, totalOutcomes, totalCredits, completionRate, previousStats]);
@@ -1991,7 +2061,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
     <div className="flex flex-col min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div className="flex items-start sm:items-center gap-4">
             <div className="flex items-center justify-center h-12 w-12 bg-indigo-100 rounded-xl shrink-0">
               <BookOpenIcon className="h-6 w-6 text-indigo-600" />
@@ -2006,15 +2076,16 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Top Action Buttons - Export and Clone */}
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-3 2xl:justify-end">
+            {/* All page actions share the builder header. */}
+            <div className="flex flex-wrap items-center gap-2">
+              {props.headerActions}
               {/* Export Dropdown */}
               <div className="relative export-dropdown">
                 <button
                   onClick={() => setShowExportDropdown(!showExportDropdown)}
                   disabled={totalUnits === 0}
-                  className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+                  className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
                 >
                   <DocumentCheckIcon className="h-4 w-4" />
                   Export
@@ -2022,7 +2093,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                
+
                 {showExportDropdown && (
                   <div className="absolute top-full left-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                     <div className="py-1">
@@ -2108,24 +2179,24 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
       </div>
       {/* Error Banner - Only show when all context fields are selected */}
       {selectedAcademicYear && selectedCourse && selectedDepartment && selectedProgram && selectedSemester && !contentValidation.isValid && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+        <section aria-labelledby="curriculum-approval-checklist" className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
           <div className="flex items-start gap-3">
-            <InformationCircleIcon className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-amber-800 font-medium mb-2">
-                Complete these steps to approve your curriculum:
-              </h3>
-              <div className="space-y-1">
+            <InformationCircleIcon aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="min-w-0">
+              <h2 id="curriculum-approval-checklist" className="!m-0 !text-sm !font-semibold !leading-5 text-amber-900">
+                Before approving your curriculum
+              </h2>
+              <ul className="mt-1.5 flex list-none flex-col gap-1 p-0 sm:flex-row sm:flex-wrap sm:gap-x-5">
                 {contentValidation.errors.map((error, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm text-amber-700">
-                    <div className="w-1.5 h-1.5 bg-amber-400 rounded-full flex-shrink-0"></div>
+                  <li key={idx} className="flex items-start gap-2 !text-sm !leading-5 text-amber-800">
+                    <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-amber-500" />
                     <span>{error}</span>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       <div className="flex flex-1 flex-col lg:flex-row gap-6">
@@ -2198,7 +2269,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 <option value="">{!selectedDepartment ? "Select Department First" : "Select Program"}</option>
                 {programs.map((program) => (
                   <option key={program.id} value={program.id}>
-                    {program.name}
+                    {formatProgramLabel(program.name, program)}
                   </option>
                 ))}
               </select>
@@ -2288,28 +2359,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                 changeLabel="auto-updated"
               />
             </div>
-            
-            {/* Enhanced Auto-Update Status Indicator */}
-            <div className={`mt-4 p-3 rounded-lg border transition-all duration-300 ${
-              isAutoRefreshing 
-                ? 'bg-gradient-to-r from-blue-100 to-indigo-100 border-blue-300 shadow-md' 
-                : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200'
-            }`}>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  isAutoRefreshing ? 'bg-blue-600 animate-spin' : 'bg-blue-500 animate-pulse'
-                }`}></div>
-                <div className="flex-1">
-                  <p className="text-xs font-medium text-blue-800">
-                    {isAutoRefreshing ? 'Updating Stats...' : 'Auto-Update Active'}
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Last updated: {new Date(statsUpdateTimestamp).toLocaleTimeString()}
-                  </p>
-                </div>
-                <ArrowPathIcon className={`h-4 w-4 text-blue-600 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
-              </div>
-            </div>
+
           </div>
           {/* Status Card */}
           <div className={`rounded-xl border p-5 ${
@@ -2373,8 +2423,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
 
         {/* MAIN CONTENT */}
         <main className="flex-1 space-y-6">
-          {/* Pending Changes Panel - Placement Readiness Style */}
-          {pendingChanges.length > 0 && (
+          {/* Pending changes are reviewed inside the "Educator changes" drawer */}
+          {false && (
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-b border-amber-200 p-6">
                 <div className="flex items-center justify-between">
@@ -2410,7 +2460,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                   </div>
                 </div>
               </div>
-              
+
               {/* Change Requests Grid */}
               <div className="p-6">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -2483,7 +2533,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     );
                   })}
                 </div>
-                
+
                 {pendingChanges.length > 4 && (
                   <div className="mt-4 text-center">
                     <button
@@ -2495,7 +2545,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     </button>
                   </div>
                 )}
-                
+
                 {/* Enhanced Auto-refresh indicator */}
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
@@ -2528,7 +2578,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                {contextReady && <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
                       if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
@@ -2544,7 +2594,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     <PlusCircleIcon className="h-5 w-5" />
                     Add Unit
                   </button>
-                </div>
+                </div>}
               </div>
 
               {units.length > 0 && (
@@ -2564,16 +2614,18 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     <BookOpenIcon className="h-12 w-12 text-gray-400" />
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {units.length === 0
+                    {!contextReady ? "Select your curriculum details" : units.length === 0
                       ? "No units yet"
                       : "No units found"}
                   </h3>
                   <p className="text-sm text-gray-500 max-w-sm">
-                    {units.length === 0
-                      ? (props.curriculumId ? "Start building your curriculum by adding units/modules" : "Select all fields above, then add your first unit to create the curriculum")
+                    {!contextReady
+                      ? "Select academic year, department, program, semester and course to start building your curriculum."
+                      : units.length === 0
+                      ? "Add your first unit to start building this curriculum."
                       : "Try adjusting your search criteria"}
                   </p>
-                  {units.length === 0 && ((status !== "published" || isCollegeAdmin)) && (
+                  {contextReady && units.length === 0 && ((status !== "published" || isCollegeAdmin)) && (
                     <button
                       onClick={() => {
                         if (!selectedAcademicYear || !selectedCourse || !selectedDepartment || !selectedProgram || !selectedSemester) {
@@ -2615,7 +2667,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       );
                     })}
                   </div>
-                  
+
                   {/* Units Pagination */}
                   {unitsTotalPages > 1 && (
                     <div className="mt-6">
@@ -2780,7 +2832,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                         <p className="text-xs text-gray-800 leading-relaxed line-clamp-2 mb-2">
                                           {outcome.outcome}
                                         </p>
-                                        
+
                                         {/* Compact Tags */}
                                         <div className="flex flex-wrap items-center gap-1">
                                           {outcome.bloomLevel && (
@@ -2808,11 +2860,11 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                           )}
                                         </div>
                                       </div>
-                                      
+
                                       {/* Action Buttons */}
                                       {((status !== "published" || isCollegeAdmin)) && (
                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                         
+
                                           <button
                                             onClick={() => handleDeleteOutcome(outcome.id)}
                                             className="p-1 text-gray-500 hover:text-red-600 hover:bg-white rounded transition-colors"
@@ -2832,7 +2884,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       );
                     })}
                   </div>
-                  
+
                   {/* Pagination */}
                   {outcomesTotalPages > 1 && (
                     <div className="mt-6 pt-4 border-t border-gray-100">
@@ -2870,7 +2922,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                       <DocumentCheckIcon className="h-4 w-4" />
                       {getSaveDraftButtonText()}
                     </button>
-                    
+
                     {isCollegeAdmin && (
                       <>
                         {/* Show Request for Approval button for affiliated colleges */}
@@ -2889,8 +2941,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                             {isApproveDisabled ? 'Complete Steps Above' : 'Request for Approval'}
                           </button>
                         )}
-                        
-                        {/* Show direct Publish for private/non-affiliated colleges */}
+
+                        {/* Approve drafts for private/non-affiliated colleges before publishing */}
                         {!collegeAffiliation.isAffiliated && !collegeAffiliation.loading && (
                           <button
                             onClick={async () => {
@@ -2900,18 +2952,18 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                                 window.scrollTo({ top: 0, behavior: "smooth" });
                                 return;
                               }
-                              
+
                               try {
-                                if (props.onPublish) {
-                                  await props.onPublish();
+                                if (props.onApprove) {
+                                  await props.onApprove();
                                 } else {
-                                  // For private colleges, publish directly (skip intermediate approved status)
-                                  setStatus("published");
-                                  toast.success("Curriculum published successfully! It is now active and available.");
+                                  // Local/demo fallback follows the same approval sequence.
+                                  setStatus("approved");
+                                  toast.success("Curriculum approved successfully. It is ready to publish.");
                                 }
                               } catch (error) {
-                                logger.error('Error publishing curriculum', error as Error);
-                                toast.error("Failed to publish curriculum");
+                                logger.error('Error approving curriculum', error as Error);
+                                toast.error("Failed to approve curriculum");
                               }
                             }}
                             disabled={isApproveDisabled}
@@ -2923,10 +2975,10 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                             title={getApprovalTooltip()}
                           >
                             <CheckCircleIcon className="h-4 w-4" />
-                            {isApproveDisabled ? 'Complete Steps Above' : 'Publish Curriculum'}
+                            {isApproveDisabled ? 'Complete Steps Above' : 'Approve Curriculum'}
                           </button>
                         )}
-                        
+
                         {/* Loading state */}
                         {collegeAffiliation.loading && (
                           <button
@@ -2961,7 +3013,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
                     <div className="flex items-center gap-3 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg">
                       <CheckCircleIcon className="h-5 w-5 text-green-600" />
                       <div>
-                        <p className="text-sm font-medium text-green-800">Approved by University</p>
+                        <p className="text-sm font-medium text-green-800">{collegeAffiliation.isAffiliated ? 'Approved by University' : 'Curriculum Approved'}</p>
                         <p className="text-xs text-green-600">
                           Ready to publish - click the button to make it active
                         </p>
@@ -3034,6 +3086,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         units={units}
         editOutcome={editingOutcome}
         assessmentTypes={assessmentTypes}
+        onCreateAssessmentType={props.onCreateAssessmentType}
         selectedUnitForOutcome={selectedUnitForOutcome}
       />
 
@@ -3041,8 +3094,8 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         isOpen={showCloneModal}
         onClose={() => setShowCloneModal(false)}
         onClone={(targetData) => {
-          if (props.onClone && props.curriculumId) {
-            props.onClone(props.curriculumId, targetData);
+          if (props.onClone) {
+            return props.onClone(targetData.sourceId, targetData);
           } else {
             toast.success('Clone functionality not implemented in demo mode');
           }
@@ -3055,7 +3108,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
         currentAcademicYear={selectedAcademicYear}
         currentDepartment={selectedDepartment}
         currentProgram={selectedProgram}
-        currentCourse={courses.find(c => c.value === selectedCourse)?.label}
+        currentCourse={selectedCourse}
       />
 
       {/* Request Approval Modal */}
@@ -3082,7 +3135,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-colors resize-none"
             />
           </div>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -3276,7 +3329,7 @@ const CollegeCurriculumBuilder: React.FC<CollegeCurriculumBuilderProps> = (props
               This helps university admins understand and review your request faster
             </p>
           </div>
-          
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <InformationCircleIcon className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />

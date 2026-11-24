@@ -4,6 +4,7 @@ export const emptyOpportunityFilters = () => ({
   mode: [] as string[],
   skills: [] as string[],
   department: [] as string[],
+  location: [] as string[],
   salaryMin: '',
   salaryMax: '',
   postedWithin: '',
@@ -26,6 +27,7 @@ export function readOpportunitySearch(params: URLSearchParams) {
     'mode',
     'skills',
     'department',
+    'location',
   ] as const)
     filters[key] = params.getAll(key).slice(0, 30);
   for (const key of ['salaryMin', 'salaryMax', 'postedWithin'] as const)

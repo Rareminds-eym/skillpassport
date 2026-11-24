@@ -13,6 +13,7 @@ import {
   apiDbError,
   apiMethodNotAllowed,
 } from "../../lib/response";
+import { requireSubscriptionAccess, readRecruiterContactPermissions } from "../../shared/lib/subscription-access";
 export const onRequest = (context: any) =>
   context.request.method === "POST" ? handle(context) : apiMethodNotAllowed();
 const handle = withAuth(async (context) => {
@@ -37,6 +38,9 @@ const handle = withAuth(async (context) => {
         ? PERMISSIONS.MANAGE_CANDIDATES
         : PERMISSIONS.VIEW_CANDIDATES,
     );
+    const access = await requireSubscriptionAccess({env:context.env,request:context.request,actorId:user.id,
+      subject:{kind:"organization",id:scope.orgId},mode:body.action==="list"?"read":"write"});
+    if(access instanceof Response)return access;
     const [applications, candidates] = await Promise.all([
       db
         .from("applied_jobs")
@@ -63,11 +67,15 @@ const handle = withAuth(async (context) => {
       ),
     ];
     const { data: learners, error: learnerError } = await db
-      .from("learners")
+      .from("zoho_recruiter_learners")
       .select("id,user_id,name")
       .in("id", learnerIds.length ? learnerIds : [EMPTY_UUID]);
     if (learnerError) throw learnerError;
-    const aliases = (learners || [])
+    const visibility = await readRecruiterContactPermissions({env:context.env,request:context.request,actorId:user.id,
+      organizationId:scope.orgId,database:db},learners||[],'profile');
+    if(visibility instanceof Response)return visibility;
+    const visibleLearners = (learners || []).filter(learner=>visibility.get(learner.id)?.visible);
+    const aliases = visibleLearners
       .flatMap((l) => [l.id, l.user_id])
       .filter(Boolean);
     const { data: projects, error: projectError } = await db
@@ -94,7 +102,7 @@ const handle = withAuth(async (context) => {
           work: (projects || []).map((p) => ({
             ...p,
             learnerName:
-              learners?.find(
+              visibleLearners.find(
                 (l) => l.id === p.learner_id || l.user_id === p.learner_id,
               )?.name || "Candidate",
             review: reviews?.find((r) => r.project_id === p.id) || null,

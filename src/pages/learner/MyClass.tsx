@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useAuthStore, useUser } from '@/shared/model/authStore';
 import { useLearnerDataByEmail } from '@/entities/learner';
@@ -10,10 +10,9 @@ import { getLogger } from '@/shared/config/logging';
 const logger = getLogger('MyClass');
 
 // Import School Components
-import { SchoolMyClass } from '@/features/myclass';
+import { SchoolMyClass, CollegeMyClass } from '@/features/myclass';
 
 // Import College Components  
-import { CollegeMyClass } from '@/features/myclass';
 /**
  * MyClass - Smart Router Component
  * 
@@ -26,10 +25,10 @@ import { CollegeMyClass } from '@/features/myclass';
  * - Graceful fallback for learners without assigned classes/programs
  * - Professional separation of concerns
  */
-const MyClass: React.FC = () => {
+const MyClass: FC = () => {
   const user = useUser();
   const userEmail = (useAuthStore.getState().user?.email || localStorage.getItem("userEmail")) || user?.email;
-  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail) as { learnerData: any; loading: boolean };
+  const { learnerData, loading: authLoading } = useLearnerDataByEmail(userEmail) as { learnerData: { id?: string } | null; loading: boolean };
   const learnerId = learnerData?.id;
 
   // State for learner type detection

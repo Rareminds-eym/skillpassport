@@ -1,9 +1,10 @@
 /// <reference types="@cloudflare/workers-types" />
+import { HYBRID_PLAN_ID } from './subscription-config';
 import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rareminds-eym/auth-core";
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
 import { APPROVED_ORIGINS } from "./app-origins";
-import { hasAnyFeature } from "./entitlements";
+import { hasAnyFeature, type FeatureRequirement } from "./entitlements";
 import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
@@ -132,7 +133,8 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       }
 
       if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
-        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
+        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user,
+          HYBRID_PLAN_ID);
         if (featureDenied) return featureDenied;
       }
 
@@ -301,14 +303,14 @@ export function requireAdmin(handler: (context: any) => Promise<Response>) {
   return requireRole([...ADMIN_ROLES], handler);
 }
 
-async function entitlementCheck(context: any, keys: string[]): Promise<boolean> {
+async function entitlementCheck(context: any, keys: readonly FeatureRequirement[]): Promise<boolean> {
   const supabase = getServiceClient(context.env as unknown as PagesEnv);
   const userId = getContextUser(context).id;
   return hasAnyFeature(supabase, userId, keys);
 }
 
 export const requireFeatureAccess = (
-  featureKey: string | string[],
+  featureKey: FeatureRequirement | FeatureRequirement[],
   handler: (context: any) => Promise<Response> | Response
 ) => {
   const keys = Array.isArray(featureKey) ? featureKey : [featureKey];

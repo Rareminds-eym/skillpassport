@@ -15,6 +15,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 import { SubscriptionSettingsSection } from '@/features/subscription';
+import { CourseAccessReview } from '@/features/college-course-workflow';
 import { ClipboardDocumentListIcon } from "@heroicons/react/24/solid";
 import { getLogger } from '@/shared/config/logging';
 import {
@@ -686,7 +687,7 @@ const Settings = () => {
   const { role } = useUserRole();
 
   const [activeTab, setActiveTab] = useState<
-    "roles" | "subscription"
+    "roles" | "faculty-access" | "subscription"
   >("subscription");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -844,6 +845,7 @@ const Settings = () => {
 
   const tabs = [
     { id: "roles", label: "Roles & Permissions", icon: UserGroupIcon, disabled: true },
+    { id: "faculty-access", label: "Faculty course access", icon: AcademicCapIcon },
     { id: "subscription", label: "Subscription", icon: CreditCardIcon },
   ];
 
@@ -978,7 +980,7 @@ const Settings = () => {
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     <span className="font-semibold leading-tight text-center">
-                      {tab.label.includes(' ') ? tab.label.split(' ')[0] : tab.label}
+                      {tab.label}
                     </span>
                   </button>
                 );
@@ -1005,7 +1007,7 @@ const Settings = () => {
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className="font-semibold">
-                      {tab.label.length > 12 ? tab.label.split(' ')[0] : tab.label}
+                      {tab.label}
                     </span>
                   </button>
                 );
@@ -1231,6 +1233,12 @@ const Settings = () => {
             </div>
           )}
 
+          {activeTab === "faculty-access" && (
+            <div className="p-4 sm:p-6 lg:p-8">
+              <h2 className="mb-3 text-xl font-semibold text-gray-900">Faculty course access</h2>
+              <CourseAccessReview embedded mode="access" />
+            </div>
+          )}
           {/* E7. Subscription Settings */}
           {activeTab === "subscription" && (
             <div className="p-4 sm:p-6 lg:p-8">
