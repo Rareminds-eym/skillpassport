@@ -143,7 +143,7 @@ BEGIN
  IF (SELECT count(*) FROM notifications WHERE type='assignment_evaluated')<>baseline+1 THEN RAISE EXCEPTION 'Duplicate auto-release event'; END IF;
 END $$;`);
   sql(`ALTER TABLE college_learner_assignments ADD COLUMN is_deleted boolean DEFAULT false, ADD COLUMN external_educator_graded_by uuid;`);
-  sql(readFileSync(new URL('../supabase/migrations/20270318000009_college_ai_grade_updates.sql',import.meta.url),'utf8'));
+  sql(readFileSync(new URL('../supabase/migrations/20270327000001_college_ai_grade_updates.sql',import.meta.url),'utf8'));
   sql(`DO $$
 DECLARE allocation ai_assignment_learners; result ai_assignment_results; outsider uuid:=gen_random_uuid(); original jsonb;
 BEGIN
