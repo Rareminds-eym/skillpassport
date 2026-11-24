@@ -13,7 +13,7 @@ import { getServiceClient } from '../../../lib/supabase';
 import { apiSuccess, apiError } from '../../../lib/response';
 import { getAuthInstance } from '../../../lib/auth';
 import { isSalesOnlyPlan } from '../lib/salesPlan';
-import { confirmPromoRedemption, isDidacAllowedPlan, isSupportedPromoRole } from '../lib/promoCode';
+import { getAcceptedOfferSnapshot, isSupportedPromoRole } from '../lib/promoCode';
 
 const normalizePromoCode = (code: unknown): string =>
   String(code || '').trim().toUpperCase();
@@ -159,19 +159,19 @@ async function getStoredReferralCodeAndRole(
 // (see confirmPromoRedemption) — applied here so the frontend can trust this
 // response for BOTH gating and price display, with no client-side
 // re-derivation of either (see SubscriptionPlans.jsx, Phase 3). Every plan
-// other than the one role-specific eligible plan (isDidacAllowedPlan) is
-// disabled — this is a generalization of the original learner-only rule,
-// under which the three non-"skill_starter" learner plans were likewise
-// always disabled together (i.e. "disabled" was already exactly "every
-// other visible plan").
+// other than the one actually-accepted plan (acceptedPlanId, the exact
+// per-code target — see promo_codes.target_plan_code) is disabled — this is
+// a generalization of the original learner-only rule, under which the three
+// non-"skill_starter" learner plans were likewise always disabled together
+// (i.e. "disabled" was already exactly "every other visible plan").
 function applyDidacPromoRules(
   plans: Record<string, unknown>[],
-  role: string,
+  acceptedPlanId: string,
   priceAdjustment: number,
 ): Record<string, unknown>[] {
   return plans
     .map((plan) => {
-      const isAllowedPlan = isDidacAllowedPlan(role, plan as { plan_code?: unknown; name?: unknown });
+      const isAllowedPlan = plan.id === acceptedPlanId;
 
       if (isAllowedPlan) {
         return {
@@ -290,14 +290,13 @@ export async function handleSubscriptionPlans(context: { request: Request; env: 
     // DIDAC 2026: covers all three supported roles (learner, college_admin,
     // school_admin — see role_and_quota_rules in the TSD), keyed off the
     // user's actual DB role (server-truth), not the client-supplied
-    // businessType/roleType query params. confirmPromoRedemption() commits
-    // the redemption synchronously right here if it hasn't already landed
-    // via withAuth()'s fire-and-forget hook, so pricing/eligibility is never
-    // stale relative to a redemption that is still in flight.
+    // businessType/roleType query params. R16/R17: pricing only adjusts once
+    // the user has explicitly accepted an offer (getAcceptedOfferSnapshot()
+    // is read-only — it never commits a redemption itself).
     if (isSupportedPromoRole(storedRole) && referralCode && userIdentity.id) {
-      const redemption = await confirmPromoRedemption(supabase, userIdentity.id, storedRole, referralCode);
+      const redemption = await getAcceptedOfferSnapshot(supabase, userIdentity.id, storedRole, referralCode);
       if (redemption) {
-        plans = applyDidacPromoRules(plans, storedRole, redemption.priceAdjustment);
+        plans = applyDidacPromoRules(plans, redemption.offer.planId, redemption.priceAdjustment);
       }
     }
 

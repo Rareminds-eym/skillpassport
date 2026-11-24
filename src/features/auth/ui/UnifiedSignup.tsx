@@ -312,8 +312,6 @@ const UnifiedSignup = () => {
 
   // Get plan context from location.state (if user selected a plan before signing up)
   const planFromState = (location.state as any)?.plan;
-  const learnerTypeFromState = (location.state as any)?.learnerType || (location.state as any)?.studentType;
-  const returnToFromState = (location.state as any)?.returnTo;
 
   // Get return URL from query params or session storage (for invitation flow)
   const returnUrl = searchParams.get('returnUrl') || sessionStorage.getItem('invitation_return_url');
@@ -963,18 +961,9 @@ const UnifiedSignup = () => {
         // Clear the stored return URL
         sessionStorage.removeItem('invitation_return_url');
         navigate(returnUrl);
-      } else if (returnToFromState === '/subscription/payment' && planFromState) {
-        // User selected a plan before signing up - go directly to payment
-        if (import.meta.env.DEV) console.log('[UnifiedSignup] User had pre-selected plan, redirecting to payment page');
-        navigate('/subscription/payment', {
-          state: {
-            plan: planFromState,
-            learnerType: learnerTypeFromState || entityType,
-            isUpgrade: false,
-            referralCode: normalizedReferralCode || undefined
-          }
-        });
       } else {
+        // A plan chosen before signup is preselected in the published catalog by its revision only;
+        // the owner quote, not a client-carried plan object, sets the price.
         // Redirect to subscription plans page to choose a plan
         const { getActiveSubscription } = await import('@/features/subscription/api/subscriptionService');
         const coverage = await getActiveSubscription();
@@ -991,9 +980,13 @@ const UnifiedSignup = () => {
           navigate(getRouteForRole(state.selectedRole === 'recruiter_admin' ? 'recruiter' : state.selectedRole!), { replace: true });
           return;
         }
-        const subscriptionPlansPath = normalizedReferralCode
-          ? `/subscription/plans/${entityType}/purchase?referralCode=${encodeURIComponent(normalizedReferralCode)}`
-          : `/subscription/plans/${entityType}/purchase`;
+        const catalogQuery = new URLSearchParams();
+        if (normalizedReferralCode) catalogQuery.set('referralCode', normalizedReferralCode);
+        const selectedRevisionId = (planFromState as { revisionId?: unknown } | undefined)?.revisionId;
+        if (typeof selectedRevisionId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(selectedRevisionId)) {
+          catalogQuery.set('revision', selectedRevisionId.toLowerCase());
+        }
+        const subscriptionPlansPath = `/subscription/plans/${entityType}/purchase${catalogQuery.size ? `?${catalogQuery}` : ''}`;
         navigate(subscriptionPlansPath, {
           state: {
             message: 'Account created successfully! Please choose a plan to continue.',

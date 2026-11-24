@@ -17,7 +17,7 @@ import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow'
 import { apiSuccess, apiError } from '../../../lib/response';
 import { requireSelfServePlan, assertPlanPurchaseScope, subscriptionForUpgrade, catalogPlanErrorResponse } from '../lib/salesPlan';
 import { completePlanSelection, isSubscriptionCurrent } from '../../../shared/lib/org-subscription';
-import { confirmPromoRedemption, isDidacAllowedPlan, isSupportedPromoRole } from '../lib/promoCode';
+import { getAcceptedOfferSnapshot, isDidacAllowedPlan, isSupportedPromoRole, resolveDidacTargetPlanCode } from '../lib/promoCode';
 
 const logger = createLogger('payments:create-order');
 
@@ -44,12 +44,11 @@ async function getUserRoleAndReferralCode(
   };
 }
 
-// DIDAC 2026: both checks below are gated on a COMMITTED redemption —
-// confirmPromoRedemption() commits it synchronously here if it hasn't
-// already landed via withAuth()'s fire-and-forget hook (see
-// functions/api/payments/lib/promoCode.ts), so this never trusts a
-// redemption that might still be in flight. Covers all three supported
-// roles (learner, college_admin, school_admin), not just learner.
+// DIDAC 2026 (R16/R17): both checks below are gated on an already-COMMITTED,
+// explicitly-accepted redemption — getAcceptedOfferSnapshot() is read-only
+// and never commits one itself (see functions/api/payments/lib/promoCode.ts).
+// Covers all three supported roles (learner, college_admin, school_admin),
+// not just learner.
 async function isDidacRestrictedPlan(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
@@ -71,12 +70,14 @@ async function isDidacRestrictedPlan(
   if (!isSupportedPromoRole(role) || !planRow || planRow.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role]) {
     return false;
   }
-  // The role's own eligible plan is never "restricted" — it's the plan the
-  // redemption makes available, not one it disables.
-  if (isDidacAllowedPlan(role, planRow as { plan_code?: unknown; name?: unknown })) {
+  const referralCode = metadata.referralCode ?? metadata.referral_code;
+  // The code's own eligible plan (its target_plan_code override, or the role default) is never
+  // "restricted" — it's the plan the redemption makes available, not one it disables.
+  const targetPlanCode = await resolveDidacTargetPlanCode(supabase, role, referralCode);
+  if (isDidacAllowedPlan(role, planRow as { plan_code?: unknown; name?: unknown }, targetPlanCode)) {
     return false;
   }
-  const redemption = await confirmPromoRedemption(supabase, userId, role, metadata.referralCode ?? metadata.referral_code);
+  const redemption = await getAcceptedOfferSnapshot(supabase, userId, role, referralCode);
   return redemption !== null;
 }
 
@@ -88,16 +89,16 @@ async function isDidacPromoAllowedPlan(
   requestReferralCode?: unknown,
 ): Promise<{ allowed: boolean; priceAdjustment: number }> {
   const { role, metadata } = await getUserRoleAndReferralCode(supabase, userId, userEmail);
+  const referralCode = requestReferralCode ?? metadata.referralCode ?? metadata.referral_code;
 
-  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role] || !isDidacAllowedPlan(role, plan)) {
+  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role]) {
     return { allowed: false, priceAdjustment: 0 };
   }
-  const redemption = await confirmPromoRedemption(
-    supabase,
-    userId,
-    role,
-    requestReferralCode ?? metadata.referralCode ?? metadata.referral_code,
-  );
+  const targetPlanCode = await resolveDidacTargetPlanCode(supabase, role, referralCode);
+  if (!isDidacAllowedPlan(role, plan, targetPlanCode)) {
+    return { allowed: false, priceAdjustment: 0 };
+  }
+  const redemption = await getAcceptedOfferSnapshot(supabase, userId, role, referralCode);
   return redemption
     ? { allowed: true, priceAdjustment: redemption.priceAdjustment }
     : { allowed: false, priceAdjustment: 0 };

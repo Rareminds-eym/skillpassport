@@ -3,7 +3,7 @@ import type { VerifiedAuthUser as SSOAuthUser, VerifiedAuthContext } from "@rare
 import { createAuth } from "@rareminds-eym/auth-core";
 import { createSsoGateway } from "@rareminds-eym/sso-gateway";
 import { APPROVED_ORIGINS } from "./app-origins";
-import { hasAnyFeature } from "./entitlements";
+import { hasAnyFeature, type FeatureRequirement } from "./entitlements";
 import { requireAdminRequestFeature } from './admin-feature-request';
 import { ADMIN_ROLES } from "./roleCategories";
 import { getServiceClient } from "./supabase";
@@ -98,35 +98,11 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       const blocked = requireVerifiedEmail(authedContext.user);
       if (blocked) return blocked;
 
-      // DIDAC 2026 promo-code redemption (fire-and-forget, fail-soft).
-      // See TSD-didac-2026-dynamic-promo-code-management.yml — hooked here,
-      // not the email-verification sync path, which was found unreliable.
-      try {
-        const waitUntil = (context as any).waitUntil as ((p: Promise<any>) => void) | undefined;
-        const promoPromise = (async () => {
-          const { maybeRedeemPromoCode } = await import('./promo-redemption');
-          const svc = getServiceClient(env as unknown as PagesEnv);
-          // referralCode lives in public.users.metadata, not the SSO JWT's
-          // user_metadata — the JWT never carries it.
-          const { data: userRow } = await svc
-            .from('users')
-            .select('metadata')
-            .eq('id', authedContext.user.sub)
-            .maybeSingle();
-          await maybeRedeemPromoCode(
-            svc,
-            env as unknown as PagesEnv,
-            authedContext.user.sub,
-            authedContext.user.email,
-            authedContext.user.roles,
-            userRow?.metadata as Record<string, unknown> | undefined
-          );
-        })().catch(() => {});
-        if (waitUntil) waitUntil(promoPromise);
-        else promoPromise.catch(() => {});
-      } catch {
-        // fail-soft
-      }
+      // DIDAC 2026 promo-code redemption is intentionally NOT hooked here any
+      // more (R16/R17): quota is only ever consumed together with an explicit,
+      // re-validated "accept this offer" step (see
+      // functions/lib/subscriptions/promo-offer.ts), never automatically on
+      // sign-in. See TSD-didac-2026-dynamic-promo-code-management.yml.
 
       if (authedContext.user.user_metadata?.must_change_password === true) {
         return Response.json({ error: 'Change your temporary password before accessing teaching data',
@@ -163,7 +139,8 @@ export function withAuth(handler: (context: any) => Promise<Response>) {
       }
 
       if (/^\/api\/(college-admin|school-admin|university-admin)(\/|$)/.test(new URL(context.request.url).pathname)) {
-        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user);
+        const featureDenied = await requireAdminRequestFeature(getServiceClient(env as unknown as PagesEnv), context.request, authedContext.user,
+          (env as unknown as PagesEnv).HYBRID_PLAN_ID);
         if (featureDenied) return featureDenied;
       }
 
@@ -332,14 +309,14 @@ export function requireAdmin(handler: (context: any) => Promise<Response>) {
   return requireRole([...ADMIN_ROLES], handler);
 }
 
-async function entitlementCheck(context: any, keys: string[]): Promise<boolean> {
+async function entitlementCheck(context: any, keys: readonly FeatureRequirement[]): Promise<boolean> {
   const supabase = getServiceClient(context.env as unknown as PagesEnv);
   const userId = getContextUser(context).id;
   return hasAnyFeature(supabase, userId, keys);
 }
 
 export const requireFeatureAccess = (
-  featureKey: string | string[],
+  featureKey: FeatureRequirement | FeatureRequirement[],
   handler: (context: any) => Promise<Response> | Response
 ) => {
   const keys = Array.isArray(featureKey) ? featureKey : [featureKey];

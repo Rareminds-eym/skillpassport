@@ -36,7 +36,7 @@ import type { EventConfirmationTemplateData } from '../../email/types';
 import { fetchImageBytes, generateReceiptPDF, type ReceiptData } from '../../storage/utils/pdf-generator';
 import { R2Client } from '../../storage/utils/r2-client';
 import { getPaymentWorker, rpcErrorResponse, type PaymentWorkerEnv } from '../lib/paymentBinding';
-import { confirmPromoRedemption, isDidacAllowedPlan, isSupportedPromoRole } from '../lib/promoCode';
+import { getAcceptedOfferSnapshot, isDidacAllowedPlan, isSupportedPromoRole, resolveDidacTargetPlanCode } from '../lib/promoCode';
 
 const logger = createLogger('verify-payment');
 
@@ -83,10 +83,10 @@ function isPricingMatrix(value: unknown): value is PricingMatrix {
   return true;
 }
 
-// DIDAC 2026: gated on a COMMITTED redemption — confirmPromoRedemption()
-// commits it synchronously here if it hasn't already landed via
-// withAuth()'s fire-and-forget hook. Covers all three supported roles
-// (learner, college_admin, school_admin), not just learner.
+// DIDAC 2026 (R16/R17): gated on an already-COMMITTED, explicitly-accepted
+// redemption — getAcceptedOfferSnapshot() is read-only and never commits one
+// itself. Covers all three supported roles (learner, college_admin,
+// school_admin), not just learner.
 async function isDidacPromoAllowedPlan(
   supabase: ReturnType<typeof getServiceClient>,
   userId: string,
@@ -107,16 +107,16 @@ async function isDidacPromoAllowedPlan(
   const { data: userRow } = await userQuery.maybeSingle();
   const metadata = (userRow?.metadata || {}) as Record<string, unknown>;
   const role = (userRow?.role as string | null) ?? null;
+  const referralCode = requestReferralCode ?? metadata.referralCode ?? metadata.referral_code;
 
-  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role] || !isDidacAllowedPlan(role, plan)) {
+  if (!isSupportedPromoRole(role) || plan.business_type !== DIDAC_BUSINESS_TYPE_BY_ROLE[role]) {
     return { allowed: false, priceAdjustment: 0 };
   }
-  const redemption = await confirmPromoRedemption(
-    supabase,
-    userId,
-    role,
-    requestReferralCode ?? metadata.referralCode ?? metadata.referral_code,
-  );
+  const targetPlanCode = await resolveDidacTargetPlanCode(supabase, role, referralCode);
+  if (!isDidacAllowedPlan(role, plan, targetPlanCode)) {
+    return { allowed: false, priceAdjustment: 0 };
+  }
+  const redemption = await getAcceptedOfferSnapshot(supabase, userId, role, referralCode);
   return redemption
     ? { allowed: true, priceAdjustment: redemption.priceAdjustment }
     : { allowed: false, priceAdjustment: 0 };
