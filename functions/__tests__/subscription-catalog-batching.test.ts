@@ -60,9 +60,19 @@ function fixture(count = 2) {
     return { ...draft, revisionId, presentation: { priceLabel: 'exact' as const, taxInclusive: false, badge: null, copy: null } };
   });
   let failure = false;
+  const cache = new Map<string, unknown>();
   const transport = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
-    expect(init?.method ?? 'GET').toBe('GET');
+    expect(init?.method ?? 'GET').toBe(String(input).includes('/rpc/') ? 'POST' : 'GET');
     const url = new URL(String(input));
+    if (url.pathname.endsWith('/read_subscription_read_cache')) {
+      const body = JSON.parse(String(init?.body));
+      return Response.json({ generation: id(900), entry: cache.get(body.p_cache_key) ?? null });
+    }
+    if (url.pathname.endsWith('/write_subscription_read_cache')) {
+      const body = JSON.parse(String(init?.body));
+      cache.set(body.p_cache_key, { payload: body.p_payload, cachedAt: new Date().toISOString() });
+      return Response.json(true);
+    }
     if (url.pathname.endsWith('/features')) return Response.json(url.searchParams.has('id') ? [] : inventory);
     if (url.pathname.endsWith('/subscription_plan_projections')) {
       return failure ? Response.json({ message: 'Synthetic outage' }, { status: 503 }) : Response.json(rows);
@@ -168,7 +178,7 @@ describe('customer and administrative catalog route integration', () => {
     };
     const owner = vi.fn().mockResolvedValue(page);
     const handler = admin ? subscriptionAdminEndpoint('published') : publishedSubscriptionCatalogEndpoint;
-    const response = await handler({
+    const run = () => handler({
       request: new Request('https://isolated.example.invalid/api/subscriptions/catalog', {
         headers: { authorization: 'Bearer synthetic-token' },
       }),
@@ -178,10 +188,16 @@ describe('customer and administrative catalog route integration', () => {
         getUserMemberships: async () => ({ memberships: [{ org_id: platform, status: 'active', roles: ['super_admin'] }] }),
       } },
     } as never);
+    const response = await run();
     expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
     expect(await response.json()).toEqual(page);
     expect(owner).toHaveBeenCalledTimes(1);
-    expect(f.transport).toHaveBeenCalledTimes(3);
+    expect(f.transport).toHaveBeenCalledTimes(admin ? 3 : 5);
+    if (!admin) {
+      const hit = await run();
+      expect(hit.status).toBe(200); expect(await hit.json()).toEqual(page);
+      expect(owner).toHaveBeenCalledTimes(1); expect(f.transport).toHaveBeenCalledTimes(6);
+    }
   });
 });

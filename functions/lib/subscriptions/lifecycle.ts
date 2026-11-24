@@ -1,3 +1,5 @@
+import { catalogInventoryDatabase } from './catalog-inventory';
+import { withSubscriptionReadInvalidation } from './read-cache';
 import { z } from 'zod';
 import { DraftRequestError, readDraftRequest } from './authoring';
 import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponseHeaders, subscriptionStateSchema } from './current-subscription';
@@ -18,7 +20,9 @@ export const lifecycleEndpoint = subscriptionConsumerEndpoint('POST', async cont
   catch (error) { if (error instanceof DraftRequestError) return subscriptionFailure(error.status); throw error; }
   if (!parsed.success) return subscriptionFailure(400);
   const { operationId, request } = parsed.data;
-  const raw = await context.env.SSO_SERVICE!.executeSubscriptionLifecycle(context.token, context.productId, operationId, request);
+  const raw = await withSubscriptionReadInvalidation(catalogInventoryDatabase(context.env), context.productId,
+    () => context.env.SSO_SERVICE!.executeSubscriptionLifecycle(context.token, context.productId, operationId, request),
+    request.subject.kind === 'user' ? request.subject.id : undefined);
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
   const receipt = z.object({ operationId: reference, committedAt: z.string().datetime({ offset: true }),
     decision: z.object({ expectedVersion: z.number().int().positive(), expectedRevisionId: reference, next: subscriptionStateSchema,

@@ -5,6 +5,7 @@ import { getAuthToken } from '../supabase';
 import type { PagesFunction, PagesEnv } from '../types';
 import { catalogInventoryDatabase } from './catalog-inventory';
 import { readApplicationPlanProjection } from './publication';
+import { readThroughSubscription, SubscriptionReadDenied, type SubscriptionReadScope } from './read-cache';
 
 const reference = z.string().uuid().transform(value => value.toLowerCase());
 const time = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -35,7 +36,7 @@ export const subscriptionFailure = (status: number) => Response.json(
   { error: status === 503 ? 'Subscription service unavailable' : 'Subscription request denied' },
   { status, headers: subscriptionResponseHeaders });
 
-interface ConsumerContext { env: PagesEnv; request: Request; token: string; actorId: string; organizationId: string | null; productId: string }
+export interface ConsumerContext extends SubscriptionReadScope { env: PagesEnv; request: Request; token: string; actorId: string; organizationId: string | null; productId: string }
 /** Existing signed authentication, followed by owner authorization in every domain RPC. No self-heal. */
 export function subscriptionConsumerEndpoint(method: 'GET' | 'POST',
   handler: (context: ConsumerContext) => Promise<Response>): PagesFunction {
@@ -51,10 +52,11 @@ export function subscriptionConsumerEndpoint(method: 'GET' | 'POST',
         if (!identity.success || identity.data.user_metadata?.must_change_password === true) return subscriptionFailure(403);
         try {
           if (!context.env.SSO_SERVICE) return subscriptionFailure(503);
+          const roles = z.array(z.string().min(1)).optional().parse(identity.data.roles);
           const organizationId = reference.nullish().parse(identity.data.org_id) ?? null;
           return await handler({ env: context.env, request: context.request, token, actorId: identity.data.sub, organizationId,
-            productId: reference.parse(SKILLPASSPORT_PRODUCT_ID) });
-        } catch { return subscriptionFailure(503); }
+            productId: reference.parse(SKILLPASSPORT_PRODUCT_ID), roles });
+        } catch (error) { return subscriptionFailure(error instanceof SubscriptionReadDenied ? 403 : 503); }
       })(context.request);
       const result = new Response(response.body, response);
       result.headers.set('Cache-Control', 'private, no-store');
@@ -65,13 +67,13 @@ export function subscriptionConsumerEndpoint(method: 'GET' | 'POST',
 
 export const currentSubscriptionEndpoint = subscriptionConsumerEndpoint('GET', async context => {
   const params = [...new URL(context.request.url).searchParams];
-  if (params.length !== 1 || params[0][0] !== 'subscriptionId' || !reference.safeParse(params[0][1]).success) return subscriptionFailure(400);
-  const subscriptionId = reference.parse(params[0][1]);
-  const raw = await context.env.SSO_SERVICE!.getCurrentSubscriptionExecution(context.token, subscriptionId, context.productId);
-  if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
-  const current = currentSubscriptionSchema.parse(raw);
-  if (current.actorId !== context.actorId || current.state.id !== subscriptionId || current.state.productId !== context.productId) throw new Error('Owner scope differs');
-  const stored = await readApplicationPlanProjection(catalogInventoryDatabase(context.env),
+  if (params.length !== 1 || params[0][0] !== 'subscriptionId') return subscriptionFailure(400);
+  const parsed = reference.safeParse(params[0][1]);
+  if (!parsed.success) return subscriptionFailure(400);
+  const subscriptionId = parsed.data;
+  const database = catalogInventoryDatabase(context.env);
+  const current = await readCurrentSubscriptionOwner(database, context, subscriptionId);
+  const stored = await readApplicationPlanProjection(database,
     current.state.planId, current.state.revisionId, context.productId);
   const { draft, includedCredits } = stored.projection.bundle;
   if (!draft.audiences.includes(current.audience)
@@ -80,3 +82,27 @@ export const currentSubscriptionEndpoint = subscriptionConsumerEndpoint('GET', a
   return Response.json({ ...current, plan: { ...draft.plan, name: draft.name, revisionNumber: draft.revisionNumber },
     features: draft.features }, { headers: subscriptionResponseHeaders });
 });
+
+/** Shared by the current-view endpoint and the existing active-subscription gateway. */
+export async function readCurrentSubscriptionOwner(database: import('@supabase/supabase-js').SupabaseClient,
+  context: ConsumerContext, subscriptionId: string) {
+  const id = reference.parse(subscriptionId);
+  return readThroughSubscription(database, context, 'current', { subscriptionId: id }, async () => {
+    const raw = await context.env.SSO_SERVICE!.getCurrentSubscriptionExecution(context.token, id, context.productId);
+    if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) throw new SubscriptionReadDenied();
+    return raw;
+  }, raw => {
+    const current = currentSubscriptionSchema.parse(raw);
+    if (current.actorId !== context.actorId || current.state.id !== id || current.state.productId !== context.productId
+      || (current.state.subject.kind === 'user' ? current.state.subject.id !== context.actorId : current.state.subject.id !== context.organizationId)) {
+      throw new Error('Owner scope differs');
+    }
+    return current;
+  }, (current, cachedAt) => {
+    // Never carry a snapshot across a known time transition. Transitional grace access
+    // is re-read because the owner response does not include its policy deadline.
+    if (current.state.status === 'grace_period') return false;
+    return [current.state.periodEndsAt, current.state.trialEndsAt, current.subscriptionEndsAt,
+      current.state.scheduledChange?.effectiveAt].every(at => at == null || at <= cachedAt || at > Date.now());
+  });
+}

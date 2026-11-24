@@ -1,3 +1,4 @@
+import { withSubscriptionReadInvalidation } from './read-cache';
 import { SKILLPASSPORT_PRODUCT_ID } from '../subscription-config';
 import { z } from 'zod';
 import { getAuthInstance } from '../auth';
@@ -92,7 +93,8 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
             const outcome = z.discriminatedUnion('kind', [
               z.object({ kind: z.literal('forbidden') }).strict(), z.object({ kind: z.literal('invalid') }).strict(),
               z.object({ kind: z.literal('published'), receipt: publicationReceipt }).strict(),
-            ]).parse(await sso.publishSubscriptionPlanRevision(token, planId, revisionId, previous, product, features));
+            ]).parse(await withSubscriptionReadInvalidation(database, product,
+              () => sso.publishSubscriptionPlanRevision(token, planId, revisionId, previous, product, features)));
             if (outcome.kind !== 'published') return failure(outcome.kind === 'forbidden' ? 403 : 400);
             const receipt = outcome.receipt;
             if (receipt.planId.toLowerCase() !== planId || receipt.revisionId.toLowerCase() !== revisionId
@@ -108,10 +110,10 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
               const { id, key, type, ...definition } = applicationFeatureDefinition(item);
               return { id, key, type, ...('options' in definition ? { options: definition.options } : {}) };
             });
-            const raw = operation === 'installation' ? await sso.installSubscriptionCatalog(token, product, request, features)
+            const raw = await withSubscriptionReadInvalidation(database, product, async () => operation === 'installation' ? await sso.installSubscriptionCatalog(token, product, request, features)
               : operation === 'availability' ? await sso.makeSubscriptionCatalogAvailable(token, product, request, features)
                 : operation === 'hybridAdoption' ? await sso.adoptHybridCatalogOffer(token, product, request, features)
-                  : await sso.retireLegacySubscriptionCatalog(token, product, request);
+                  : await sso.retireLegacySubscriptionCatalog(token, product, request));
             const expected = operation === 'installation' ? 'installed' : operation === 'availability' ? 'available'
               : operation === 'hybridAdoption' ? 'adopted' : 'retired';
             const result = z.discriminatedUnion('kind', [

@@ -8,12 +8,9 @@ import { withResilience } from '../../../lib/resilience';
 import { ssoSyncSubscription, type SsoEnv } from '../../../lib/sso-client';
 import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
 import { resolveUserEntitlement, subscriptionScope, type EntitlementResult } from '../../../shared/lib/org-subscription';
-import { currentSubscriptionSchema } from '../../../lib/subscriptions/current-subscription';
+import { readCurrentSubscriptionOwner } from '../../../lib/subscriptions/current-subscription';
 import type { PagesEnv } from '../../../lib/types';
-import { z } from 'zod';
-
-const ownerDenial = z.object({ kind: z.literal('forbidden') }).strict();
-class SubscriptionReadDenied extends Error {}
+import { SubscriptionReadDenied } from '../../../lib/subscriptions/read-cache';
 
 /** Existing subscription gateway: validate every source with the same catalogue policy. */
 export async function handleGetActiveSubscription(context: SeatRequestContext): Promise<Response> {
@@ -24,7 +21,7 @@ export async function handleGetActiveSubscription(context: SeatRequestContext): 
     const supabase = getServiceClient(context.env as Parameters<typeof getServiceClient>[0]);
     const authorizeRead = async (candidate: EntitlementResult): Promise<EntitlementResult | null> => {
       // Historical, uninitialized contracts keep their existing date policy.
-      // An initialized contract must never use cached status when its owner fails.
+      // Initialized contracts use the validated read-through snapshot, invalidated by synchronization and writes.
       if (!candidate.plan_revision_id) {
         if (candidate.lifecycle_state != null) throw new Error('Incomplete lifecycle binding');
         return candidate;
@@ -32,13 +29,13 @@ export async function handleGetActiveSubscription(context: SeatRequestContext): 
       const env = context.env as unknown as PagesEnv;
       const token = getAuthToken(context.request);
       if (!token || !env.SSO_SERVICE) throw new Error('Lifecycle owner unavailable');
-      const raw = await env.SSO_SERVICE.getCurrentSubscriptionExecution(token, candidate.id, SKILLPASSPORT_PRODUCT_ID);
-      if (ownerDenial.safeParse(raw).success) throw new SubscriptionReadDenied();
-      const current = currentSubscriptionSchema.parse(raw);
-      if (current.actorId !== user.id || current.state.id !== candidate.id || current.state.productId !== SKILLPASSPORT_PRODUCT_ID
-        || current.state.productId !== candidate.product_id || current.state.planId !== candidate.plan_id
+      const current = await readCurrentSubscriptionOwner(supabase, { env, token, request: context.request,
+        actorId: user.id, organizationId: user.org_id ?? null, roles: user.roles, productId: SKILLPASSPORT_PRODUCT_ID }, candidate.id);
+      // The shared reader already binds actor, subscription, product and subject identity.
+      // This boundary additionally binds the local entitlement candidate and its personal scope.
+      if (current.state.productId !== candidate.product_id || current.state.planId !== candidate.plan_id
         || current.state.revisionId !== candidate.plan_revision_id || candidate.is_organization_subscription === true
-        || current.state.subject.kind !== 'user' || current.state.subject.id !== user.id) throw new Error('Lifecycle owner scope differs');
+        || current.state.subject.kind !== 'user') throw new Error('Lifecycle owner scope differs');
       if (current.access === 'suspended') return null;
       return { ...candidate, status: current.state.status, lifecycle_state: current.state, lifecycle_access: current.access,
         auto_renew: current.state.renewalEnabled, cancelled_at: current.state.cancelledAt === null ? null : new Date(current.state.cancelledAt).toISOString(),

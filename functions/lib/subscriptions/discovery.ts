@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { applicationFeatureDefinition, catalogInventoryDatabase, readApplicationFeatureInventory } from './catalog-inventory';
 import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponseHeaders } from './current-subscription';
 import { readApplicationPlanProjections } from './publication';
+import { readThroughSubscription, SubscriptionReadDenied } from './read-cache';
 
 const reference = z.string().uuid().transform(value => value.toLowerCase());
 const text = z.string().min(1).refine(value => value === value.trim());
@@ -109,14 +110,19 @@ export function pageScope(actorId: string, productId: string, page: { actorId: s
 export const subscriptionDiscoveryEndpoint = subscriptionConsumerEndpoint('GET', async context => {
   const input = readCursor(context.request);
   if (!input.valid) return subscriptionFailure(400);
-  const raw = await context.env.SSO_SERVICE!.listSubscriptionExecutions(context.token, context.productId, input.cursor);
-  if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
-  const page = discovery.parse(raw);
-  pageScope(context.actorId, context.productId, page, input.cursor, page.items.map(item => item.id));
-  if (page.items.some(item => item.productId !== context.productId
-    || (item.subject.kind === 'user' ? item.subject.id !== context.actorId : item.subject.id !== context.organizationId))) {
-    throw new Error('Discovery subject differs');
-  }
+  const page = await readThroughSubscription(catalogInventoryDatabase(context.env), context, 'discovery', { cursor: input.cursor }, async () => {
+    const raw = await context.env.SSO_SERVICE!.listSubscriptionExecutions(context.token, context.productId, input.cursor);
+    if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) throw new SubscriptionReadDenied();
+    return raw;
+  }, raw => {
+    const page = discovery.parse(raw);
+    pageScope(context.actorId, context.productId, page, input.cursor, page.items.map(item => item.id));
+    if (page.items.some(item => item.productId !== context.productId
+      || (item.subject.kind === 'user' ? item.subject.id !== context.actorId : item.subject.id !== context.organizationId))) {
+      throw new Error('Discovery subject differs');
+    }
+    return page;
+  });
   return Response.json(page, { headers: subscriptionResponseHeaders });
 });
 
@@ -124,16 +130,23 @@ export const publishedSubscriptionCatalogEndpoint = subscriptionConsumerEndpoint
   const input = readCursor(context.request);
   if (!input.valid) return subscriptionFailure(400);
   const database = catalogInventoryDatabase(context.env);
-  const inventory = await readApplicationFeatureInventory(database);
-  const features = inventory.map(item => {
-    const { key, type, ...rest } = applicationFeatureDefinition(item);
-    return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
-  });
-  const raw = await context.env.SSO_SERVICE!.listPublishedSubscriptionPlans(context.token, context.productId, features, input.cursor);
-  if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
-  const page = catalog.parse(raw);
-  pageScope(context.actorId, context.productId, page, input.cursor, page.plans.map(item => item.plan.id));
-  await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId, inventory);
+  const validate = (raw: unknown) => {
+    const page = catalog.parse(raw);
+    pageScope(context.actorId, context.productId, page, input.cursor, page.plans.map(item => item.plan.id));
+    return page;
+  };
+  const page = await readThroughSubscription(database, context, 'catalog', { cursor: input.cursor }, async () => {
+    const inventory = await readApplicationFeatureInventory(database);
+    const features = inventory.map(item => {
+      const { key, type, ...rest } = applicationFeatureDefinition(item);
+      return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
+    });
+    const raw = await context.env.SSO_SERVICE!.listPublishedSubscriptionPlans(context.token, context.productId, features, input.cursor);
+    if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) throw new SubscriptionReadDenied();
+    const page = validate(raw);
+    await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId, inventory);
+    return page;
+  }, validate);
   return Response.json(page, { headers: subscriptionResponseHeaders });
 });
 

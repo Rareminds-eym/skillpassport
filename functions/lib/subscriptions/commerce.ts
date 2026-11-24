@@ -1,3 +1,5 @@
+import { catalogInventoryDatabase } from './catalog-inventory';
+import { withSubscriptionReadInvalidation } from './read-cache';
 import { z } from 'zod';
 import { completePlanSelection } from '../../shared/lib/org-subscription';
 import { getServiceClient } from '../supabase';
@@ -47,7 +49,10 @@ export const commerceEndpoint = subscriptionConsumerEndpoint('POST', async conte
   if (!parsed.success) return subscriptionFailure(400);
   const { operationId, request } = parsed.data;
   if (request.subject.kind === 'user' ? request.subject.id !== context.actorId : request.subject.id !== context.organizationId) return subscriptionFailure(403);
-  const raw = await context.env.SSO_SERVICE!.executeSubscriptionCommerce(context.token, context.productId, operationId, request);
+  const execute = () => context.env.SSO_SERVICE!.executeSubscriptionCommerce(context.token, context.productId, operationId, request);
+  const raw = ['activate', 'settle', 'refund', 'refund_confirm'].includes(request.kind)
+    ? await withSubscriptionReadInvalidation(catalogInventoryDatabase(context.env), context.productId, execute,
+      request.subject.kind === 'user' ? request.subject.id : undefined) : await execute();
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
   const rejected = rejectionSchema.safeParse(raw);
   if (rejected.success) return Response.json({ error: 'Subscription request rejected', reason: rejected.data.reason }, { status: 409, headers: subscriptionResponseHeaders });

@@ -128,3 +128,11 @@ describe('subscription consumer owner boundary', () => {
   });
 
 });
+
+// HTTP contract tests isolate cache persistence; dedicated read-cache tests exercise the real owner.
+vi.mock('../read-cache', async importOriginal => ({
+  ...await importOriginal<typeof import('../read-cache')>(),
+  readThroughSubscription: async (_database: unknown, _scope: unknown, _resource: unknown, _input: unknown,
+    load: () => Promise<unknown>, validate: (value: unknown) => unknown) => validate(await load()),
+  withSubscriptionReadInvalidation: async (_database: unknown, _product: unknown, execute: () => Promise<unknown>) => execute(),
+}));

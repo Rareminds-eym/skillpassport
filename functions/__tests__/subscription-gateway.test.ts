@@ -82,3 +82,9 @@ it.each(['actor', 'subject', 'subscription', 'product', 'plan', 'revision'])('re
   mocks.owner.mockResolvedValue(snapshot);
   expect((await run()).status).toBe(503); expect(mocks.cache).not.toHaveBeenCalled();
 });
+
+vi.mock('../lib/subscriptions/read-cache', async importOriginal => ({
+  ...await importOriginal<typeof import('../lib/subscriptions/read-cache')>(),
+  readThroughSubscription: async (_database: unknown, _scope: unknown, _resource: unknown, _input: unknown,
+    load: () => Promise<unknown>, validate: (value: unknown) => unknown) => validate(await load()),
+}));
