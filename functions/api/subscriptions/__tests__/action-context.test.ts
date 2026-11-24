@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../../lib/subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const io = vi.hoisted(() => ({ authenticated: true, list: vi.fn(), action: vi.fn(), projection: vi.fn(), database: vi.fn() }));
 // Only authentication and the two persistence owners are isolated. The real
@@ -12,7 +13,7 @@ const actor = 'a0000000-0000-4000-8000-000000000001';
 const id = 'b0000000-0000-4000-8000-000000000001';
 const plan = 'c0000000-0000-4000-8000-000000000001';
 const revision = 'd0000000-0000-4000-8000-000000000001';
-const product = 'e0000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID;
 const subject = { kind: 'user', id: actor };
 const binding = () => ({ actionKey: 'lte.track.activate', featureKey: 'learning_tracks', mode: 'write',
   quota: { period: 'billing_period', countingEvent: 'track_activated' } });
@@ -27,7 +28,7 @@ const body = () => ({ actionKey: 'lte.track.activate', mode: 'write', subject })
 const run = (value: unknown = body(), query = '', bearer = true) => onRequestPost({
   request: new Request('https://application.invalid/api/subscriptions/action-context' + query, { method: 'POST',
     headers: { ...(bearer ? { authorization: 'Bearer isolated-token' } : {}), 'content-type': 'application/json' }, body: JSON.stringify(value) }),
-  env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { listSubscriptionExecutions: io.list, getSubscriptionActionContext: io.action } },
+  env: { SSO_SERVICE: { listSubscriptionExecutions: io.list, getSubscriptionActionContext: io.action } },
 } as unknown as Parameters<PagesFunction>[0]);
 beforeEach(() => {
   vi.resetAllMocks(); vi.spyOn(Date, 'now').mockReturnValue(1000); io.authenticated = true;

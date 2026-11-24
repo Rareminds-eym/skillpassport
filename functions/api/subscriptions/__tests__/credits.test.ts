@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../../lib/subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const io = vi.hoisted(() => ({ authenticated: true, prepare: vi.fn(), refresh: vi.fn(), inventory: vi.fn(), database: vi.fn() }));
 vi.mock('../../../lib/auth', () => ({ getAuthInstance: () => ({ authenticate: (handler: (request: Request, auth: unknown) => Promise<Response>) =>
@@ -13,7 +14,7 @@ const body = () => ({ kind: 'refresh', subscriptionId: id(2), recipientId: id(1)
 const run = (value: unknown = body(), query = '', token = true) => onRequestPost({
   request: new Request('https://application.invalid/api/subscriptions/credits' + query, { method: 'POST',
     headers: { 'content-type': 'application/json', ...(token ? { authorization: 'Bearer isolated-token' } : {}) }, body: JSON.stringify(value) }),
-  env: { SKILLPASSPORT_PRODUCT_ID: id(3), SSO_SERVICE: { prepareSubscriptionCreditExecution: io.prepare } },
+  env: { SSO_SERVICE: { prepareSubscriptionCreditExecution: io.prepare } },
 } as unknown as Parameters<PagesFunction>[0]);
 beforeEach(() => {
   vi.resetAllMocks(); io.authenticated = true; io.database.mockReturnValue({ synthetic: 'database' });
@@ -24,9 +25,9 @@ describe('authenticated refresh HTTP caller, isolated SSO and page-delivery owne
   it('passes only signed identity and reference fields through existing credit authority', async () => {
     const response = await run(); expect(response.status).toBe(200);
     expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(io.prepare).toHaveBeenCalledExactlyOnceWith('isolated-token', id(3), body(), [{ key: 'synthetic_credit', type: 'metered' }]);
+    expect(io.prepare).toHaveBeenCalledExactlyOnceWith('isolated-token', SKILLPASSPORT_PRODUCT_ID, body(), [{ key: 'synthetic_credit', type: 'metered' }]);
     expect(io.refresh).toHaveBeenCalledExactlyOnceWith({ synthetic: 'database' }, { synthetic: 'owner page' }, {
-      actorId: id(1), productId: id(3), subscriptionId: id(2), recipientId: id(1), ruleId: id(4), cursor: null });
+      actorId: id(1), productId: SKILLPASSPORT_PRODUCT_ID, subscriptionId: id(2), recipientId: id(1), ruleId: id(4), cursor: null });
   });
   it.each([{ amount: 100 }, { occurrenceIndex: 100 }, { actorId: id(9) }, { cursor: -1 }, { cursor: 0.5 }, { ruleId: 'bad' }])('rejects client authority or malformed input %j', async patch => {
     expect((await run({ ...body(), ...patch })).status).toBe(400);

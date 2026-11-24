@@ -6,10 +6,13 @@ import { submissionPath, SUBMISSION_MAX_BYTES, validateSubmissionDocument } from
 import { InvalidSubmissionDocument, validateAssignmentSubmission, type SubmissionAnswers, type SubmissionQuestion } from '../utils/submission-validation';
 import { evaluateSavedSubmission } from '../utils/assignment-evaluation';
 import { broadcastAssignmentNotifications } from '../utils/assignment-notifications';
+import { AssessmentModelError } from '../utils/saved-assessment';
+import { createLogger } from '../../../lib/logger';
 
 type Context = { request: Request; env: PagesEnv; data?: Parameters<typeof getContextUser>[0]['data'] };
 export async function handleAssignmentSubmission(context: Context) {
   const { request, env } = context;
+  const logger = createLogger('ai-submission', env.ENVIRONMENT);
   const user = getContextUser(context), db = getServiceClient(env);
   const fail = (status: number, message: string) => apiError(status, 'SUBMISSION_ERROR', message, request);
   if (!env.R2_BUCKET) return fail(503, 'Assignment storage is not configured');
@@ -56,7 +59,16 @@ export async function handleAssignmentSubmission(context: Context) {
       answers = await validateAssignmentSubmission((recipient.data.assignment as unknown as {content:{questions:SubmissionQuestion[]}}).content.questions, file.name, bytes, env.OPENROUTER_API_KEY);
     } catch(error) {
       if(error instanceof InvalidSubmissionDocument)return apiError(422, 'INVALID_SUBMISSION_DOCUMENT', error.message, request);
-      return fail(503, 'Unable to validate this document right now. Nothing was submitted. Please try again.');
+      logger.warn('Validation failed', {
+        reason: error instanceof AssessmentModelError ? error.reason : 'document_mapping_or_extraction',
+        providerStatus: error instanceof AssessmentModelError ? error.status : undefined,
+      });
+      if(error instanceof AssessmentModelError) {
+        if(error.reason==='configuration'||[401,402,403].includes(error.status ?? 0)) return fail(503,'Document validation is unavailable. Ask your educator to check the AI provider configuration or credits. Nothing was submitted.');
+        if(error.status===429) return fail(429,'Document validation is busy. Please wait a moment and retry. Nothing was submitted.');
+        if(error.reason==='timeout') return fail(503,'Document validation timed out. Please retry. Nothing was submitted.');
+      }
+      return fail(503, 'Please submit a valid document.');
     }
     const submissionId = crypto.randomUUID();
     const key = submissionPath((recipient.data.assignment as unknown as { course_id: string }).course_id, recipient.data.assignment_id, id, submissionId, type.ext);

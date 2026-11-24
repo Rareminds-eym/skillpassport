@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onRequestPost } from '../../../api/subscriptions/commerce';
 import type { PagesFunction } from '../../types';
@@ -6,7 +7,7 @@ vi.mock('../../../shared/lib/org-subscription', () => ({ completePlanSelection: 
 vi.mock('../../supabase', async original => ({ ...(await original<object>()), getServiceClient: () => ({ synthetic: 'service-client' }) }));
 vi.mock('../../auth', () => ({ getAuthInstance: () => ({ authenticate: (handler: (request: Request, auth: unknown) => Promise<Response>) => (request: Request) => io.authenticated ? handler(request, { user: { sub: 'a0000000-0000-4000-8000-000000000001', is_email_verified: true, membership_status: 'active' } }) : Response.json({}, { status: 401 }) }) }));
 const id = (n: number) => `a0000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const actor = id(1), subscription = id(2), product = id(3), revision = id(4), operationId = id(5);
+const actor = id(1), subscription = id(2), product = SKILLPASSPORT_PRODUCT_ID, revision = id(4), operationId = id(5);
 const command = () => ({ operationId, request: { kind: 'quote', subscriptionId: subscription, subject: { kind: 'user', id: actor }, expectedVersion: 0, expectedRevisionId: revision, purpose: 'purchase', revisionId: revision, priceId: id(6) } });
 const receipt = () => ({ kind: 'quote', operationId, quote: { id: operationId, actorId: actor, subscriptionId: subscription, productId: product, subject: { kind: 'user', id: actor }, audience: 'learner', stateVersion: 0, expectedRevisionId: revision, planId: id(7), revisionId: revision, purpose: 'purchase', referenceId: null, priceId: id(6), amountMinor: 100000, currency: 'INR', minorUnit: 2, periodStartsAt: 100, periodEndsAt: 10000, createdAt: 100, validUntil: 1000 } });
 const run = (body: unknown, bearer = true) => onRequestPost({ request: new Request('https://owner.invalid/api/subscriptions/commerce', { method: 'POST', headers: { ...(bearer ? { authorization: 'Bearer synthetic-token' } : {}), 'content-type': 'application/json' }, body: JSON.stringify(body) }), env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { executeSubscriptionCommerce: io.execute } }, params: {}, data: {}, next: vi.fn(), waitUntil: vi.fn() } as unknown as Parameters<PagesFunction>[0]);

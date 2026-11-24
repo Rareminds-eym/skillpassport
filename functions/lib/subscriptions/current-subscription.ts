@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../subscription-config';
 import { z } from 'zod';
 import { getAuthInstance } from '../auth';
 import { getAuthToken } from '../supabase';
@@ -52,7 +53,7 @@ export function subscriptionConsumerEndpoint(method: 'GET' | 'POST',
           if (!context.env.SSO_SERVICE) return subscriptionFailure(503);
           const organizationId = reference.nullish().parse(identity.data.org_id) ?? null;
           return await handler({ env: context.env, request: context.request, token, actorId: identity.data.sub, organizationId,
-            productId: reference.parse(context.env.SKILLPASSPORT_PRODUCT_ID) });
+            productId: reference.parse(SKILLPASSPORT_PRODUCT_ID) });
         } catch { return subscriptionFailure(503); }
       })(context.request);
       const result = new Response(response.body, response);

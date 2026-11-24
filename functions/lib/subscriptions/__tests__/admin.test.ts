@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 const auth = vi.hoisted(() => ({ user: {} as Record<string, unknown>, valid: true }));
@@ -13,7 +14,7 @@ import { onRequestPost as publications } from '../../../api/admin/subscriptions/
 import type { PagesFunction } from '../../types';
 
 const actor = 'a0000000-0000-4000-8000-000000000001', id = 'b0000000-0000-4000-8000-000000000001';
-const product = 'c0000000-0000-4000-8000-000000000001', revision = 'd0000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID, revision = 'd0000000-0000-4000-8000-000000000001';
 const platform = '00000000-0000-0000-0000-000000000001';
 const plan = { id, productId: product, code: `pln_${'a'.repeat(32)}` };
 const settings = () => ({ schemaVersion: 1, plan, audiences: ['college'], currencies: [{ code: 'INR', minorUnit: 2 }],

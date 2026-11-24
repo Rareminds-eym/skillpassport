@@ -18,6 +18,22 @@ const ctx = {
 beforeEach(() => vi.resetAllMocks());
 afterEach(() => vi.unstubAllGlobals());
 describe("catalogue gateway authorization", () => {
+  it.each(['qa', 'production', 'development', undefined])('uses only the configured URL for %s', async ENVIRONMENT => {
+    vi.mocked(handleLearningTrack).mockResolvedValue({ ok: true, data: { tracks: [{ roleId: role }] } });
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ tracks: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const configured = { ...ctx, env: { ...ctx.env, ENVIRONMENT } };
+    expect(await handleCatalogue(configured, { userId: user, roleIds: [role] })).toMatchObject({ ok: true });
+    expect(fetchMock.mock.calls[0][0].href).toBe(new URL('/api/internal/lte/catalog', ctx.env.SP_DASH_CATALOG_URL).href);
+  });
+  it.each(['qa', 'production', 'development', undefined])('reports a missing URL for %s without fetching another source', async ENVIRONMENT => {
+    vi.mocked(handleLearningTrack).mockResolvedValue({ ok: true, data: { tracks: [{ roleId: role }] } });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const missing = { ...ctx, env: { ...ctx.env, ENVIRONMENT, SP_DASH_CATALOG_URL: undefined } };
+    expect(await handleCatalogue(missing, { userId: user, roleIds: [role] })).toMatchObject({ ok: false, error: { code: 'CATALOGUE_UNAVAILABLE' } });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
   it("rejects another learner before reading assessments", async () => {
     const result = await handleCatalogue(ctx, {
       userId: role,

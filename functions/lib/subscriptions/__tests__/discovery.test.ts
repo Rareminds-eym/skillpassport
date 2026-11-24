@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { onRequestGet as catalog } from '../../../api/subscriptions/catalog';
 import { onRequestGet as list } from '../../../api/subscriptions/index';
 import type { PagesFunction } from '../../types';
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 const io = vi.hoisted(() => ({ user: {} as Record<string, unknown>, authenticated: true, list: vi.fn(), catalog: vi.fn(), projection: vi.fn(), inventory: vi.fn(), database: vi.fn() }));
 vi.mock('../../auth', () => ({
   getAuthInstance: () => ({
@@ -9,7 +10,12 @@ vi.mock('../../auth', () => ({
       (request: Request) => io.authenticated ? handler(request, { user: io.user }) : Response.json({}, { status: 401 })
   })
 }));
-vi.mock('../publication', () => ({ readApplicationPlanProjection: io.projection }));
+vi.mock('../publication', () => ({
+  readApplicationPlanProjections: async (...args: unknown[]) => {
+    const stored = await io.projection(...args);
+    return new Map([[stored.projection.bundle.draft.id, stored]]);
+  }
+}));
 vi.mock('../catalog-inventory', () => ({
   catalogInventoryDatabase: io.database, readApplicationFeatureInventory: io.inventory,
   applicationFeatureDefinition: (value: unknown) => value
@@ -17,7 +23,7 @@ vi.mock('../catalog-inventory', () => ({
 
 const actor = 'a0000000-0000-4000-8000-000000000001', org = 'a0000000-0000-4000-8000-000000000002';
 const id = 'b0000000-0000-4000-8000-000000000001', plan = 'c0000000-0000-4000-8000-000000000001';
-const revision = 'd0000000-0000-4000-8000-000000000001', product = 'e0000000-0000-4000-8000-000000000001';
+const revision = 'd0000000-0000-4000-8000-000000000001', product = SKILLPASSPORT_PRODUCT_ID;
 const binding = () => ({
   id, planId: plan, productId: product, subject: { kind: 'user', id: actor }, status: 'active',
   kind: 'initialized', revisionId: revision, version: 1, lifecycleOperations: ['cancel']
@@ -39,10 +45,10 @@ const projection = () => {
   const { revisionId, ...draft } = terms();
   return { projection: { bundle: { draft: { ...draft, id: revisionId, schemaVersion: 2 }, includedCredits: { rules: [] } } } };
 };
-const run = (handler: PagesFunction, query = '', bearer = true) => handler({
+const run = (handler: PagesFunction, query = '', bearer = true, configuration = {}) => handler({
   request: new Request('https://owner.invalid/api/subscriptions/test' + query,
     { headers: bearer ? { authorization: 'Bearer synthetic-token' } : {} }),
-  env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { listSubscriptionExecutions: io.list, listPublishedSubscriptionPlans: io.catalog } },
+  env: { SKILLPASSPORT_PRODUCT_ID: product, SSO_SERVICE: { listSubscriptionExecutions: io.list, listPublishedSubscriptionPlans: io.catalog }, ...configuration },
   params: {}, data: {}, waitUntil: vi.fn(), next: vi.fn(),
 } as unknown as Parameters<PagesFunction>[0]);
 beforeEach(() => {
@@ -52,6 +58,26 @@ beforeEach(() => {
   io.database.mockReturnValue({}); io.inventory.mockResolvedValue([{ key: 'synthetic', type: 'boolean' }]);
 });
 describe('subscription discovery and published catalog HTTP owner contracts', () => {
+  it.each(['qa', 'production', 'development', undefined])('reads the canonical catalog without an external product ID in %s', async environment => {
+    const productId = SKILLPASSPORT_PRODUCT_ID;
+    const page = catalogPage();
+    page.productId = productId;
+    page.plans[0].plan.productId = productId;
+    const stored = projection();
+    stored.projection.bundle.draft.plan.productId = productId;
+    io.catalog.mockResolvedValue(page);
+    io.projection.mockResolvedValue(stored);
+    const response = await run(catalog, '', true, { ENVIRONMENT: environment, SKILLPASSPORT_PRODUCT_ID: undefined });
+    expect(response.status).toBe(200);
+    expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', productId,
+      [{ key: 'synthetic', type: 'boolean' }], null);
+    expect(await response.json()).toEqual(page);
+  });
+  it('still rejects a catalog from another product', async () => {
+    io.catalog.mockResolvedValue({ ...catalogPage(), productId: actor });
+    expect((await run(catalog)).status).toBe(503);
+    expect(io.projection).not.toHaveBeenCalled();
+  });
   it('forwards only the verified token, configured product and explicit cursor', async () => {
     const response = await run(list);
     expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store');
@@ -94,7 +120,8 @@ describe('subscription discovery and published catalog HTTP owner contracts', ()
     const response = await run(catalog);
     expect(response.status).toBe(200); expect(await response.json()).toEqual(catalogPage());
     expect(io.catalog).toHaveBeenCalledExactlyOnceWith('synthetic-token', product, [{ key: 'synthetic', type: 'boolean' }], null);
-    expect(io.projection).toHaveBeenCalledExactlyOnceWith({}, plan, revision, product);
+    expect(io.projection).toHaveBeenCalledExactlyOnceWith({}, [{ planId: plan, revisionId: revision }], product, [{ key: 'synthetic', type: 'boolean' }]);
+    expect(io.inventory).toHaveBeenCalledTimes(1);
   });
   it('preserves free offers through owner and application projection without inventing a billing interval', async () => {
     const value = { ...terms(), purchaseMode: 'free', prices: [] };

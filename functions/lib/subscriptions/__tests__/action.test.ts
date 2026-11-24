@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readRecruiterContactPermissions, readRecruiterInterviewViews, recruiterCandidateView, requireSubscriptionAccess, unlockRecruiterCandidateContact } from '../../../shared/lib/subscription-access';
@@ -15,7 +16,7 @@ vi.mock('../../supabase', async importOriginal => ({ ...await importOriginal<typ
 
 const actor = 'a0000000-0000-4000-8000-000000000001', subscription = 'b0000000-0000-4000-8000-000000000001';
 const plan = 'c0000000-0000-4000-8000-000000000001', revision = 'd0000000-0000-4000-8000-000000000001';
-const product = 'e0000000-0000-4000-8000-000000000001', other = 'f0000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID, other = 'f0000000-0000-4000-8000-000000000001';
 const state = () => ({
   id: subscription, planId: plan, revisionId: revision, productId: product, version: 1,
   subject: { kind: 'user' as const, id: actor }, status: 'active' as const, periodStartsAt: 100, periodEndsAt: 1000,

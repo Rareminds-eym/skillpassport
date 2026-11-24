@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../subscription-config';
 import { z } from 'zod';
 import { getAuthInstance } from '../auth';
 import { getAuthToken } from '../supabase';
@@ -49,7 +50,7 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
             || !memberships?.memberships?.some(row => row.org_id === platform && row.status === 'active'
               && Array.isArray(row.roles) && row.roles.includes('super_admin'))) return failure(403);
 
-          const product = reference.parse(context.env.SKILLPASSPORT_PRODUCT_ID).toLowerCase();
+          const product = reference.parse(SKILLPASSPORT_PRODUCT_ID).toLowerCase();
           const parameters = [...new URL(context.request.url).searchParams];
           let planId = '';
           if (operation === 'context' || operation === 'creditContext') {
@@ -122,7 +123,8 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
           }
           if (operation === 'published') {
             const database = catalogInventoryDatabase(context.env);
-            const features = (await readApplicationFeatureInventory(database)).map(item => {
+            const inventory = await readApplicationFeatureInventory(database);
+            const features = inventory.map(item => {
               const { key, type, ...definition } = applicationFeatureDefinition(item);
               return { key, type, ...('options' in definition ? { options: definition.options } : {}) };
             });
@@ -132,7 +134,7 @@ export function subscriptionAdminEndpoint(operation: SubscriptionAdminOperation)
             if (denied.success) return failure(denied.data.kind === 'forbidden' ? 403 : 400);
             const page = administrationCatalogSchema.parse(raw);
             if (page.actorId !== claims.data.sub.toLowerCase() || page.productId !== product) throw new Error('Published catalog scope differs');
-            await verifyPublishedTermsAgainstProjections(database, page.plans, product);
+            await verifyPublishedTermsAgainstProjections(database, page.plans, product, inventory);
             return Response.json(page, { headers });
           }
           if (operation === 'drafts') {

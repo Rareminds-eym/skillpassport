@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const io = vi.hoisted(() => ({ authenticated: true, execute: vi.fn() }));
 vi.mock('../../auth', () => ({ getAuthInstance: () => ({ authenticate: (handler: (request: Request, auth: unknown) => Promise<Response>) =>
@@ -7,7 +8,7 @@ import { onRequestPost } from '../../../api/subscriptions/lifecycle';
 import type { PagesFunction } from '../../types';
 const actor = 'a0000000-0000-4000-8000-000000000001', id = 'b0000000-0000-4000-8000-000000000001';
 const plan = 'c0000000-0000-4000-8000-000000000001', revision = 'd0000000-0000-4000-8000-000000000001';
-const product = 'e0000000-0000-4000-8000-000000000001', operationId = 'f0000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID, operationId = 'f0000000-0000-4000-8000-000000000001';
 const command = () => ({ operationId, request: { operation: 'cancel', subscriptionId: id, subject: { kind: 'user', id: actor },
   expectedVersion: 1, expectedRevisionId: revision, reason: 'Synthetic cancellation' } });
 const receipt = () => ({ operationId, committedAt: '2026-11-19T10:00:00Z', decision: { expectedVersion: 1, expectedRevisionId: revision,

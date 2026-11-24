@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { SKILLPASSPORT_PRODUCT_ID } from '../lib/subscription-config';
 import {beforeEach,expect,it,vi} from 'vitest';
 const mocks=vi.hoisted(()=>({rpc:vi.fn(),from:vi.fn(),sections:vi.fn(),eq:vi.fn(),profileError:null as any,update:vi.fn(),updateError:null as any,
  discover:vi.fn(),current:vi.fn(),action:vi.fn(),projection:vi.fn(),retake:vi.fn()}));
@@ -12,13 +13,13 @@ import {onRequestPost} from '../api/assessment-attempts';
 import {startHandler} from '../api/assessment/handlers/start';
 const owner='10000000-0000-4000-8000-000000000001',learner='20000000-0000-4000-8000-000000000001';
 const subscription='40000000-0000-4000-8000-000000000001',plan='50000000-0000-4000-8000-000000000001',revision='60000000-0000-4000-8000-000000000001';
-const product='70000000-0000-4000-8000-000000000001',operation='80000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID,operation='80000000-0000-4000-8000-000000000001';
 const state={id:subscription,planId:plan,revisionId:revision,productId:product,version:1,subject:{kind:'user',id:owner},status:'active',
  periodStartsAt:100,periodEndsAt:1000,trialEndsAt:null,renewalEnabled:true,cancelledAt:null,paymentFailedAt:null,scheduledChange:null};
 const signedContext=()=>({schemaVersion:1,actorId:owner,state,access:'full',audience:'synthetic',activatedAt:100,subscriptionEndsAt:2000});
 const attempt={id:'30000000-0000-4000-8000-000000000001',learner_id:learner,status:'in_progress',grade_level:'after12',stream_id:'bca',all_responses:{},timer_remaining:0};
 const ctx=(body:unknown,sub=owner)=>({request:new Request('https://fixture.invalid/api/assessment-attempts',{
- method:'POST',body:typeof body==='string'?body:JSON.stringify(body)}),env:{SKILLPASSPORT_PRODUCT_ID:product,SSO_SERVICE:{
+ method:'POST',body:typeof body==='string'?body:JSON.stringify(body)}),env:{SSO_SERVICE:{
  listSubscriptionExecutions:mocks.discover,getCurrentSubscriptionExecution:mocks.current,getSubscriptionActionContext:mocks.action,
  prepareSubscriptionRetakeSettlement:mocks.retake}},data:{user:{sub}}}) as any;
 beforeEach(()=>{
@@ -134,8 +135,9 @@ it.each(['read_only','restricted','suspended'])('direct modern start blocks %s b
 it('does not substitute legacy access for an uninitialized cohort in the actual modern caller',async()=>{
  mocks.discover.mockImplementation(async(_token,_product,cursor)=>({schemaVersion:1,actorId:owner,productId:product,
   items:cursor===null?[{id:subscription,subject:state.subject,productId:product,kind:'uninitialized'}]:[],nextCursor:cursor===null?subscription:null}));
- expect((await startHandler(ctx({gradeLevel:'college',streamId:'bca'}))).status).toBe(403);
- expect(mocks.from).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
+ const response=await startHandler(ctx({gradeLevel:'college',streamId:'bca'}));
+ expect(response.status).toBe(409);expect((await response.json()).error.code).toBe('SUBSCRIPTION_SETUP_REQUIRED');
+ expect(mocks.current).not.toHaveBeenCalled();expect(mocks.from).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
 });
 it('binds actual retake creation to the owner-settled source while keeping the learner reference separate',async()=>{
  mocks.action.mockResolvedValue({...signedContext(),actions:{schemaVersion:1,bindings:[{actionKey:'assessment.retake',featureKey:'synthetic_access',mode:'write',paymentRequired:true}]}});

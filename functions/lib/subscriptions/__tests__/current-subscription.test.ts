@@ -1,3 +1,4 @@
+import { SKILLPASSPORT_PRODUCT_ID } from '../../subscription-config';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const io = vi.hoisted(() => ({ user: {} as Record<string, unknown>, authenticated: true, current: vi.fn(), prepare: vi.fn(),
   projection: vi.fn(), database: vi.fn(), inventory: vi.fn(), allocate: vi.fn(), consume: vi.fn(), usage: vi.fn(), readConsumption: vi.fn(), readAllocation: vi.fn() }));
@@ -15,7 +16,7 @@ import type { PagesFunction } from '../../types';
 
 const actor = 'a0000000-0000-4000-8000-000000000001', id = 'b0000000-0000-4000-8000-000000000001';
 const plan = 'c0000000-0000-4000-8000-000000000001', revision = 'd0000000-0000-4000-8000-000000000001';
-const product = 'e0000000-0000-4000-8000-000000000001';
+const product = SKILLPASSPORT_PRODUCT_ID;
 const state = () => ({ id, planId: plan, revisionId: revision, productId: product, version: 1, subject: { kind: 'user', id: actor },
   status: 'active', periodStartsAt: 100, periodEndsAt: 1000, trialEndsAt: null, renewalEnabled: true,
   cancelledAt: null, paymentFailedAt: null, scheduledChange: null });

@@ -22,11 +22,7 @@ export interface PagesEnv {
   /** Sales enquiry recipient and published phone (owner configuration; required for sales enquiries). */
   SALES_ENQUIRY_EMAIL?: string;
   SALES_ENQUIRY_PHONE?: string;
-  /** The adopted Hybrid catalog plan id (environment-specific canonical identity, like SKILLPASSPORT_PRODUCT_ID). */
-  HYBRID_PLAN_ID?: string;
-  /** Canonical SSO product scope for subscription administration. */
-  SKILLPASSPORT_PRODUCT_ID?: string;
-  /** Existing platform context used to select code-owned integration profiles. */
+  /** Deployment environment name used by platform integrations. */
   ENVIRONMENT?: string;
   ZOHO_CANDIDATE_SOURCE?: {
     getSubjectSyncPolicy?(input: { userId: string }): Promise<unknown>;
@@ -40,6 +36,7 @@ export interface PagesEnv {
   LTE_APP_URL?: string;
   /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;
+  /** Managed catalogue origin supplied by the deployment's Wrangler variables. */
   SP_DASH_CATALOG_URL?: string;
   /**
    * Cookie domain for refresh-token scoping across subdomains.
