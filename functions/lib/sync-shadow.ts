@@ -77,6 +77,12 @@ export async function syncSubscriptionCache(
       receipt_url: subscription.receipt_url || null,
       synced_at: new Date().toISOString(),
       auth_updated_at: subscription.updated_at,
+      ...(subscription.plan_revision_id === undefined ? {} : {
+        plan_revision_id: subscription.plan_revision_id,
+        lifecycle_state: subscription.lifecycle_state,
+        lifecycle_policy: subscription.lifecycle_policy,
+        lifecycle_activated_at: subscription.lifecycle_activated_at,
+      }),
     }, { onConflict: 'id' });
 
   if (error) {
@@ -117,6 +123,7 @@ export async function syncPlanCache(
 
   if (error) {
     logger.error('Failed to sync plans_cache', { error: error.message });
+    throw new Error('Canonical plan cache write failed');
   }
 }
 

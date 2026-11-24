@@ -431,20 +431,27 @@ export async function updatelearnerDocuments(
   });
 
   if (!response.ok) {
-    let errorDetails;
+    let errorDetails: any;
     try {
       errorDetails = await response.json();
     } catch (e) {
       errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
     }
 
-    logger.error('API error updating learner documents', new Error(errorDetails.error || `HTTP ${response.status}`), { status: response.status, learnerId });
+    // The API returns { error: { code, message } }; read the message instead of stringifying the object.
+    const errorMessage = errorDetails.error?.message ||
+      (typeof errorDetails.error === 'string' ? errorDetails.error : null) ||
+      errorDetails.message ||
+      `Failed to update learner documents (${response.status})`;
+
+    logger.error('API error updating learner documents', new Error(errorMessage), { status: response.status, learnerId });
 
     if (response.status === 401) {
       throw new Error('Authentication failed. Please login again.');
     }
 
-    throw new Error(errorDetails.error || `Failed to update learner documents (${response.status})`);
+    // Keep status + code so callers can tell "learner record not ready yet" (409) from real failures.
+    throw Object.assign(new Error(errorMessage), { status: response.status, code: errorDetails.error?.code });
   }
 
   const result = await response.json();

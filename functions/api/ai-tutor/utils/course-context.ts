@@ -1,3 +1,4 @@
+import { buildLearnerFacilitatorPrompt } from './learner-facilitator-prompts';
 /**
  * Course Context Builder for AI Tutor
  * 
@@ -15,6 +16,8 @@ import type { WorksheetConfig } from '../types/worksheet';
 import { buildWorksheetPrompt } from './worksheet-templates';
 import type { LessonPlanConfig } from '../types/lesson-plan';
 import { buildLessonPlanPrompt } from './lesson-plan-templates';
+import { buildEducatorFacilitatorPrompt, resolveEducatorFacilitator, type EducatorFacilitator } from './facilitator-prompts';
+import { ROLE_CATEGORIES } from '../../../lib/roleCategories';
 
 // ==================== USER ROLE TYPES ====================
 
@@ -40,6 +43,7 @@ export interface LessonContext {
 }
 
 export interface ResourceContext {
+  analysisError?: string;
   resourceId: string;
   name: string;
   type: string;
@@ -103,7 +107,7 @@ export async function buildCourseContext(
     .eq('course_id', courseId)
     .order('order_index', { ascending: true });
 
-  const allModules: ModuleContext[] = (modules || []).map((m: any) => ({
+  const allModules: ModuleContext[] = (modules || []).map((m) => ({
     moduleId: m.module_id,
     title: m.title,
     description: m.description,
@@ -113,7 +117,7 @@ export async function buildCourseContext(
   // Fetch all lessons for the course
   const { data: lessons } = await supabase
     .from('lessons')
-    .select('lesson_id, title, description, content, duration, order_index, module_id')
+    .select('lesson_id, title, description, duration, order_index, module_id')
     .in('module_id', allModules.length > 0 ? allModules.map(m => m.moduleId) : [''])
     .order('order_index', { ascending: true });
 
@@ -133,36 +137,24 @@ export async function buildCourseContext(
   // Fetch current lesson details if lessonId provided
   let currentLesson: LessonContext | null = null;
   let currentModule: ModuleContext | null = null;
-  let availableResources: ResourceContext[] = [];
+  const availableResources: ResourceContext[] = [];
 
   if (lessonId) {
-    const lessonData = (lessons || []).find((l: any) => l.lesson_id === lessonId);
+    const lessonData = (lessons || []).find((l) => l.lesson_id === lessonId);
     if (lessonData) {
       const module = allModules.find(m => m.moduleId === lessonData.module_id);
       currentLesson = {
         lessonId: lessonData.lesson_id,
         title: lessonData.title,
         description: lessonData.description,
-        content: lessonData.content,
+        content: null,
         duration: lessonData.duration,
         orderIndex: lessonData.order_index,
         moduleTitle: module?.title || ''
       };
       currentModule = module || null;
 
-      // Fetch lesson resources
-      const { data: resources } = await supabase
-        .from('lesson_resources')
-        .select('resource_id, name, type, url, content')
-        .eq('lesson_id', lessonId);
 
-      availableResources = (resources || []).map((r: any) => ({
-        resourceId: r.resource_id,
-        name: r.name,
-        type: r.type,
-        url: r.url,
-        content: r.content || null
-      }));
     }
   }
 
@@ -178,11 +170,11 @@ export async function buildCourseContext(
       .eq('course_id', courseId);
 
     completedLessons = (progress || [])
-      .filter((p: any) => p.status === 'completed')
-      .map((p: any) => p.lesson_id);
+      .filter((p) => p.status === 'completed')
+      .map((p) => p.lesson_id);
     
     currentLessonProgress = lessonId 
-      ? (progress || []).find((p: any) => p.lesson_id === lessonId) || null 
+      ? (progress || []).find((p) => p.lesson_id === lessonId) || null
       : null;
   }
 
@@ -191,25 +183,7 @@ export async function buildCourseContext(
     ? Math.round((completedLessons.length / totalLessons) * 100) 
     : 0;
 
-  // Fetch video summary if available
-  let videoSummary: VideoSummaryContext | null = null;
-  if (lessonId) {
-    const { data: videoData } = await supabase
-      .from('video_summaries')
-      .select('summary, key_points, topics, transcript')
-      .eq('lesson_id', lessonId)
-      .eq('processing_status', 'completed')
-      .maybeSingle();
-
-    if (videoData) {
-      videoSummary = {
-        summary: videoData.summary || '',
-        keyPoints: videoData.key_points || [],
-        topics: videoData.topics || [],
-        transcript: videoData.transcript || ''
-      };
-    }
-  }
+  const videoSummary: VideoSummaryContext | null = null;
 
   return {
     courseTitle: course.title,
@@ -239,34 +213,11 @@ export function formatCourseContextForPrompt(context: CourseContext): string {
   let prompt = `## Course: ${context.courseTitle}
 `;
 
-  // Add ONLY current lesson details (skip full course structure to save tokens)
+  prompt += '\nCourse lesson outline (data): ' + JSON.stringify(context.allLessons) + '\n';
   if (context.currentLesson) {
-    prompt += `## Current Lesson: ${context.currentLesson.title}
-Module: ${context.currentLesson.moduleTitle}
-
-`;
-    
-    // Truncate lesson content to 500 chars max
-    if (context.currentLesson.content) {
-      const truncatedContent = context.currentLesson.content.length > 500
-        ? context.currentLesson.content.slice(0, 500) + '...'
-        : context.currentLesson.content;
-      prompt += `${truncatedContent}\n\n`;
-    }
-
-    // Add video summary (key points only, no transcript)
-    if (context.videoSummary && context.videoSummary.keyPoints.length > 0) {
-      prompt += `Key Points:\n${context.videoSummary.keyPoints.slice(0, 3).map(p => `- ${p}`).join('\n')}\n\n`;
-    }
-
-    // List resources (names only, no content)
-    if (context.availableResources.length > 0) {
-      prompt += `Resources: ${context.availableResources.map(r => r.name).join(', ')}\n`;
-    }
-  } else {
-    // No specific lesson - just course overview
-    prompt += `${context.courseDescription.slice(0, 200)}...\n`;
+    prompt += `Current lesson (metadata only): ${context.currentLesson.title}; module: ${context.currentLesson.moduleTitle}\n`;
   }
+  prompt += 'Course knowledge is supplied separately as indexed evidence. Titles and descriptions are metadata, not proof of source coverage.\n';
 
   return prompt;
 }
@@ -303,36 +254,27 @@ ${getPhaseInstructions(phase)}`;
 }
 
 /**
- * Educator Worksheet Prompt Template
+ * Educator Conversation Prompt Template
  * 
  * This template can be edited to change how the AI generates worksheets for educators.
- * The AI acts as a teaching assistant that creates classroom-ready materials.
+ * The AI answers educator questions; explicit generation uses separate template prompts.
  */
-function getEducatorWorksheetPrompt(context: CourseContext): string {
+function getEducatorChatPrompt(context: CourseContext): string {
   const courseContextStr = formatCourseContextForPrompt(context);
   
   return `You are an expert teaching assistant for educators working with "${context.courseTitle}".
 
 Your job:
-- Create high-quality worksheets from the provided course content.
-- Make the worksheet classroom-ready.
-- Include clear instructions and an answer key.
-
-Worksheet format:
-Title:
-Learning Objective:
-Difficulty Level:
-Instructions:
-Questions:
-Answer Key:
-Optional Extension Activity:
+- Answer the educator's current question directly and concisely.
+- Explain course concepts, discuss existing teaching material and clarify workflow.
+- Continue one conversation through discussion, material generation, revision and assignment review.
+- Discuss existing materials without regenerating unless the educator requests creation or revision.
+- If a request is ambiguous, ask a concise clarification. Assignment requests use the inline Assign review control; never claim publication before confirmation.
 
 Rules:
 - Use the provided course content as the source.
 - Do not invent unsupported facts.
-- Make the worksheet clear, structured, and useful for classroom learning.
-- If grade level or difficulty is provided, adapt the worksheet to it.
-- If not provided, choose a reasonable general difficulty and mention it.
+- Never infer successful assignment from the educator's question or prior AI text. Use verified assignment context only.
 
 ${courseContextStr}`;
 }
@@ -351,8 +293,8 @@ function getCoursePromptByRole(
   // Normalize role to handle variations (educator, school_educator, college_educator)
   const normalizedRole = userRole.toLowerCase();
   
-  if (normalizedRole.includes('educator')) {
-    return getEducatorWorksheetPrompt(context);
+  if ((ROLE_CATEGORIES.educator as readonly string[]).includes(normalizedRole)) {
+    return getEducatorChatPrompt(context);
   }
   
   if (normalizedRole === 'learner') {
@@ -377,20 +319,23 @@ export function buildSystemPrompt(
   phase: ConversationPhase,
   userRole: string = 'learner',
   worksheetConfig?: WorksheetConfig,
-  lessonPlanConfig?: LessonPlanConfig
+  lessonPlanConfig?: LessonPlanConfig,
+  facilitator: EducatorFacilitator = 'facilitator-of-learning'
 ): string {
   const normalizedRole = userRole.toLowerCase();
+  const educator = (ROLE_CATEGORIES.educator as readonly string[]).includes(normalizedRole);
   
   // If educator with lesson plan config, use lesson plan template system
-  if (normalizedRole.includes('educator') && lessonPlanConfig) {
-    return buildLessonPlanPrompt(lessonPlanConfig, context);
+  if (educator && lessonPlanConfig) {
+    return buildEducatorFacilitatorPrompt(resolveEducatorFacilitator(facilitator, 'lesson-plan'), buildLessonPlanPrompt(lessonPlanConfig, context));
   }
   
   // If educator with worksheet config, use worksheet template system
-  if (normalizedRole.includes('educator') && worksheetConfig) {
-    return buildWorksheetPrompt(worksheetConfig, context);
+  if (educator && worksheetConfig) {
+    return buildEducatorFacilitatorPrompt(resolveEducatorFacilitator(facilitator, 'worksheet'), buildWorksheetPrompt(worksheetConfig, context));
   }
   
   // Otherwise use role-based prompts
-  return getCoursePromptByRole(userRole, context, phase);
+  const prompt = getCoursePromptByRole(userRole, context, phase);
+  return educator ? buildEducatorFacilitatorPrompt(facilitator, prompt) : buildLearnerFacilitatorPrompt(facilitator, prompt);
 }

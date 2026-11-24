@@ -29,10 +29,10 @@ export const WATERMARK_CONFIG = {
  * 
  * @returns LogoData with both formats, or null on any failure
  */
-export async function loadLogo(): Promise<LogoData | null> {
+export async function loadLogo(source = '/RMLogo.webp'): Promise<LogoData | null> {
   try {
     // Step 1: Fetch the logo
-    const response = await fetch('/RMLogo.webp');
+    const response = await fetch(source);
     if (!response.ok) {
       logger.warn('Logo image not found', { status: response.status });
       return null;

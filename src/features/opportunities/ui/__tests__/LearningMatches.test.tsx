@@ -160,3 +160,14 @@ it('explains an empty learning-only catalog without duplicating general jobs', a
     screen.queryByRole('navigation', { name: 'Learning match pages' }),
   ).toBeNull();
 });
+
+it.each([{status:403,code:'FEATURE_ACCESS_DENIED',label:'Review subscription'}, {status:409,code:'SUBSCRIPTION_SETUP_REQUIRED',label:'Manage subscription'}, {status:401,code:'MISSING_CREDENTIALS',label:'Sign in'}])('shows an action instead of retrying permanent failure %j', async ({status,code,label}) => {
+ f.get.mockRejectedValue(Object.assign(new Error('Denied'),{status,code})); setup();
+ expect(await screen.findByRole('alert')).toBeTruthy();
+ expect(screen.queryByRole('button',{name:'Retry learning matches'})).toBeNull();
+ expect(screen.getByRole('link',{name:label})).toHaveAttribute('href',status===401?'/login':'/subscription/manage');
+ expect(screen.getByRole('button',{name:'Refresh learning matches'})).toBeDisabled();
+ expect(screen.getByRole('searchbox',{name:'Search learning matches'})).toBeDisabled();
+ expect(screen.getByRole('button',{name:'Requirements to meet'})).toBeDisabled();
+ expect(f.get).toHaveBeenCalledTimes(1);
+});

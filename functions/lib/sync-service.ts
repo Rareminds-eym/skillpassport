@@ -17,7 +17,7 @@ import {
   UserEmailVerifiedSchema,
   type MembershipPayloadData
 } from './sync-schemas';
-import { syncUserShadow } from './sync-shadow';
+import { syncPlanCache, syncUserShadow } from './sync-shadow';
 import type { PagesEnv } from './types';
 
 export type SyncResult =
@@ -737,6 +737,12 @@ export class SyncService {
       assigned_seats: parsed.assigned_seats ?? (existing ? (existing.assigned_seats as number) : 0),
       product_id: parsed.product_id ?? null,
       auth_updated_at: parsed.updated_at ?? new Date().toISOString(),
+      ...(parsed.plan_revision_id === undefined ? {} : {
+        plan_revision_id: parsed.plan_revision_id,
+        lifecycle_state: parsed.lifecycle_state,
+        lifecycle_policy: parsed.lifecycle_policy,
+        lifecycle_activated_at: parsed.lifecycle_activated_at,
+      }),
     };
 
     // Guard for org create with no capacity: already failed above, but double-check
@@ -765,6 +771,23 @@ export class SyncService {
 
     const { error } = await this.db.from('subscription_cache').upsert(subPayload, { onConflict: 'id' });
     if (error) return fail('DB_ERROR', error.message, true);
+    return ok();
+  }
+
+  /** A queue event is a reference, never a cached authorization snapshot.
+   * Read the current canonical row so delayed publication events cannot undo a retirement. */
+  async syncPlanUpdated(data: unknown): Promise<SyncResult> {
+    const reference = z.object({ id: z.string().uuid() }).strict().safeParse(data);
+    if (!reference.success) return fail('VALIDATION_ERROR', 'Exact plan reference required', false);
+    if (!this.env.SSO_SERVICE) return fail('UNAVAILABLE', 'Canonical plan owner unavailable', true);
+    const required = ['plan_code', 'name', 'business_type', 'applicable_entities', 'pricing_matrix', 'base_features',
+      'entity_config', 'display_order', 'product_id', 'updated_at'];
+    const current = z.object({ plans: z.array(z.object({ id: z.string().uuid(), is_active: z.boolean() }).passthrough()
+      .refine(row => required.every(key => Object.hasOwn(row, key)), 'Complete canonical plan required')) })
+      .parse(await this.env.SSO_SERVICE.syncPlans());
+    const matches = current.plans.filter(plan => plan.id === reference.data.id);
+    if (matches.length !== 1) return fail('NOT_FOUND', 'Canonical plan does not resolve exactly once', false);
+    await syncPlanCache(this.db, matches[0]);
     return ok();
   }
 
@@ -822,6 +845,12 @@ export class SyncService {
       // Preserve locally maintained assigned_seats
     }
     if (parsed.product_id !== undefined) subPayload.product_id = parsed.product_id;
+    if (parsed.plan_revision_id !== undefined) {
+      subPayload.plan_revision_id = parsed.plan_revision_id;
+      subPayload.lifecycle_state = parsed.lifecycle_state;
+      subPayload.lifecycle_policy = parsed.lifecycle_policy;
+      subPayload.lifecycle_activated_at = parsed.lifecycle_activated_at;
+    }
 
     subPayload.auth_updated_at = parsed.updated_at ?? new Date().toISOString();
 

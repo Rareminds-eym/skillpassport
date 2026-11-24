@@ -50,3 +50,12 @@ it('cancels obsolete pages and never replaces the newest page with a late respon
   expect(result.current.opportunities).toEqual([{ id: 'second-page' }]);
   expect(result.current.totalCount).toBe(20);
 });
+
+it('preserves structured access failures through the page hook',async()=>{
+ f.page.mockRejectedValue(Object.assign(new Error('Setup incomplete'),{status:409,code:'SUBSCRIPTION_SETUP_REQUIRED'}));
+ const {result}=renderHook(()=>useOpportunities({serverSidePagination:true}));
+ await act(async()=>{});
+ expect(result.current.failure).toMatchObject({kind:'setup',retryable:false});
+ expect(result.current.error).toContain('subscription needs attention');
+ expect(result.current.opportunities).toEqual([]);
+});

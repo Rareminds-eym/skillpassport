@@ -1,7 +1,8 @@
 import { wakeJobIndex } from '../../lib/wake-job-index';
+import { requireSubscriptionAccess, readRecruiterContactPermissions, recruiterCandidateView, unlockRecruiterCandidateContact, readRecruiterInterviewViews } from '../../shared/lib/subscription-access';
+import type { PagesEnv, AuthenticatedPagesContext as AuthenticatedContext } from '../../lib/types';
 import { withAuth, getContextUser } from '../../lib/auth';
 import { getServiceClient } from '../../lib/supabase';
-import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiError, apiDbError, apiMethodNotAllowed } from '../../lib/response';
 import { notifyLearnersOfNewOpportunity } from '../../lib/newOpportunityNotifications';
 import { verifyOrgAccess, PERMISSIONS, getUserRecruitmentRoles } from '../../lib/permissions';
@@ -11,42 +12,26 @@ import { LearningError, validateLearningRequirements } from '../../lib/learning-
 import {
   getActiveOrgId,
   getOrgMemberUserIds,
-  getOrgOwnedOpportunityIds,
   assertInterviewAccess,
   getInterviewRow,
   ALLOWED_REQUISITION_STATUSES,
 } from '../../lib/org-ownership';
 
-/** Flat learner columns that ALWAYS exist (schema.sql) — supplementary to the
- * legacy `learners.profile` jsonb, whose presence differs between prod (has it,
- * populated) and pre-drift local builds (absent until migration
- * 20261019130000 is applied). */
+/** Recruiter projection uses explicit fields and never an unfiltered profile blob. */
 const LEARNER_DIRECT_COLS =
-  'id, name, email, contact_number, alternate_number, branch_field, college_school_name, university, registration_number, date_of_birth, age, profile' as string;
+  'id, user_id, name, email, contact_number, branch_field, college_school_name, university' as string;
 
-/**
- * Compose the learner `profile` object the FE contract expects:
- *   base = authoritative flat columns, overridden by the jsonb `profile`
- *   (when populated — prod). Guarantees `learners.profile` is a usable object
- *   even when the column is missing/null on a drifted database.
- */
-function composeLearnerProfile(l: any): Record<string, unknown> {
-  if (!l) return {};
-  const base: Record<string, unknown> = {
+/** Preserve the existing profile envelope using only consent-filtered fields. */
+function composeLearnerProfile(l: ReturnType<typeof recruiterCandidateView>): Record<string, unknown> {
+  return {
     name: l.name,
     email: l.email,
     contact_number: l.contact_number,
     phone_number: l.contact_number,
-    alternate_number: l.alternate_number,
     branch_field: l.branch_field,
-    university: l.university || l.college_school_name,
+    university: l.university,
     college_school_name: l.college_school_name,
-    registration_number: l.registration_number,
-    date_of_birth: l.date_of_birth,
-    age: l.age,
   };
-  const stored = l.profile && typeof l.profile === 'object' && !Array.isArray(l.profile) ? l.profile : {};
-  return { ...base, ...stored };
 }
 
 /** Post-process applied_jobs rows so `learners.profile` is always composed. */
@@ -63,7 +48,7 @@ export const onRequest = async (context: any) => {
 
 const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const user = getContextUser(context);
-  const env = context.env as Record<string, string>;
+  const env = context.env as unknown as Record<string, string>;
   const supabase = getServiceClient(env as any);
 
   let body: Record<string, any>;
@@ -95,13 +80,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   const resolveCanonicalCandidate = async (candidateId: string) => {
     let { data, error } = await supabase
       .from('zoho_recruiter_learners')
-      .select('id, name, email, contact_number')
+      .select('id, user_id, name, email, contact_number')
       .eq('id', candidateId)
       .maybeSingle();
     if (!error && !data) {
       const res = await supabase
         .from('zoho_recruiter_learners')
-        .select('id, name, email, contact_number')
+        .select('id, user_id, name, email, contact_number')
         .eq('user_id', candidateId)
         .maybeSingle();
       data = res.data;
@@ -137,6 +122,32 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
   };
 
   try {
+    const orgId = await resolveOrgId();
+    if (!orgId) return apiError(403, 'FORBIDDEN', 'An active recruitment organization is required', context.request);
+    const readActions = new Set(['check-candidate-unlocked', 'get-user-org-context', 'has-recruitment-permission', 'get-org-email-templates',
+      'list-opportunities-skills', 'get-recruiter-profile', 'list-interviews', 'list-learners', 'get-learner', 'list-recruiters',
+      'get-current-recruiter', 'list-opportunities', 'list-applications', 'fetch-shortlist-tags', 'fetch-shortlist-creators',
+      'fetch-departments', 'fetch-locations', 'get-opportunities-skills', 'get-learner-info', 'get-requisition-permissions',
+      'get-applications-by-opportunity', 'get-quota-usage']);
+    const lifecycle = await requireSubscriptionAccess({ env: context.env as PagesEnv, request: context.request, actorId: user.id,
+      subject: { kind: 'organization', id: orgId }, mode: readActions.has(action) ? 'read' : 'write' });
+    if (lifecycle instanceof Response) return lifecycle;
+    const contactRequest = { env: context.env as PagesEnv, request: context.request, actorId: user.id, organizationId: orgId, database: supabase };
+    if (new Set(['check-candidate-unlocked', 'unlock-candidate-contact', 'get-learner', 'get-learner-info', 'list-learners']).has(action)) {
+      const permission = await verifyOrgAccess(supabase, user.id, orgId, PERMISSIONS.VIEW_CANDIDATES);
+      if (!permission.allowed) return apiError(403, 'FORBIDDEN', 'Candidate viewing permission is required', context.request);
+    }
+    const applicationViews = async (rows: Record<string, unknown>[]) => {
+      const candidateFor = (row: Record<string, unknown>) => row.learners && typeof row.learners === 'object' && !Array.isArray(row.learners)
+        ? row.learners as Record<string, unknown> : null;
+      const candidates = rows.map(candidateFor).filter((row): row is Record<string, unknown> => row !== null);
+      const permissions = await readRecruiterContactPermissions(contactRequest, candidates, 'profile');
+      if (permissions instanceof Response) return permissions;
+      return rows.flatMap(row => {
+        const candidate = candidateFor(row), permission = candidate && permissions.get(String(candidate.id));
+        return candidate && permission?.visible ? [{ ...row, learners: recruiterCandidateView(candidate, permission) }] : [];
+      });
+    };
     // ── Candidate Contact Unlocks (Spec Sections 6 & 9) ──
     if (action === 'check-candidate-unlocked') {
       const { candidateId } = body;
@@ -145,8 +156,13 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       const orgId = await resolveOrgId();
       if (!orgId) return apiError(400, 'VALIDATION_ERROR', 'organizationId required', context.request);
 
-      const { data: canonical } = await resolveCanonicalCandidate(String(candidateId));
+      const { data: canonical, error: candidateError } = await resolveCanonicalCandidate(String(candidateId));
+      if (candidateError) return apiDbError(candidateError, context.request);
       if (!canonical) return apiSuccess({ isUnlocked: false, unlockedAt: null }, context.request);
+      const permissions = await readRecruiterContactPermissions(contactRequest, [canonical], 'profile');
+      if (permissions instanceof Response) return permissions;
+      const permission = permissions.get(canonical.id)!;
+      if (!permission.visible) return apiSuccess({ isUnlocked: false, unlockedAt: null }, context.request);
 
       const { data, error } = await supabase
         .from('candidate_contact_unlocks')
@@ -159,15 +175,15 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         return apiDbError(error, context.request);
       }
 
-      if (data) {
+      if (data && permission.unlocked) {
         return apiSuccess({
           isUnlocked: true,
           unlockedAt: data.created_at,
           candidate: {
             id: canonical.id,
             name: canonical.name,
-            email: canonical.email,
-            phone: canonical.contact_number,
+            email: permission.email ? canonical.email : null,
+            phone: permission.phone ? canonical.contact_number : null,
           },
         }, context.request);
       }
@@ -187,40 +203,10 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (candErr) return apiDbError(candErr, context.request);
       if (!canonical) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
 
-      // Atomic claim-then-charge via SECURITY DEFINER RPC (H2):
-      // the unlock row insert and the credit debit commit or roll back together.
-      const { data: result, error: rpcError } = await supabase.rpc('unlock_candidate_contact', {
-        p_organization_id: orgId,
-        p_candidate_id: canonical.id,
-        p_unlocked_by: user.id,
-      });
-
-      if (rpcError) {
-        console.error('[actions] unlock_candidate_contact failed:', rpcError);
-        if (String(rpcError.message).includes('INSUFFICIENT_CREDITS')) {
-          return apiError(402, 'INSUFFICIENT_CREDITS', 'Insufficient contact unlock credits. Please upgrade your plan or purchase a credit top-up.', context.request);
-        }
-        return apiDbError(rpcError, context.request);
-      }
-
-      const parsed = result as { success?: boolean; error?: string; candidate?: Record<string, unknown> } | null;
-      if (!parsed?.success) {
-        if (parsed?.error === 'CANDIDATE_NOT_FOUND') {
-          return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
-        }
-        return apiError(500, 'UNLOCK_FAILED', parsed?.error || 'Failed to unlock candidate', context.request);
-      }
-
-      const c = parsed.candidate || {};
-      return apiSuccess({
-        unlocked: true,
-        candidate: {
-          id: c.id || canonical.id,
-          name: c.name || canonical.name,
-          email: c.email || canonical.email,
-          phone: c.contact_number || canonical.contact_number,
-        },
-      }, context.request);
+      // Resource identity owns idempotency across retries; the SQL lock and unique
+      // org/candidate unlock prevent a new internal operation from charging twice.
+      const result = await unlockRecruiterCandidateContact(contactRequest, canonical.id, crypto.randomUUID());
+      return result instanceof Response ? result : apiSuccess({ unlocked: true, candidate: result.candidate }, context.request);
     }
 
     // ── Org Context & Permissions ──
@@ -353,7 +339,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (!access.allowed) return apiError(403, 'FORBIDDEN', 'You cannot view interviews', context.request);
       const { data, error } = await supabase.from('zoho_recruiter_interviews').select('*').eq('organization_id', orgId).order('date');
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data || [], context.request);
+      const views = await readRecruiterInterviewViews(contactRequest, data || []);
+      return views instanceof Response ? views : apiSuccess(views, context.request);
     }
 
     if (action === 'update-interview') {
@@ -384,7 +371,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         .select()
         .single();
       if (error) return apiDbError(error, context.request);
-      return apiSuccess(data, context.request);
+      const views = await readRecruiterInterviewViews(contactRequest, [data]);
+      return views instanceof Response ? views : apiSuccess(views[0] ?? null, context.request);
     }
 
     if (action === 'list-learners') {
@@ -393,7 +381,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       // Recruiter discovery has its own public-profile boundary. Never send this
       // caller through the academic administrator's rich learner endpoint.
-      const fields = body.include_details ? `
+      const fields: string = body.include_details ? `
         id, user_id, name, email, contact_number, university, branch_field,
         college_school_name, course_name, city, state, country, currentCgpa,
         expectedGraduationDate, created_at, updated_at, resumeUrl,
@@ -410,33 +398,16 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       // Spec §6/§9: contact details are unlocked, not included by default (C4 — the
       // unlock must gate the PII server-side, since list-learners hands rows to the UI).
-      const orgId = await resolveOrgId();
-      let unlocked = new Set<string>();
-      if (orgId) {
-        const { data: unlockedRows, error: unlockErr } = await supabase
-          .from('candidate_contact_unlocks')
-          .select('candidate_id')
-          .eq('organization_id', orgId);
-        if (unlockErr && unlockErr.code !== 'PGRST116') {
-          console.error('[actions] Error querying unlocks for list-learners masking:', unlockErr);
-          return apiDbError(unlockErr, context.request);
-        }
-        unlocked = new Set((unlockedRows || []).map((u: any) => String(u.candidate_id)));
-      }
-
-      const masked = (data || []).map((l: any) => {
-        if (unlocked.has(String(l.id))) return l;
-        const { email, contact_number, ...rest } = l;
-        return { ...rest, email: null, contact_number: null };
-      });
+      const permissions = await readRecruiterContactPermissions(contactRequest, data || [], 'discovery');
+      if (permissions instanceof Response) return permissions;
+      const masked = (data || []).filter(row => permissions.get(row.id)?.visible)
+        .map(row => recruiterCandidateView(row, permissions.get(row.id)!));
 
       return apiSuccess(masked, context.request);
     }
 
     if (action === 'get-learner') {
       const { learnerId } = body;
-      const orgId = await resolveOrgId();
-
       // Whole row minus the gated contact fields; only surfaced for unlocked candidates
       const { data, error } = await supabase
         .from('zoho_recruiter_learners')
@@ -446,22 +417,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (error) return apiDbError(error, context.request);
       if (!data) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
 
-      if (orgId) {
-        const { data: unlock, error: unlockErr } = await supabase
-          .from('candidate_contact_unlocks')
-          .select('id')
-          .eq('organization_id', orgId)
-          .eq('candidate_id', String(learnerId))
-          .maybeSingle();
-        if (unlockErr && unlockErr.code !== 'PGRST116') {
-          console.error('[actions] Error checking unlock for get-learner:', unlockErr);
-          return apiDbError(unlockErr, context.request);
-        }
-        if (unlock) return apiSuccess(data, context.request);
-      }
-
-      const { email, contact_number, ...rest } = data;
-      return apiSuccess({ ...rest, email: null, contact_number: null }, context.request);
+      const permissions = await readRecruiterContactPermissions(contactRequest, [data], 'profile');
+      if (permissions instanceof Response) return permissions;
+      const permission = permissions.get(data.id)!;
+      if (!permission.visible) return apiError(404, 'NOT_FOUND', 'Candidate not found', context.request);
+      return apiSuccess(recruiterCandidateView(data, permission), context.request);
     }
 
     // ── Requisitions (opportunities) ──
@@ -858,7 +818,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       const { data, error } = await supabase
         .from('zoho_recruiter_applied_jobs')
-        .select(`
+        .select<string>(`
         id,
         application_status,
         applied_at,
@@ -874,7 +834,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (error) return apiDbError(error, context.request);
       // `learners.profile` may not exist on drifted local DBs — compose it from
       // the verified flat columns so the FE contract holds either way.
-      return apiSuccess(injectComposedProfiles(data || []), context.request);
+      const views = await applicationViews(data || []);
+      return views instanceof Response ? views : apiSuccess(injectComposedProfiles(views), context.request);
     }
 
     if (action === 'fetch-shortlist-tags') {
@@ -1071,19 +1032,11 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (candErr) return apiDbError(candErr, context.request);
       if (!canonical) return apiSuccess(null, context.request);
 
-      const { data: unlocked, error: unlockErr } = await supabase
-        .from('candidate_contact_unlocks')
-        .select('id')
-        .eq('organization_id', orgId)
-        .eq('candidate_id', canonical.id)
-        .maybeSingle();
-      if (unlockErr && unlockErr.code !== 'PGRST116') return apiDbError(unlockErr, context.request);
-
-      if (unlocked) {
-        return apiSuccess({ id: canonical.id, name: canonical.name, email: canonical.email, contact_number: canonical.contact_number, unlocked: true }, context.request);
-      }
-      // Contact withheld until unlocked; name/presence still resolvable.
-      return apiSuccess({ id: canonical.id, name: canonical.name, email: null, contact_number: null, unlocked: false }, context.request);
+      const permissions = await readRecruiterContactPermissions(contactRequest, [canonical], 'profile');
+      if (permissions instanceof Response) return permissions;
+      const permission = permissions.get(canonical.id)!;
+      if (!permission.visible) return apiSuccess(null, context.request);
+      return apiSuccess({ ...recruiterCandidateView(canonical, permission), unlocked: permission.unlocked }, context.request);
     }
 
     if (action === 'get-requisition-permissions') {
@@ -1382,7 +1335,7 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
       const { data, error } = await supabase
         .from('zoho_recruiter_applied_jobs')
-        .select(`
+        .select<string>(`
         id,
         learner_id,
         notes,
@@ -1401,7 +1354,8 @@ const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       if (error) return apiDbError(error, context.request);
       // `learners.profile` may not exist on drifted local DBs — compose it from
       // the verified flat columns so the FE contract holds either way.
-      return apiSuccess(injectComposedProfiles(data || []), context.request);
+      const views = await applicationViews(data || []);
+      return views instanceof Response ? views : apiSuccess(injectComposedProfiles(views), context.request);
     }
 
     if (action === 'get-quota-usage') {

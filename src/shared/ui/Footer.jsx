@@ -181,7 +181,7 @@ const Footer = () => {
             <span>All rights reserved.</span>
           </div>
 
-          <div className="flex items-center space-x-6 text-xs text-gray-400">
+          <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-xs text-gray-400">
             <Link to="/terms" className="hover:text-purple-400 transition-colors duration-200">
               Terms of Service
             </Link>

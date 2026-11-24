@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   scope: vi.fn(),
   send: vi.fn(),
+  access: vi.fn(),
+  contact: vi.fn(),
 }));
 vi.mock("../../../lib/auth", () => ({
   withAuth: (handler: unknown) => handler,
@@ -19,18 +21,23 @@ vi.mock("../../../lib/recruitment-scope", () => ({
   RecruitmentAccessError: class extends Error {},
 }));
 vi.mock("../../../lib/emailService", () => ({ sendEmail: mocks.send }));
+vi.mock("../../../shared/lib/subscription-access", () => ({ requireSubscriptionAccess: mocks.access,
+  readRecruiterContactPermissions: mocks.contact }));
 const candidateId = "11111111-1111-4111-8111-111111111111",
-  requestKey = "22222222-2222-4222-8222-222222222222";
-let rows: any[], submissions: any[];
+  requestKey = "22222222-2222-4222-8222-222222222222",
+  learnerId = "33333333-3333-4333-8333-333333333333",
+  learnerUserId = "44444444-4444-4444-8444-444444444444";
+let rows: any[], submissions: any[], candidates: any[];
 const chains: any = {};
 function chain(table: string) {
   const q: any = {};
-  for (const method of ["select", "eq", "in", "insert", "update", "single"])
+  for (const method of ["select", "eq", "in", "or", "insert", "update", "single"])
     q[method] = vi.fn().mockReturnValue(q);
   q.then = (resolve: any) =>
     Promise.resolve(
       table === "pipeline_candidates"
         ? { data: rows, error: null }
+        : table === "zoho_recruiter_learners" ? { data: candidates, error: null }
         : submissions.shift(),
     ).then(resolve);
   chains[table] = q;
@@ -50,9 +57,13 @@ const request = (
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.scope.mockResolvedValue({ orgId: "org", memberIds: ["actor"] });
+  mocks.access.mockResolvedValue({ current: { access: "full" } });
+  mocks.contact.mockResolvedValue(new Map([[learnerId, { email: true }]]));
+  candidates = [{ id: learnerId, user_id: learnerUserId, email: "current@example.test" }];
   rows = [
     {
       id: candidateId,
+      learner_id: learnerId,
       candidate_name: "Candidate",
       candidate_email: "fixture@example.test",
     },
@@ -130,12 +141,12 @@ describe("Pipeline operations", () => {
     expect(response.status).toBe(200);
     expect(mocks.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        to: "fixture@example.test",
+        to: "current@example.test",
         html: expect.stringContaining("&lt;script&gt;"),
       }),
       expect.anything(),
     );
-    expect((await response.json()).data.results[0].state).toBe("submitted");
+    expect(await response.json()).toMatchObject({ data: { results: [{ state: "submitted" }] } });
     expect(chains.recruitment_email_submissions.update).toHaveBeenCalledWith({
       state: "submitted",
       provider_message_id: "provider-id",
@@ -150,7 +161,7 @@ describe("Pipeline operations", () => {
       subject: "Subject",
       message: "Message",
     });
-    expect((await response.json()).data.results[0].state).toBe("unknown");
+    expect(await response.json()).toMatchObject({ data: { results: [{ state: "unknown" }] } });
     expect(mocks.send).toHaveBeenCalledOnce();
   });
   it("does not resend a previously submitted idempotency key", async () => {
@@ -165,11 +176,11 @@ describe("Pipeline operations", () => {
       subject: "Subject",
       message: "Message",
     });
-    expect((await response.json()).data.results[0].state).toBe("submitted");
+    expect(await response.json()).toMatchObject({ data: { results: [{ state: "submitted" }] } });
     expect(mocks.send).not.toHaveBeenCalled();
   });
   it("rejects an invalid recipient before any delivery or claim", async () => {
-    rows[0].candidate_email = "invalid";
+    candidates[0].email = "invalid";
     expect(
       (
         await request({
@@ -180,7 +191,33 @@ describe("Pipeline operations", () => {
           message: "Message",
         })
       ).status,
-    ).toBe(400);
+    ).toBe(503);
     expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it.each(["assign", "reject", "email"])("denies %s before resource queries when the lifecycle denies writes", async action => {
+    mocks.access.mockResolvedValue(Response.json({ error: "Denied" }, { status: 403 }));
+    expect((await request({ action, ids: [candidateId] })).status).toBe(403);
+    expect(mocks.access).toHaveBeenCalledWith(expect.objectContaining({ mode: "write", actorId: "actor", subject: { kind: "organization", id: "org" } }));
+    expect(mocks.from).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled(); expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("keeps members a read operation during retained read-only access", async () => {
+    submissions = [{ data: [], error: null }];
+    expect((await request({ action: "members" })).status).toBe(200);
+    expect(mocks.access).toHaveBeenCalledWith(expect.objectContaining({ mode: "read" }));
+  });
+  it.each(["missing", "revoked", "ambiguous", "unavailable", "invalid_reference"])("blocks %s consent before a claim or delivery", async defect => {
+    if (defect === "missing") candidates = [];
+    if (defect === "revoked") mocks.contact.mockResolvedValue(new Map([[learnerId, { email: false }]]));
+    if (defect === "ambiguous") candidates.push({ id: learnerUserId, user_id: learnerId, email: "other@example.test" });
+    if (defect === "unavailable") mocks.contact.mockResolvedValue(Response.json({ error: "Unavailable" }, { status: 503 }));
+    if (defect === "invalid_reference") rows[0].learner_id = "forged";
+    expect((await request({ action: "email", ids: [candidateId], requestKey, subject: "Subject", message: "Message" })).status)
+      .toBe(defect === "unavailable" ? 503 : 403);
+    expect(mocks.send).not.toHaveBeenCalled(); expect(mocks.from).not.toHaveBeenCalledWith("recruitment_email_submissions");
+  });
+  it("resolves a user alias through the canonical candidate and ignores cached pipeline email", async () => {
+    rows[0].learner_id = learnerUserId; rows[0].candidate_email = "stale@example.test";
+    expect((await request({ action: "email", ids: [candidateId], requestKey, subject: "Subject", message: "Message" })).status).toBe(200);
+    expect(mocks.send).toHaveBeenCalledWith(expect.objectContaining({ to: "current@example.test" }), expect.anything());
   });
 });

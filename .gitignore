@@ -27,6 +27,7 @@ dist-ssr
 *.kilocode
 
 # Environment files - DO NOT COMMIT REAL CREDENTIALS
+/vars/
 .env
 .env.local
 .env.development
@@ -103,3 +104,6 @@ supabase/backups/*
 !supabase/backups/README.md
 !supabase/backups/latest/
 !supabase/backups/latest/**
+
+# Local course importer credentials
+.env.course-index

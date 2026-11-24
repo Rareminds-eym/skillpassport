@@ -213,9 +213,7 @@ function buildQuery(
   // This allows us to match any of the search terms, not all of them
   
   // Order by relevance: newest first
-  return query
-    .order('created_at', { ascending: false })
-    .limit(100); // Fetch more to ensure we have enough after filtering
+  return query.order('created_at', { ascending: false }).order('id', { ascending: true });
 }
 
 /**
@@ -316,12 +314,15 @@ export async function fetchSmartOpportunities(
     console.log('🎯 Smart Opportunity Filters:', filters);
     
     // Build and execute query
-    const query = buildQuery(supabase, filters);
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('❌ Error fetching opportunities:', error);
-      return [];
+    // Page the eligible set before in-memory matching. A page size is a transport
+    // batch, not a cutoff that silently excludes older matching jobs.
+    const pageSize = 100;
+    const data: any[] = [];
+    for (let offset = 0; ; offset += pageSize) {
+      const { data: page, error } = await buildQuery(supabase, filters).range(offset, offset + pageSize - 1);
+      if (error || !Array.isArray(page)) throw new Error('Unable to load job opportunities. Please try again.');
+      data.push(...page);
+      if (page.length < pageSize) break;
     }
     
     if (!data || data.length === 0) {
@@ -423,7 +424,7 @@ export async function fetchSmartOpportunities(
     
   } catch (error) {
     console.error('❌ Error in fetchSmartOpportunities:', error);
-    return [];
+    throw new Error('Unable to load career opportunities. Please try again.');
   }
 }
 

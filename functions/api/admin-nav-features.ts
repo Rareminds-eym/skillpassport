@@ -1,3 +1,4 @@
+import { HYBRID_PLAN_ID } from '../lib/subscription-config';
 import { resolveUserEntitlement, type SubscriptionScope } from '../shared/lib/org-subscription';
 /** Nav catalog and grants resolved using the same organization policy as API requests. */
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
@@ -20,8 +21,8 @@ export const onRequestGet = withAuth(async (context: AuthenticatedContext) => {
     const subscription = await resolveUserEntitlement(supabase, user.id, { roles: user.roles, org_id: user.org_id, scope: role as SubscriptionScope });
     if (!subscription) return apiError(403, 'SUBSCRIPTION_REQUIRED', 'An applicable organization subscription is required.', context.request);
     if (!subscription.plan_code) throw new Error('Organization plan unavailable');
-    const access = await getHybridOrganizationAccess(supabase, user.id, role.replace('_admin', '') as AdminOrganizationType, user.org_id,
-      { plan_code: subscription.plan_code, features: subscription.features });
+    const access = await getHybridOrganizationAccess(supabase, user.id, role.replace('_admin', '') as AdminOrganizationType,
+      HYBRID_PLAN_ID, user.org_id, { plan_id: subscription.plan_id ?? null, features: subscription.features });
     const { data, error } = await supabase.from('feature_keys_cache')
       .select('key, role, nav_group, nav_label, nav_path, display_order, is_active')
       .eq('product_code', 'skillpassport').eq('role', role).order('display_order', { ascending: true });

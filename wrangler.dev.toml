@@ -93,38 +93,48 @@ HEAL_MODE = "enabled"
 # HEAL_CATEGORIES = '{"heal-user":"enabled","subscription-cache-heal":"enabled","cron-reconcile-heal":"enabled","resilience-breaker":"enabled","ws-reconnect-heal":"enabled"}'
 
 # ============================================================================
-# SECRETS (DO NOT COMMIT VALUES)
+# RUNTIME SECRETS AND EXTERNAL SETTINGS
 # ============================================================================
-# For local development: Add these to .dev.vars file (gitignored)
-# For production: Set using `wrangler secret put <KEY_NAME>` or dashboard
+# Complete inventory and provisioning conditions: docs/pages-deployment.md.
+# Secret VALUES belong in this Pages project's Variables and Secrets, never TOML.
+# Local development uses the Git-ignored .dev.vars file. Pages projects do not
+# inherit each other's secrets. Select the exact project and deployment environment.
 #
-# Required secrets:
-# - SUPABASE_ANON_KEY
-# - SUPABASE_SERVICE_ROLE_KEY
-# - CLOUDFLARE_R2_SECRET_ACCESS_KEY
-# - EMAIL_API_KEY
-# - SIGNING_SECRET (for media access tokens)
-# - GOOGLE_CLIENT_SECRET (Google OAuth token exchange)
-# - LTE_INTERNAL_SECRET
-# - INTERNAL_WEBHOOK_SECRET (authenticated internal callbacks)
+# Core server secrets:
+# - SUPABASE_ANON_KEY (public database key, also used by the frontend build)
+# - SUPABASE_SERVICE_ROLE_KEY (server-only)
+# - INTERNAL_WEBHOOK_SECRET (authenticated sync and payment callbacks)
+# - LTE_INTERNAL_SECRET (LTE gateway and catalogue HMAC, at least 32 characters)
+# - SIGNING_SECRET (protected media)
 #
-# Required plain vars (set via dashboard):
-# - CLOUDFLARE_R2_ACCESS_KEY_ID
-# - CLOUDFLARE_ACCOUNT_ID
-#
-# Optional secrets (set only if using the feature):
-# - OAUTH_STATE_SECRET (Google OAuth state-cookie HMAC; falls back to GOOGLE_CLIENT_SECRET)
+# Feature-specific secrets:
+# - GOOGLE_CLIENT_SECRET (required while GOOGLE_OAUTH_ENABLED is true)
+# - OAUTH_STATE_SECRET (optional dedicated OAuth state-signing key)
 # - OPENROUTER_API_KEY (AI features)
-# - CLAUDE_API_KEY (AI features)
-# - DEEPGRAM_API_KEY (audio transcription)
-# - GROQ_API_KEY (audio transcription, fallback)
-# - SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS (direct SMTP email)
-# - ADMIN_EMAIL (admin notification recipient)
-# - APP_URL (public app base URL for email links)
-# - FROM_EMAIL, FROM_NAME (default sender identity)
-# - MATCHING_CATALOG_MODEL (only for a separately attested catalog model)
-# - MATCHING_VECTOR_PIPELINE_VERIFIED (enable only after vector-writer verification)
-# - JOB_MATCHING_ENABLED (set false to disable matching)
-# - SP_DASH_CATALOG_URL (optional catalog endpoint override)
-# - FLAGS (Flagship binding) app_id — see [[flagship]] above
-# - HEAL_MODE / HEAL_CATEGORIES — self-healing flags (enabled|disabled|log-only), see [vars] HEAL_*
+# - CLOUDFLARE_API_TOKEN (Browser Rendering PDF access, scoped to its account)
+# - CRON_SECRET (subscription reconciliation, must match the invoking SSO worker)
+# - DEEPGRAM_API_KEY (course transcription)
+# - GROQ_API_KEY (existing alternate transcription provider, only if approved)
+#
+# Canonical SKILLPASSPORT_PRODUCT_ID and HYBRID_PLAN_ID are named constants in
+# functions/lib/subscription-config.ts, shared by every environment.
+#
+# Feature-specific plain settings not necessarily configured above:
+# - SP_DASH_CATALOG_URL (required HTTPS dashboard origin for managed catalogue)
+# - SALES_ENQUIRY_EMAIL, SALES_ENQUIRY_PHONE (owner-approved enquiry destination)
+# - CLOUDFLARE_ACCOUNT_ID (account for PDF generation)
+# - ADMIN_EMAIL (event registration notification recipient)
+# - AI_RESOURCE_ALLOWED_HOSTS (additional approved download hostnames)
+# - JOB_MATCHING_ENABLED, MATCHING_CATALOG_MODEL, MATCHING_VECTOR_PIPELINE_VERIFIED
+#   (matching policy and attestation, do not enable without writer verification)
+# - HEAL_MODE, HEAL_CATEGORIES (existing healing controls, no policy changes here)
+# - COOKIE_DOMAIN (production only; leave unset for pages.dev)
+#
+# Build-only secret: NPM_TOKEN (private package access; never VITE-prefixed).
+# VITE_SUPABASE_URL is derived by the Pages build; VITE_SUPABASE_ANON_KEY is an
+# existing public-key alias. Never expose server-only secrets through VITE_*.
+# R2_BUCKET and EMAIL_SERVICE own storage/email access. R2 access keys, EMAIL_API_KEY,
+# SMTP_*, FROM_EMAIL, FROM_NAME and CLAUDE_API_KEY are not consumed by these Functions.
+# Provider credentials belong to the owning workers rather than this Pages app.
+# REALTIME_WORKER is a local RPC option; deployed REALTIME_HUB already handles tickets.
+# FLAGS is optional and unprovisioned above. NODE_ENV is a toolchain value.

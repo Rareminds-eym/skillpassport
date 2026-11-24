@@ -15,6 +15,7 @@
  */
 
 import { withAuth } from '../../lib/auth';
+import { requireSubscriptionAccess } from '../../shared/lib/subscription-access';
 import { apiNotFound, apiError } from '../../lib/response';
 import { startHandler } from './handlers/start';
 import { saveResponseHandler } from './handlers/save-response';
@@ -45,6 +46,10 @@ export const onRequestPost = withAuth(async (context: any) => {
   const path = url.pathname.replace('/api/assessment', '');
 
   try {
+    const actorId = context.data.user.sub;
+    const access = await requireSubscriptionAccess({ env: context.env, request: context.request, actorId,
+      subject: { kind: 'user', id: actorId }, mode: path === '/get-role-capabilities' ? 'read' : 'write' });
+    if (access instanceof Response) return access;
     if (path === '/start') {
       return startHandler(context);
     } else if (path === '/save-response') {
@@ -99,6 +104,10 @@ export const onRequestGet = withAuth(async (context: any) => {
   const path = url.pathname.replace('/api/assessment', '');
 
   try {
+    const actorId = context.data.user.sub;
+    const access = await requireSubscriptionAccess({ env: context.env, request: context.request, actorId,
+      subject: { kind: 'user', id: actorId }, mode: 'read' });
+    if (access instanceof Response) return access;
     if (path === '/check-in-progress') {
       return checkInProgressHandler(context);
     } else if (path === '/result') {

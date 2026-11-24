@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, production, dev]
   pull_request:
@@ -40,3 +41,72 @@ jobs:
           else
             npm run lint:database -- --base origin/dev
           fi
+
+  # Production Pages uses the GitHub production environment.
+  # Secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NPM_TOKEN,
+  # and SUPABASE_ANON_KEY (or the existing VITE_SUPABASE_ANON_KEY).
+  deploy-production:
+    needs: lint-and-validate
+    concurrency:
+      group: production-pages
+      cancel-in-progress: false
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/production'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    steps:
+      - name: Checkout release
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - name: Validate deployment settings
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: skillpassport
+        run: |
+          for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CLOUDFLARE_PAGES_PROJECT; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Configure $key in the GitHub production environment."
+              exit 1
+            fi
+          done
+          # Refuse to publish a preview when the Pages production branch differs.
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT" \
+            | node --input-type=module -e '
+              let text = "";
+              for await (const chunk of process.stdin) text += chunk;
+              const response = JSON.parse(text);
+              if (!response.success || response.result.production_branch !== process.env.GITHUB_REF_NAME) {
+                console.error("Pages production branch must match the release branch. No deployment performed.");
+                process.exit(1);
+              }
+            '
+      - name: Install dependencies
+        run: npm ci
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Build production frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_SUPABASE_URL: https://dpooleduinyyzxgrcwko.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_LTE_APP_URL: https://lte.rareminds.in
+      - name: Compile Pages Functions
+        run: npx --no-install wrangler pages functions build --outdir .wrangler/pages-build
+      - name: Deploy to production Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: skillpassport
+        run: >-
+          npx --no-install wrangler pages deploy dist
+          --project-name "$CLOUDFLARE_PAGES_PROJECT"
+          --branch "$GITHUB_REF_NAME"
+          --commit-hash "$GITHUB_SHA"

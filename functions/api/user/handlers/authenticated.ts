@@ -1,3 +1,4 @@
+import { HYBRID_PLAN_ID } from '../../../lib/subscription-config';
 import { resolveAdmissionsScope, type AdmissionsActor } from '../../../lib/admissions-scope';
 import { requireAdminRequestFeature } from '../../../lib/admin-feature-request';
 /**
@@ -80,7 +81,7 @@ export async function handleCreateLearner(request: Request, env: PagesEnv, actor
   });
   const denied = await requireAdminRequestFeature(supabaseAdmin, gateRequest, {
     sub: actor.id, roles: actor.roles, org_id: scope.organizationId,
-  });
+  }, HYBRID_PLAN_ID);
   if (denied) return denied;
   const userId = actor.id;
   const institutionType = scope.type;
@@ -128,6 +129,10 @@ export async function handleCreateLearner(request: Request, env: PagesEnv, actor
     });
 
     if (!ssoResult.success) {
+      // SSO rejects an email that already has an account; surface it as a clear 409, not a 500.
+      if (/already exists/i.test(ssoResult.error || '')) {
+        return apiError(409, 'LEARNER_ALREADY_EXISTS', `A learner with email ${learner.email.toLowerCase()} already exists.`, request);
+      }
       return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner in SSO', request);
     }
 
@@ -385,7 +390,7 @@ export async function handleUpdateLearnerDocuments(request: Request, env: PagesE
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'create-application' }),
     });
-    const denied = await requireAdminRequestFeature(supabaseAdmin, gateRequest, { ...actor, sub: actor.id });
+    const denied = await requireAdminRequestFeature(supabaseAdmin, gateRequest, { ...actor, sub: actor.id }, HYBRID_PLAN_ID);
     if (denied) return denied;
     const { data: existingLearner, error: fetchError } = await supabaseAdmin
       .from('learners').select('id, documents')

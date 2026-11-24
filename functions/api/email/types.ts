@@ -30,8 +30,8 @@ export interface SalesEnquiryEmailRequest {
   educators?: string | number;
   requirements?: string;
   planName?: string;
-  planCode?: string;
-  salesEmail?: string;
+  /** Published catalog revision the enquiry is about; routing never comes from the client. */
+  revisionId?: string;
 }
 
 export interface SalesEnquiryTemplateData {
@@ -43,6 +43,9 @@ export interface SalesEnquiryTemplateData {
   requirements?: string;
   planName: string;
   submittedAt: string;
+  /** Server-configured sales contact (SALES_ENQUIRY_EMAIL / SALES_ENQUIRY_PHONE). */
+  salesEmail: string;
+  salesPhone: string;
 }
 
 export interface CountdownEmailRequest {

@@ -20,7 +20,7 @@ export async function handleSalesEnquiryEmail(
   env: PagesEnv,
   request?: Request
 ): Promise<Response> {
-  const { institution, email, phone, learners, educators, requirements, planName, salesEmail } = body;
+  const { institution, email, phone, learners, educators, requirements, planName } = body;
 
   if (!institution || typeof institution !== 'string' || !institution.trim()) {
     return apiError(400, 'VALIDATION_ERROR', 'Institution name is required', request);
@@ -54,9 +54,13 @@ export async function handleSalesEnquiryEmail(
   const cleanEmail = email.trim().slice(0, 254);
   const cleanRequirements = requirements ? String(requirements).trim().slice(0, 2000) : '';
   const cleanPlanName = planName ? String(planName).trim().slice(0, 80) : 'Hybrid';
-  const targetSalesEmail = (salesEmail && typeof salesEmail === 'string' && EMAIL_REGEX.test(salesEmail.trim()) && salesEmail.trim() !== 'sales@skillpassport.in')
-    ? salesEmail.trim()
-    : 'marketing@rareminds.in';
+  // Owner decision d: the sales contact is server configuration only. A client can never choose the recipient.
+  const targetSalesEmail = typeof env.SALES_ENQUIRY_EMAIL === 'string' ? env.SALES_ENQUIRY_EMAIL.trim() : '';
+  const salesPhone = typeof env.SALES_ENQUIRY_PHONE === 'string' ? env.SALES_ENQUIRY_PHONE.trim() : '';
+  if (!EMAIL_REGEX.test(targetSalesEmail) || !salesPhone) {
+    apiLogger.error('Sales enquiry contact is not configured', new Error('SALES_ENQUIRY_EMAIL/SALES_ENQUIRY_PHONE missing'));
+    return apiError(503, 'SALES_CONTACT_UNCONFIGURED', 'Sales enquiries are temporarily unavailable', request);
+  }
 
   const submittedAt = new Date().toLocaleString('en-US', {
     dateStyle: 'medium',
@@ -73,6 +77,8 @@ export async function handleSalesEnquiryEmail(
     requirements: cleanRequirements,
     planName: cleanPlanName,
     submittedAt,
+    salesEmail: targetSalesEmail,
+    salesPhone,
   };
 
   try {
@@ -113,7 +119,7 @@ export async function handleSalesEnquiryEmail(
       to: cleanEmail,
       subject: `Thank you for your ${cleanPlanName} plan enquiry - SkillPassport`,
       html: confirmationHtml,
-      text: `Dear Administrator at ${cleanInstitution},\n\nThank you for reaching out to SkillPassport. We have received your request for a customized ${cleanPlanName} subscription. Our enterprise team will contact you within 1 business day.\n\nIf you have immediate questions, reach us directly at marketing@rareminds.in or +91 9902326951.\n\nBest regards,\nSkillPassport Team`,
+      text: `Dear Administrator at ${cleanInstitution},\n\nThank you for reaching out to SkillPassport. We have received your request for a customized ${cleanPlanName} subscription. Our enterprise team will contact you within 1 business day.\n\nIf you have immediate questions, reach us directly at ${targetSalesEmail} or ${salesPhone}.\n\nBest regards,\nSkillPassport Team`,
     });
 
     return apiSuccess({

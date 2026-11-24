@@ -15,6 +15,7 @@ import { getContextUser } from '../../../lib/auth';
 import { getServiceClient } from '../../../lib/supabase';
 import { ssoUpdateSubscriptionStatus, ssoSyncSubscription } from '../../../lib/sso-client';
 import { syncSubscriptionCache } from '../../../lib/sync-shadow';
+import { syncManagedSubscriptionStatus } from '../../../shared/lib/subscription-management';
 import { apiSuccess, apiError } from '../../../lib/response';
 
 export async function handleDeactivateSubscription(context: AuthenticatedContext): Promise<Response> {
@@ -56,12 +57,18 @@ export async function handleDeactivateSubscription(context: AuthenticatedContext
       return apiError(404, 'NOT_FOUND', 'Subscription not found or does not belong to user', context.request);
     }
 
+    if (existing.plan_revision_id || existing.lifecycle_state) {
+      return apiError(409, 'REVISION_MANAGEMENT_REQUIRED', 'Refresh Manage Subscription to change this plan using its current terms.', context.request);
+    }
+
     // Write status change through SSO worker (auth DB is source of truth)
     const ssoResult = await ssoUpdateSubscriptionStatus(env, subscriptionId, {
       status: 'cancelled',
       cancellation_reason: cancellationReason,
       cancelled_by: user.id,
     });
+
+    await syncManagedSubscriptionStatus(supabase, user.id, subscriptionId, 'cancelled', ssoResult);
 
     // Sync shadow table (non-blocking on failure)
     try {

@@ -1,7 +1,7 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { completePlanSelection, isSubscriptionCurrent, resolveUserEntitlement, subscriptionScope } from '../../shared/lib/org-subscription';
 
 type Row = Record<string, any>;
@@ -20,23 +20,25 @@ function validateColumn(table: string, column: string) {
 }
 
 function client(failingTable?: string): SupabaseClient {
-  return { from(table: string) {
-    let rows = [...(tables[table] ?? [])];
-    let update: Row | undefined;
-    const result = () => ({ data: rows, error: table === failingTable ? { message: 'database unavailable' } : null });
-    const query: any = {
-      select: (columns: string) => { if (columns !== '*') columns.split(',').forEach(column => validateColumn(table, column.trim())); return query; },
-      eq: (key: string, value: unknown) => { validateColumn(table, key); rows = rows.filter(row => row[key] === value); return query; },
-      in: (key: string, values: unknown[]) => { rows = rows.filter(row => values.includes(row[key])); return query; },
-      order: () => query,
-      limit: (count: number) => { rows = rows.slice(0, count); return query; },
-      update: (value: Row) => { update = value; return query; },
-      maybeSingle: async () => ({ ...result(), data: rows[0] ?? null }),
-      single: async () => { if (update) rows.forEach(row => Object.assign(row, update)); return { ...result(), data: rows[0] ?? null }; },
-      then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
-    };
-    return query;
-  } } as unknown as SupabaseClient;
+  return {
+    from(table: string) {
+      let rows = [...(tables[table] ?? [])];
+      let update: Row | undefined;
+      const result = () => ({ data: rows, error: table === failingTable ? { message: 'database unavailable' } : null });
+      const query: any = {
+        select: (columns: string) => { if (columns !== '*') columns.split(',').forEach(column => validateColumn(table, column.trim())); return query; },
+        eq: (key: string, value: unknown) => { validateColumn(table, key); rows = rows.filter(row => row[key] === value); return query; },
+        in: (key: string, values: unknown[]) => { rows = rows.filter(row => values.includes(row[key])); return query; },
+        order: () => query,
+        limit: (count: number) => { rows = rows.slice(0, count); return query; },
+        update: (value: Row) => { update = value; return query; },
+        maybeSingle: async () => ({ ...result(), data: rows[0] ?? null }),
+        single: async () => { if (update) rows.forEach(row => Object.assign(row, update)); return { ...result(), data: rows[0] ?? null }; },
+        then: (resolve: (value: unknown) => unknown) => Promise.resolve(result()).then(resolve),
+      };
+      return query;
+    }
+  } as unknown as SupabaseClient;
 }
 const resolve = (roles = ['learner'], scope?: any) => resolveUserEntitlement(client(), 'user', { roles, org_id: 'org', scope });
 
@@ -50,6 +52,75 @@ beforeEach(() => {
 });
 
 describe('Catalogue-backed subscription gateway', () => {
+  it('passes a cancelled initialized free contract to the live dashboard authorizer without changing it', async () => {
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
+    tables.subscription_cache = [{ ...personal, status: 'cancelled', billing_cycle: 'free', subscription_end_date: null, plan_revision_id: 'revision' }];
+    const snapshot = JSON.stringify(tables);
+    const authorizeRead = vi.fn(async sub => ({ ...sub, lifecycle_access: 'read_only' }));
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead }))
+      .toMatchObject({ status: 'cancelled', lifecycle_access: 'read_only' });
+    expect(authorizeRead).toHaveBeenCalledOnce(); expect(JSON.stringify(tables)).toBe(snapshot);
+    authorizeRead.mockResolvedValueOnce(null);
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toBeNull();
+  });
+  it('does not pass another organization or a revoked seat to the live dashboard authorizer', async () => {
+    const authorizeRead = vi.fn(async sub => sub);
+    tables.subscription_cache = [{ ...coverage, plan_revision_id: 'revision', status: 'cancelled', subscription_end_date: null, billing_cycle: 'free' }];
+    tables.license_assignments = [{ id: 'seat', user_id: 'user', organization_subscription_id: coverage.id, status: 'revoked' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toBeNull();
+    tables.subscription_cache[0].organization_id = 'another-org';
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['college_admin'] }, { authorizeRead })).toBeNull();
+    expect(authorizeRead).not.toHaveBeenCalled();
+  });
+  it('preserves organization dashboard and assigned-seat coverage without calling the personal owner reader', async () => {
+    const authorizeRead = vi.fn(async sub => sub);
+    tables.subscription_cache = [{ ...coverage, plan_revision_id: 'revision' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['college_admin'], org_id: 'org' }, { authorizeRead })).toMatchObject({ id: coverage.id });
+    tables.license_assignments = [{ id: 'seat', user_id: 'user', organization_subscription_id: coverage.id, status: 'active' }];
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toMatchObject({ license_assignment_id: 'seat' });
+    expect(authorizeRead).not.toHaveBeenCalled();
+  });
+  it('retains a paid old purchase when automatic free access is newer', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+      { ...personal, plan_amount: 499, plan_revision_id: null, lifecycle_state: null },
+    ];
+    expect((await resolve())?.id).toBe('individual');
+  });
+  it('does not revive expired paid access ahead of a valid free subscription', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, plan_amount: 499, subscription_end_date: '2020-01-01' },
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    expect((await resolve())?.id).toBe('free');
+  });
+  it('does not let retained cancelled paid access hide an active free contract', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, status: 'cancelled', subscription_end_date: null, plan_amount: 499, plan_revision_id: 'paid-revision' },
+      { ...personal, id: 'free', plan_id: 'free-plan', plan_revision_id: 'free-revision', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    const authorizeRead = vi.fn(async sub => ({ ...sub, lifecycle_access: sub.status === 'cancelled' ? 'read_only' : 'full' }));
+    expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] }, { authorizeRead })).toMatchObject({ id: 'free', lifecycle_access: 'full' });
+    expect(authorizeRead).toHaveBeenCalledOnce();
+  });
+  it('keeps an unexpired paid cancellation ahead of free access under its existing date policy', async () => {
+    tables.plans_cache.push({ ...personalPlan, id: 'free-plan', plan_family: 'individual' });
+    tables.subscription_cache = [
+      { ...personal, status: 'cancelled', plan_amount: 499 },
+      { ...personal, id: 'free', plan_id: 'free-plan', billing_cycle: 'free', subscription_end_date: null, plan_amount: 0 },
+    ];
+    expect((await resolve())?.id).toBe(personal.id);
+  });
+  it('preserves a retired paid plan despite old onboarding selection metadata', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache[0].is_active = false;
+    tables.subscription_cache = [{ ...personal, razorpay_payment_id: 'pay_historical' }];
+    expect((await resolve())?.id).toBe('individual');
+  });
   it('finds assigned bulk coverage through its parent subscription without a license organization_id', async () => {
     tables.organization_members = [];
     tables.subscription_cache = [{ ...coverage, plan_id: personalPlan.id }];
@@ -70,9 +141,40 @@ describe('Catalogue-backed subscription gateway', () => {
     tables.subscription_cache = [coverage];
     expect(await resolveUserEntitlement(client(), 'user', { roles: ['learner'] })).toBeNull();
   });
+  it('grants a personal individual-family catalog plan regardless of the learner organization type', async () => {
+    tables.plans_cache = [{ ...personalPlan, applicable_entities: ['individual'], plan_family: 'individual' }, orgPlan];
+    tables.organizations = [{ id: 'org', organization_type: null }];
+    tables.subscription_cache = [personal];
+    expect((await resolve())?.plan_code).toBe(personalPlan.plan_code);
+    tables.plans_cache[0] = { ...tables.plans_cache[0], plan_family: 'institution' };
+    expect(await resolve()).toBeNull();
+    tables.plans_cache[0] = { ...tables.plans_cache[0], plan_family: 'individual' };
+    tables.subscription_cache = [{ ...personal, is_organization_subscription: true }];
+    expect(await resolve()).toBeNull();
+  });
   it('accepts any eligible personal plan without hardcoded names or prices', async () => {
     tables.subscription_cache = [personal];
     expect((await resolve())?.plan_code).toBe(personalPlan.plan_code);
+  });
+  it('admits the verified perpetual free individual plan without another selection or metadata write', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual', applicable_entities: ['individual'] }];
+    tables.subscription_cache = [{ ...personal, billing_cycle: 'free', subscription_end_date: null }];
+    const snapshot = JSON.stringify(tables);
+    expect(await resolve()).toMatchObject({ id: personal.id, status: 'active', subscription_end_date: null });
+    expect(JSON.stringify(tables)).toBe(snapshot);
+    expect(await resolve(['school_admin'])).toBeNull();
+  });
+  it.each(['expired', 'pending', 'cancelled'])('does not admit a %s free subscription', async status => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
+    tables.subscription_cache = [{ ...personal, status, billing_cycle: 'free', subscription_end_date: null }];
+    expect(await resolve()).toBeNull();
+  });
+  it('does not infer automatic free access from a name, price or an unrelated plan family', async () => {
+    tables.users[0].metadata.subscription_selection_required = true;
+    tables.subscription_cache = [{ ...personal, billing_cycle: 'free', subscription_end_date: null, plan_amount: 0, plan_type: 'Free' }];
+    expect(await resolve()).toBeNull();
   });
   it('requires explicit plan selection for a new self-signup despite a default subscription', async () => {
     tables.users[0].metadata.subscription_selection_required = true;
@@ -214,6 +316,9 @@ describe('Subscription validity', () => {
     expect(isSubscriptionCurrent({ status: 'active' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'active', subscription_end_date: '2020-01-01' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'lifetime' })).toBe(true);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free' })).toBe(true);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free', subscription_end_date: '2020-01-01' })).toBe(false);
+    expect(isSubscriptionCurrent({ status: 'active', billing_cycle: 'free', subscription_start_date: '2098-01-01' })).toBe(false);
     expect(isSubscriptionCurrent({ status: 'cancelled', billing_cycle: 'lifetime' })).toBe(false);
   });
 });

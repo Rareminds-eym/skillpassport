@@ -1,0 +1,52 @@
+// @vitest-environment node
+import { describe, expect, it } from 'vitest';
+import { buildWorksheetPrompt } from '../worksheet-templates';
+import { buildLessonPlanPrompt } from '../lesson-plan-templates';
+import { DEFAULT_WORKSHEET_CONFIG } from '../../types/worksheet';
+import { DEFAULT_LESSON_PLAN_CONFIG } from '../../types/lesson-plan';
+import { buildSystemPrompt, type CourseContext } from '../course-context';
+const context: CourseContext = { courseTitle: 'Time management', courseDescription: '', courseCode: 'TM', currentModule: null, currentLesson: null, availableResources: [], learnerProgress: { completedLessons: [], currentLessonStatus: null, totalLessons: 0, completionPercentage: 0 }, allModules: [], allLessons: [], videoSummary: null };
+describe('mapped teaching level prompts', () => {
+  it('includes the mapped grade in worksheet prompts', () => {
+    expect(buildWorksheetPrompt({ ...DEFAULT_WORKSHEET_CONFIG, gradeLevel: 'College/University' }, context)).toContain('Teaching level: College/University');
+  });
+  it('includes the mapped grade in lesson plan prompts and both passes', () => {
+    const config = { ...DEFAULT_LESSON_PLAN_CONFIG, gradeLevel: 'Grade 8' };
+    expect(buildLessonPlanPrompt(config, context)).toContain('Teaching level: Grade 8');
+    expect(buildLessonPlanPrompt(config, context, true)).toContain('Teaching level: Grade 8');
+    expect(buildLessonPlanPrompt(config, context, true, 'Lesson outline')).toContain('Teaching level: Grade 8');
+  });
+  it('uses conversational educator instructions when no generation config was supplied', () => {
+    const prompt = buildSystemPrompt(context, 'opening', 'college_educator');
+    expect(prompt).toContain("Answer the educator's current question directly");
+    expect(prompt).not.toContain('Worksheet format:');
+    expect(prompt).not.toContain('Create high-quality worksheets');
+    expect(prompt).toContain('Use verified assignment context only');
+  });
+  it('preserves learner instructions and rejects educator-like role strings', () => {
+    for (const role of ['learner', 'not_an_educator']) {
+      const prompt = buildSystemPrompt(context, 'opening', role, DEFAULT_WORKSHEET_CONFIG, DEFAULT_LESSON_PLAN_CONFIG, 'organizer');
+      expect(prompt).toContain('helpful course tutor for learners');
+      expect(prompt).not.toContain('GLOBAL RULES');
+    }
+  });
+  it('retains selected question counts and private-answer format under CREATE', () => {
+    const prompt = buildSystemPrompt(context, 'opening', 'educator', {...DEFAULT_WORKSHEET_CONFIG,questionCount:15,gradeLevel:'Grade 9'}, undefined, 'individualized-support');
+    expect(prompt).toContain('ROLE: CREATE');
+    expect(prompt).toContain('15');
+    expect(prompt).toContain('Teaching level: Grade 9');
+    expect(prompt).not.toContain('ROLE: ADAPT');
+  });
+
+});
+
+it.each([15,30,45,60,90])('allocates exactly %i minutes across 5E phases',duration=>{
+ const prompt=buildLessonPlanPrompt({...DEFAULT_LESSON_PLAN_CONFIG,templateType:'5e',duration},context);
+ const times=[...prompt.matchAll(/## (?:ENGAGE|EXPLORE|EXPLAIN|ELABORATE|EVALUATE) \((\d+) min\)/g)].map(m=>Number(m[1]));
+ expect(times).toHaveLength(5);expect(times.reduce((a,b)=>a+b,0)).toBe(duration);
+ expect(times.every(n=>n>0)).toBe(true);
+ const outline=buildLessonPlanPrompt({...DEFAULT_LESSON_PLAN_CONFIG,templateType:'5e',duration},context,true);
+ expect(outline).toContain('## ENGAGE');expect(outline).toContain('## EVALUATE');
+ expect(outline).toContain('Explore must let learners investigate before Explain');
+ expect(prompt).toContain('actual assessment questions');
+});
