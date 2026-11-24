@@ -68,7 +68,7 @@ export type LteRoleCapabilitiesResult =
   | { ok: true; capabilities: LteCapability[] }
   | { ok: false; reason: string };
 
-const LTE_CAPABILITIES_TIMEOUT_MS = 5000;
+const LTE_CAPABILITIES_TIMEOUT_MS = 20000;
 
 /**
  * Fetches a role's capabilities (including `displayName`) from LTE.

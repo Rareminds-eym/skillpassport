@@ -32,7 +32,7 @@ export interface PagesEnv {
   // SSO / Auth configuration
   /** Cloudflare Service Binding to the SSO worker (sso-api) */
   SSO_SERVICE?: SsoWorkerRpc;
-  /** LTE app base URL used for cross-app SSO callback redirects. */
+  /** LTE base URL used for API requests and cross-app SSO callback redirects. */
   LTE_APP_URL?: string;
   /** Shared server-only signing secret for LTE gateway, catalogue and learning requests. */
   LTE_INTERNAL_SECRET?: string;

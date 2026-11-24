@@ -425,6 +425,12 @@ export const transformAssessmentResults = (dbResults) => {
     // Map recommendedStream to streamRecommendation for backward compatibility
     const transformed = {
       ...geminiData,
+      // Identity belongs to the database row, not the generated report JSON.
+      id: dbResults.id,
+      attemptId: dbResults.attempt_id,
+      learnerId: dbResults.learner_id,
+      streamId: dbResults.stream_id,
+      gradeLevel: dbResults.grade_level,
       streamRecommendation: geminiData.recommendedStream || geminiData.streamRecommendation,
       _original: dbResults,
       _transformed: true,
@@ -450,6 +456,9 @@ export const transformAssessmentResults = (dbResults) => {
     
     // Build the result directly from individual columns
     const transformed = {
+      id: dbResults.id,
+      learnerId: dbResults.learner_id,
+      streamId: dbResults.stream_id,
       // RIASEC from columns
       riasec: {
         scores: dbResults.riasec_scores || {},
