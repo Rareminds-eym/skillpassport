@@ -22,7 +22,8 @@ export const onRequestPost = subscriptionConsumerEndpoint('POST', async context 
   catch (error) { if (error instanceof DraftRequestError) return subscriptionFailure(error.status); throw error; }
   if (!value.success) return subscriptionFailure(400);
   const database = catalogInventoryDatabase(context.env);
-  const features = (await readApplicationFeatureInventory(database)).map(item => {
+  // Usage is authorized from retained owner terms; only allocation paths consume the registry.
+  const features = value.data.kind === 'usage' ? [] : (await readApplicationFeatureInventory(database)).map(item => {
     const { key, type, ...rest } = applicationFeatureDefinition(item);
     return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
   });

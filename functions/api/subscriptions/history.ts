@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { readDraftRequest, DraftRequestError } from '../../lib/subscriptions/authoring';
-import { applicationFeatureDefinition, catalogInventoryDatabase, readApplicationFeatureInventory } from '../../lib/subscriptions/catalog-inventory';
+import { catalogInventoryDatabase } from '../../lib/subscriptions/catalog-inventory';
 import { historicalCreditPoolsSchema, readSubscriptionCreditHistory, validateSubscriptionAudit } from '../../lib/subscriptions/history';
 import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponseHeaders } from '../../lib/subscriptions/current-subscription';
 
@@ -39,13 +39,9 @@ export const onRequestPost = subscriptionConsumerEndpoint('POST', async context 
     return Response.json(validateSubscriptionAudit(raw, context.actorId, context.productId, subscriptionId, after), { headers: subscriptionResponseHeaders });
   }
   const database = catalogInventoryDatabase(context.env);
-  const features = (await readApplicationFeatureInventory(database)).map(item => {
-    const { key, type, ...rest } = applicationFeatureDefinition(item);
-    return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
-  });
   const { after, kind: _kind, ...identity } = input.data;
   const raw = await context.env.SSO_SERVICE!.prepareSubscriptionCreditExecution(context.token, context.productId,
-    { ...identity, kind: identity.revisionId === undefined ? 'usage' : 'history' }, features);
+    { ...identity, kind: identity.revisionId === undefined ? 'usage' : 'history' }, []);
   if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return subscriptionFailure(403);
   const owner = prepared.parse(raw);
   if (owner.actorId !== context.actorId || owner.scope.subscriptionId !== identity.subscriptionId
