@@ -1,8 +1,8 @@
-import { LogOut } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { LogOut } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { useAuthActions } from '@/shared/model/authStore';
 
@@ -100,7 +100,7 @@ const SubscriptionPurchaseHeader = ({ userEmail, hasBanner = false }) => {
   return (
     <header
       ref={headerRef}
-      className={`bg-white/80 backdrop-blur-md border-b border-gray-100 fixed w-full z-50 shadow-sm will-change-transform ${hasBanner ? 'top-[36px] sm:top-[40px]' : 'top-0'
+      className={`bg-white/80 backdrop-blur-md border-b border-gray-100 sticky w-full z-50 shadow-sm will-change-transform ${hasBanner ? 'top-[36px] sm:top-[40px]' : 'top-0'
         }`}
     >
       <nav className="max-w-8xl mx-auto px-6 sm:px-8 lg:px-12">
