@@ -97,19 +97,21 @@ export function SubscriptionCatalogFrame({ children, type = 'learner' }: { child
   </div>;
 }
 
-function PublishedPlanCard({ plan, selected, current, organization, prices, purchase }: { current: boolean; plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode }) {
+function PublishedPlanCard({ plan, selected, current, organization, prices, purchase, promoLocked, upgrading }: {
+  current: boolean; plan: Catalog['plans'][number]; selected: boolean; organization: boolean; prices: ReactNode; purchase: ReactNode; promoLocked: boolean; upgrading: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   // Preserve QA's action palette; commercial eligibility remains in the purchase owner.
   const actionColors = organization
     ? '[&_button]:bg-gradient-to-r [&_button]:from-purple-600 [&_button]:to-purple-700 [&_button]:text-white [&_button:hover]:from-purple-700 [&_button:hover]:to-purple-800'
     : plan.purchaseMode === 'free'
       ? '[&_button]:bg-gradient-to-r [&_button]:from-emerald-700 [&_button]:to-emerald-800 [&_button]:text-white [&_button:hover]:from-emerald-600 [&_button:hover]:to-emerald-700'
-      : plan.presentation.badge
+      : plan.presentation.badge || upgrading
         ? '[&_button]:bg-black [&_button]:text-white [&_button:hover]:bg-gray-900'
         : '[&_button]:bg-slate-100 [&_button]:text-slate-900 [&_button]:border-2 [&_button]:border-slate-300 [&_button:hover]:bg-slate-200';
-  return <article aria-current={selected ? 'true' : undefined} aria-label={plan.name}
+  return <article aria-current={selected ? 'true' : undefined} aria-label={plan.name} aria-disabled={promoLocked ? 'true' : undefined}
     ref={selected ? node => node?.scrollIntoView?.({ block: 'center' }) : undefined}
-    className={`${styles.planCard} relative bg-white rounded-3xl border-2 transition-all duration-300 h-full shadow-lg hover:shadow-2xl ${selected || current ? 'border-emerald-500 shadow-emerald-500/20' : plan.presentation.badge ? 'border-slate-900 shadow-slate-900/10' : 'border-slate-200 hover:border-slate-300'}`}>
+    className={`${styles.planCard} relative bg-white rounded-3xl border-2 transition-all duration-300 h-full shadow-lg ${promoLocked ? 'opacity-50 saturate-50' : 'hover:shadow-2xl'} ${selected || current ? 'border-emerald-500 shadow-emerald-500/20' : plan.presentation.badge ? 'border-slate-900 shadow-slate-900/10' : 'border-slate-200 hover:border-slate-300'}`}>
     {plan.presentation.badge && <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10 w-max max-w-[90%] text-center">
       <span className="inline-block bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2 rounded-full text-sm font-bold shadow-xl">{plan.presentation.badge}</span>
     </div>}
@@ -137,7 +139,11 @@ function PublishedPlanCard({ plan, selected, current, organization, prices, purc
         </button>}
       </div>
       <div className={`${styles.cardActions} mt-auto space-y-3 [&_button]:w-full [&_button]:py-4 [&_button]:px-4 [&_button]:rounded-2xl [&_button]:font-semibold [&_button]:shadow-lg [&_button:hover]:shadow-xl [&_button]:transition-all [&_button:disabled]:opacity-50 [&_p]:text-sm [&_p]:text-slate-600 [&_p]:mb-3 ${actionColors}`}>
-        {purchase}
+        {promoLocked
+          ? <p role="note" className="text-center text-sm font-medium text-slate-500 py-4 px-2 rounded-2xl bg-slate-50 border-2 border-slate-200">
+            This plan is not included in your promo offer.
+          </p>
+          : purchase}
       </div>
     </div>
   </article>;
@@ -164,9 +170,14 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, curre
     categories.set(category, [...(categories.get(category) ?? []), key]);
   }
   return <>
+    {catalog.eligiblePlanId != null && <div role="status" className="mb-8 text-center text-sm font-semibold text-emerald-800 bg-emerald-50 border-2 border-emerald-200 rounded-2xl py-3 px-4">
+      Your applied promo code unlocks a special price on one plan below — other plans are unavailable while the code is applied.
+    </div>}
     <div className={`${styles.planGrid} grid md:grid-cols-2 gap-6 ${plans.length >= 4 ? 'xl:grid-cols-4' : 'lg:grid-cols-3'}`}>
       {plans.map(plan => <PublishedPlanCard key={plan.revisionId} plan={plan} selected={plan.revisionId === selectedRevisionId} current={plan.plan.id === currentPlanId} organization={catalog.subjectKind === 'organization'}
-        prices={renderPrices(plan)} purchase={renderPurchase(plan)} />)}
+        upgrading={currentPlanId !== undefined && currentPlanId !== plan.plan.id}
+        promoLocked={catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId}
+        prices={catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId ? null : renderPrices(plan)} purchase={renderPurchase(plan)} />)}
     </div>
     <div className="mt-16 flex flex-wrap items-center justify-center gap-12 text-slate-600">
       {['Secure Payments', '24/7 Support', 'Cancel Anytime'].map(item => <div key={item} className="flex items-center gap-3 group">
@@ -190,7 +201,7 @@ export default function SubscriptionCatalog({ catalog, selectedRevisionId, curre
               <th scope="col" className="p-8 font-light text-xl text-left" style={headingFont}>Features</th>
               {plans.map(plan => <th scope="col" key={plan.revisionId} className="p-8 text-center border-l border-white/10">
                 <div className="font-semibold text-xl mb-2" style={headingFont}>{plan.name}</div>
-                <div className="text-sm text-white/70 font-medium">{renderPrices(plan)}</div>
+                <div className="text-sm text-white/70 font-medium">{catalog.eligiblePlanId != null && plan.plan.id !== catalog.eligiblePlanId ? null : renderPrices(plan)}</div>
               </th>)}
             </tr></thead>
             {[...categories].map(([category, features]) => <tbody key={category} className="border-t-2 border-slate-100">

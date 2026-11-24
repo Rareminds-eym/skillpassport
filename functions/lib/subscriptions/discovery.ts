@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { checkPromoEligibility, getAcceptedOfferSnapshot, getStoredReferralCodeAndRole, isDidacAllowedPlan, type PromoOfferSnapshot } from '../../api/payments/lib/promoCode';
+import { getServiceClient } from '../supabase';
 import { applicationFeatureDefinition, catalogInventoryDatabase, readApplicationFeatureInventory } from './catalog-inventory';
 import { subscriptionConsumerEndpoint, subscriptionFailure, subscriptionResponseHeaders } from './current-subscription';
 import { readApplicationPlanProjections } from './publication';
@@ -126,6 +128,113 @@ export const subscriptionDiscoveryEndpoint = subscriptionConsumerEndpoint('GET',
   return Response.json(page, { headers: subscriptionResponseHeaders });
 });
 
+/**
+ * Best-effort: SkillPassport remains the sole authority on promo validity, role eligibility and
+ * quota. This just names the one plan DIDAC makes this role eligible for and the plain, bounded
+ * additive adjustment to apply to its one price serving this buyer's audience â€” SSO independently
+ * derives the real published price itself and enforces its own fixed safety cap; no secret or
+ * signature is involved. Any failure, ambiguity or ineligibility here just means no discount is
+ * attempted â€” the caller falls back to the plain, already-fetched catalog page.
+ */
+interface CatalogPromoAdjustment { planId: string; priceAdjustmentMinor: number }
+/** Richer version of CatalogPromoAdjustment carrying everything an Accepted_Offer_Snapshot (PRD R17) needs. */
+export interface EligiblePromoOffer extends CatalogPromoAdjustment {
+  revisionId: string; revisionNumber: number; priceId: string;
+  currency: string; minorUnit: number; intervalUnit: 'month' | 'year'; intervalCount: number;
+  baseAmountMinor: number;
+}
+async function findEligiblePromoOffer(
+  env: Parameters<typeof getServiceClient>[0],
+  actorId: string, page: z.infer<typeof catalog>,
+): Promise<EligiblePromoOffer | null> {
+  if (page.audience === null) return null;
+  try {
+    const supabase = getServiceClient(env);
+    const { referralCode, role } = await getStoredReferralCodeAndRole(supabase, actorId);
+    if (!referralCode || !role) return null;
+    const eligibility = await checkPromoEligibility(supabase, role, referralCode);
+    if (!eligibility) return null;
+    const eligiblePlan = page.plans.find(plan => isDidacAllowedPlan(role, { plan_code: plan.plan.code, name: plan.name }, eligibility.targetPlanCode));
+    if (!eligiblePlan) return null;
+    const matchedPrices = eligiblePlan.prices.filter(price => price.audiences.includes(page.audience as string));
+    if (matchedPrices.length !== 1) return null;
+    const price = matchedPrices[0];
+    // Two mutually exclusive pricing modes (promo_codes_pricing_mode_exclusive_check, DB-enforced):
+    // a fixed promotional price (this code locks the plan to an exact amount, e.g. "â‚¹399",
+    // regardless of its live base price), or the original plain additive top-up on top of
+    // whatever the plan's live price currently is. A zero/no-op adjustment means "apply nothing".
+    const priceAdjustmentMinor = eligibility.fixedPriceMinor != null
+      ? eligibility.fixedPriceMinor - price.amountMinor
+      : Math.round(eligibility.priceAdjustment * 10 ** price.minorUnit);
+    if (!Number.isSafeInteger(priceAdjustmentMinor) || price.amountMinor + priceAdjustmentMinor < 1 || priceAdjustmentMinor > 1_000_000) return null;
+    return {
+      planId: eligiblePlan.plan.id, priceAdjustmentMinor,
+      revisionId: eligiblePlan.revisionId, revisionNumber: eligiblePlan.revisionNumber, priceId: price.id,
+      currency: price.currency, minorUnit: price.minorUnit, intervalUnit: price.intervalUnit, intervalCount: price.intervalCount,
+      baseAmountMinor: price.amountMinor,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Explicit-acceptance support (PRD R16): re-derives, fresh, the one live offer this actor is
+ * currently eligible for â€” always the CURRENT live terms, never anything client-supplied â€” so
+ * that accepting an offer always snapshots exactly what is live at the moment of acceptance.
+ * Fetches its own plain (unadjusted) first catalog page; never trusts a caller-supplied page.
+ */
+export async function fetchAcceptableOffer(context: { env: unknown; request: Request; token: string; actorId: string; productId: string }):
+  Promise<Omit<PromoOfferSnapshot, 'acceptedAt'> | null> {
+  try {
+    const env = context.env as Parameters<typeof getServiceClient>[0] & { SSO_SERVICE?: { listPublishedSubscriptionPlans: typeof fetch } };
+    const database = catalogInventoryDatabase(context.env as Parameters<typeof catalogInventoryDatabase>[0]);
+    const features = (await readApplicationFeatureInventory(database)).map(item => {
+      const { key, type, ...rest } = applicationFeatureDefinition(item);
+      return { key, type, ...('options' in rest ? { options: rest.options } : {}) };
+    });
+    if (!(env as any).SSO_SERVICE) return null;
+    let cursor: string | null = null;
+    let offer: EligiblePromoOffer | null = null;
+    const seen = new Set<string>();
+    do {
+      const raw = await (env as any).SSO_SERVICE.listPublishedSubscriptionPlans(context.token, context.productId, features, cursor);
+      if (z.object({ kind: z.literal('forbidden') }).strict().safeParse(raw).success) return null;
+      const page = catalog.parse(raw);
+      pageScope(context.actorId, context.productId, page, cursor, page.plans.map(item => item.plan.id));
+      await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId);
+      offer = await findEligiblePromoOffer(env, context.actorId, page);
+      if (offer) break;
+      if (page.nextCursor && seen.has(page.nextCursor)) return null;
+      if (page.nextCursor) seen.add(page.nextCursor);
+      cursor = page.nextCursor;
+    } while (cursor);
+    if (!offer) return null;
+    return {
+      planId: offer.planId, revisionId: offer.revisionId, revisionNumber: offer.revisionNumber, priceId: offer.priceId,
+      currency: offer.currency, minorUnit: offer.minorUnit, intervalUnit: offer.intervalUnit, intervalCount: offer.intervalCount,
+      amountMinor: offer.baseAmountMinor + offer.priceAdjustmentMinor,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Locally overrides the accepted plan's matched price with the exact, immutable accepted amount â€” no further SSO round-trip or live recompute. */
+function applyAcceptedOfferToPage(page: z.infer<typeof catalog>, offer: PromoOfferSnapshot): z.infer<typeof catalog> {
+  let applied = false;
+  const plans = page.plans.map(plan => {
+    if (plan.plan.id !== offer.planId || plan.revisionId !== offer.revisionId) return plan;
+    const prices = plan.prices.map(price => {
+      if (applied || price.id !== offer.priceId) return price;
+      applied = true;
+      return { ...price, amountMinor: offer.amountMinor };
+    });
+    return { ...plan, prices };
+  });
+  return { ...page, plans };
+}
+
 export const publishedSubscriptionCatalogEndpoint = subscriptionConsumerEndpoint('GET', async context => {
   const input = readCursor(context.request);
   if (!input.valid) return subscriptionFailure(400);
@@ -147,7 +256,33 @@ export const publishedSubscriptionCatalogEndpoint = subscriptionConsumerEndpoint
     await verifyPublishedTermsAgainstProjections(database, page.plans, context.productId, inventory);
     return page;
   }, validate);
-  return Response.json(page, { headers: subscriptionResponseHeaders });
+  // R16/R17: once an offer has been explicitly accepted, the catalog must show the exact,
+  // immutable accepted price forever â€” never recompute a fresh live adjustment for it again.
+  const env = context.env as Parameters<typeof getServiceClient>[0];
+  let supabase;
+  try { supabase = getServiceClient(env); } catch {
+    return Response.json({ ...page, eligiblePlanId: null, offerAccepted: false }, { headers: subscriptionResponseHeaders });
+  }
+  const { referralCode, role } = await getStoredReferralCodeAndRole(supabase, context.actorId).catch(() => ({ referralCode: '', role: null }));
+  const accepted = referralCode && role ? await getAcceptedOfferSnapshot(supabase, context.actorId, role, referralCode) : null;
+  if (accepted) {
+    const acceptedPlan = page.plans.find(plan => plan.plan.id === accepted.offer.planId);
+    if (acceptedPlan && (acceptedPlan.revisionId !== accepted.offer.revisionId || !acceptedPlan.prices.some(price => price.id === accepted.offer.priceId))) {
+      return Response.json({ error: 'Your accepted offer revision is no longer available. Contact support before paying.' }, { status: 409, headers: subscriptionResponseHeaders });
+    }
+    return Response.json({ ...applyAcceptedOfferToPage(page, accepted.offer), eligiblePlanId: accepted.offer.planId, offerAccepted: true },
+      { headers: subscriptionResponseHeaders });
+  }
+
+  // Server-to-server only: SkillPassport decides the promo discount itself, from its own stored
+  // referralCode/role/quota state â€” the browser never sees or supplies this value.
+  const adjustment = await findEligiblePromoOffer(env, context.actorId, page);
+  if (!adjustment) return Response.json({ ...page, eligiblePlanId: null, offerAccepted: false }, { headers: subscriptionResponseHeaders });
+
+  const adjustedPage = applyAcceptedOfferToPage(page, {
+    ...adjustment, amountMinor: adjustment.baseAmountMinor + adjustment.priceAdjustmentMinor, acceptedAt: '',
+  });
+  return Response.json({ ...adjustedPage, eligiblePlanId: adjustment.planId, offerAccepted: false }, { headers: subscriptionResponseHeaders });
 });
 
 /** Every surface shows terms the application independently stored for the same revision (single catalog source). */

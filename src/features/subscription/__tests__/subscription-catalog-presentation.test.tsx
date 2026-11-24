@@ -7,11 +7,11 @@ import { catalogSchema, type FeatureGrant } from '../api/subscriptionExecutionSe
 import SubscriptionWorkspace from '../ui/SubscriptionWorkspace';
 import SubscriptionCatalogSummary from '../ui/SubscriptionCatalogSummary';
 
-const { fetchMock, accountQuery, identity } = vi.hoisted(() => ({ fetchMock: vi.fn(), accountQuery: vi.fn(), identity: { role: 'learner' as string | null } }));
+const { fetchMock, accountQuery, identity } = vi.hoisted(() => ({ fetchMock: vi.fn(), accountQuery: vi.fn(), identity: { role: 'learner' as string | null, user: null as null | { id: string; orgId: string } } }));
 vi.mock('../model/useSubscriptionQuery', () => ({ useSubscriptionQuery: accountQuery }));
 vi.mock('@/shared/api/ssoClient', () => ({ ssoClient: { fetch: fetchMock } }));
 vi.mock('@/shared/api/httpClient', () => ({ DEFAULT_TIMEOUT: 30000 }));
-vi.mock('@/shared/model/authStore', () => ({ useUser: () => null, useUserRole: () => ({ role: identity.role }) }));
+vi.mock('@/shared/model/authStore', () => ({ useUser: () => identity.user, useUserRole: () => ({ role: identity.role }) }));
 vi.mock('../api/razorpayService', () => ({ payIssuedSubscriptionOrder: vi.fn(), prepareSubscriptionCheckout: vi.fn() }));
 vi.mock('../ui/AddOnMarketplace', () => ({ default: ({ role }: { role: string }) => <p>Existing add-ons for {role}</p> }));
 const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
@@ -27,7 +27,8 @@ let visibleCatalog = catalog;
 const response = (value: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(value), { status }));
 beforeEach(() => {
   sessionStorage.clear(); fetchMock.mockReset(); accountQuery.mockReset();
-  visibleCatalog = catalog; identity.role = 'learner';
+  accountQuery.mockReturnValue({ subscriptionData: null, loading: false, error: null, hasActiveOrPausedSubscription: false });
+  visibleCatalog = catalog; identity.role = 'learner'; identity.user = null;
   fetchMock.mockImplementation((url: string) => response(url === '/api/subscriptions/catalog' ? visibleCatalog : emptyDiscovery));
 });
 afterEach(cleanup);
@@ -90,12 +91,12 @@ describe('restored QA catalog presentation', () => {
       throw new Error('Unexpected request');
     });
     render(<SubscriptionWorkspace view="catalog" />);
-    fireEvent.click(await screen.findByRole('button', { name: /Change Plan/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Pay / }, { timeout: 10000 }));
     await waitFor(() => expect(fetchMock.mock.calls.some(([, options]) => options.method === 'POST')).toBe(true));
     const [, options] = fetchMock.mock.calls.find(([, init]) => init.method === 'POST')!;
     expect(JSON.parse(options.body).request).toMatchObject({ purpose: 'upgrade', subscriptionId: row.id, expectedVersion: 1,
       expectedRevisionId: row.revisionId, revisionId: offer.revisionId, subject });
-    expect(screen.queryByRole('button', { name: /Buy Now/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Get Started/ })).not.toBeInTheDocument();
   });
   it('identifies the paid current plan separately from a selected offer and never asks to buy it again', async () => {
     const subject = { kind: 'user', id: catalog.actorId };
@@ -117,16 +118,16 @@ describe('restored QA catalog presentation', () => {
     const card = await screen.findByRole('article', {name: offer.name});
     expect(await within(card).findByText('Your current plan')).toBeInTheDocument();
     expect(within(card).getByRole('link', {name: 'Manage subscription'})).toHaveAttribute('href', '/subscription/manage');
-    expect(within(card).queryByRole('button', {name: /Buy Now|Renew Plan|Change Plan|Upgrade Plan/})).not.toBeInTheDocument();
+    expect(within(card).queryByRole('button', {name: /Get Started|Renew Plan|Upgrade|Upgrade Plan/})).not.toBeInTheDocument();
     expect(screen.getByRole('article', {name: other.name})).toHaveTextContent('Your selected plan');
-    expect(within(screen.getByRole('article', {name: other.name})).getByRole('button', {name: /Change Plan/})).toBeInTheDocument();
+    expect(within(screen.getByRole('article', {name: other.name})).getByRole('button', {name: /Pay /})).toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
   });
   it('does not offer payment when current-subscription discovery fails', async () => {
     fetchMock.mockImplementation((url: string) => url === '/api/subscriptions/catalog' ? response(catalog) : response({}, 503));
     render(<SubscriptionWorkspace view="catalog" />);
     expect(await screen.findByRole('alert')).toHaveTextContent('503');
-    expect(screen.queryByRole('button', { name: /Buy Now|Change Plan/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Get Started|Upgrade/ })).not.toBeInTheDocument();
     expect(fetchMock.mock.calls.every(([, options]) => options.method === 'GET')).toBe(true);
   });
   it('uses the prior page heading, rounded cards and comparison with current owner terms', async () => {
@@ -177,7 +178,7 @@ describe('restored QA catalog presentation', () => {
     expect(freeCard).not.toHaveTextContent('₹4,567.89');
     const enterprise = screen.getByRole('article', { name: sales.name });
     expect(within(enterprise).getByRole('link', { name: 'Talk to Sales' })).toHaveAttribute('href', '/contact');
-    expect(within(enterprise).queryByRole('button', { name: /Buy Now/ })).not.toBeInTheDocument();
+    expect(within(enterprise).queryByRole('button', { name: /Get Started/ })).not.toBeInTheDocument();
   });
   it.each([['learner', '/learner/dashboard'], ['educator', '/educator/dashboard'], ['school_admin', '/school-admin/dashboard']])('takes free-access %s users to their dashboard without a purchase', async (role, route) => {
     identity.role = role;
@@ -332,4 +333,110 @@ it('does not claim renewal is enabled when the summary source omits it', () => {
   render(<SubscriptionCatalogSummary title="Plans" subtitle="Choose" />);
   expect(screen.queryByText('Enabled')).not.toBeInTheDocument();
   expect(screen.getByText('Not reported — check subscription details')).toBeInTheDocument();
+});
+
+
+describe('published promo acceptance', () => {
+  it('locks the promo price and starts checkout from the normal payment button', async () => {
+    let accepted = false;
+    fetchMock.mockImplementation((url: string) => {
+      if (url === '/api/subscriptions/promo-offer') {
+        accepted = true;
+        return response({ accepted: true, offer: { planId: offer.plan.id, revisionId: offer.revisionId,
+          revisionNumber: 1, priceId: offer.prices[0].id, currency: 'INR', minorUnit: 2,
+          intervalUnit: 'year', intervalCount: 1, amountMinor: 39900, acceptedAt: new Date().toISOString() } });
+      }
+      return response(url === '/api/subscriptions/catalog' ? {
+        ...catalog, eligiblePlanId: offer.plan.id, offerAccepted: accepted,
+        plans: [{ ...offer, prices: [{ ...offer.prices[0], amountMinor: 39900 }] }],
+      } : emptyDiscovery);
+    });
+    render(<SubscriptionWorkspace view="catalog" />);
+    fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/commerce'))).toBe(true));
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/subscriptions/promo-offer')).toHaveLength(1);
+    const urls = fetchMock.mock.calls.map(([url]) => url);
+    expect(urls.indexOf('/api/subscriptions/promo-offer')).toBeLessThan(urls.indexOf('/api/subscriptions/commerce'));
+    expect(screen.queryByText('Accept this offer')).toBeNull();
+  });
+  it('does not consume quota just by browsing the offer', async () => {
+    visibleCatalog = { ...catalog, eligiblePlanId: offer.plan.id, offerAccepted: false } as typeof catalog;
+    render(<SubscriptionWorkspace view="catalog" />);
+    expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
+    expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/promo-offer'))).toBe(false);
+  });
+});
+
+
+it('hides other plan prices in cards and comparison when a promo applies', async () => {
+  const other = { ...offer, plan: { ...offer.plan, id: id(80) }, revisionId: id(81), name: 'Other paid plan',
+    prices: [{ ...offer.prices[0], amountMinor: 9876500 }] };
+  visibleCatalog = { ...catalog, eligiblePlanId: offer.plan.id, offerAccepted: false, plans: [offer, other] } as typeof catalog;
+  render(<SubscriptionWorkspace view="catalog" />);
+  expect(await screen.findByRole('article', { name: 'Other paid plan' })).toHaveAttribute('aria-disabled', 'true');
+  expect(screen.queryByText(/98,765/)).toBeNull();
+  expect(screen.queryByRole('button', { name: /98,765/ })).toBeNull();
+  expect(await screen.findByRole('button', { name: /Pay / })).toBeEnabled();
+});
+
+it.each(['rejected', 'changed'])('does not request payment when promo locking is %s', async outcome => {
+  fetchMock.mockImplementation((url: string) => {
+    if (url === '/api/subscriptions/promo-offer') return outcome === 'rejected'
+      ? response({ error: 'Offer unavailable' }, 409)
+      : response({ accepted: true, offer: { planId: offer.plan.id, revisionId: offer.revisionId,
+        revisionNumber: 1, priceId: offer.prices[0].id, currency: 'INR', minorUnit: 2,
+        intervalUnit: 'year', intervalCount: 1, amountMinor: 1, acceptedAt: new Date().toISOString() } });
+    return response(url === '/api/subscriptions/catalog' ? { ...catalog, eligiblePlanId: offer.plan.id, offerAccepted: false } : emptyDiscovery);
+  });
+  render(<SubscriptionWorkspace view="catalog" />);
+  fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/promo-offer'))).toBe(true));
+  expect(await screen.findByRole('button', { name: /Pay / }, { timeout: 10000 })).toBeEnabled();
+  expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/commerce'))).toBe(false);
+});
+
+
+it.each(['learner', 'school_admin', 'college_admin'])('starts %s checkout from one normal promo payment click', async role => {
+  const audience = role === 'learner' ? 'individual' : role.split('_')[0];
+  const institution = role !== 'learner';
+  identity.role = role; identity.user = { id: catalog.actorId, orgId: id(90) };
+  fetchMock.mockImplementation((url: string) => {
+    if (url === '/api/subscriptions/promo-offer') return response({ accepted: true, offer: {
+      planId: offer.plan.id, revisionId: offer.revisionId, revisionNumber: 1, priceId: offer.prices[0].id,
+      currency: 'INR', minorUnit: 2, intervalUnit: 'year', intervalCount: 1, amountMinor: 10000,
+      acceptedAt: new Date().toISOString(),
+    } });
+    return response(url === '/api/subscriptions/catalog' ? { ...catalog, audience,
+      subjectKind: institution ? 'organization' : 'user', eligiblePlanId: offer.plan.id, offerAccepted: false,
+      plans: [{ ...offer, audiences: [audience], prices: [{ ...offer.prices[0], audiences: [audience], amountMinor: 10000 }] }],
+    } : emptyDiscovery);
+  });
+  render(<SubscriptionWorkspace view="catalog" />);
+  fireEvent.click(await screen.findByRole('button', { name: /Pay / }));
+  await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/commerce'))).toBe(true));
+  const call = fetchMock.mock.calls.find(([url]) => url.endsWith('/commerce'))!;
+  expect(JSON.parse(call[1].body).request.subject).toEqual({ kind: institution ? 'organization' : 'user', id: institution ? id(90) : catalog.actorId });
+  expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/promo-offer'))).toHaveLength(1);
+});
+
+
+it.each(['learner', 'school_admin', 'college_admin'])('does not expose a free dashboard shortcut to %s with a promo', async role => {
+  const audience = role === 'learner' ? 'individual' : role.split('_')[0];
+  identity.role = role; identity.user = { id: catalog.actorId, orgId: id(90) };
+  const subject = { kind: role === 'learner' ? 'user' : 'organization', id: role === 'learner' ? catalog.actorId : id(90) };
+  const free = { ...offer, plan: { ...offer.plan, id: id(70) }, revisionId: id(71), name: 'Existing free plan', audiences: [audience], purchaseMode: 'free', prices: [] };
+  const row = { id: id(20), planId: free.plan.id, productId: catalog.productId, subject, status: 'active', kind: 'initialized', revisionId: free.revisionId, version: 1, lifecycleOperations: ['upgrade'] };
+  const current = { schemaVersion: 1, actorId: catalog.actorId, audience, activatedAt: 1000, subscriptionEndsAt: null, access: 'full', pools: [], features: [],
+    plan: { ...free.plan, name: free.name, revisionNumber: 1 }, state: { id: row.id, planId: row.planId, revisionId: row.revisionId, productId: catalog.productId, subject,
+      version: 1, status: 'active', periodStartsAt: 1000, periodEndsAt: null, validity: 'perpetual', trialEndsAt: null, renewalEnabled: false, cancelledAt: null, paymentFailedAt: null, scheduledChange: null } };
+  fetchMock.mockImplementation((url: string) => {
+    if (url === '/api/subscriptions/catalog') return response({ ...catalog, audience, subjectKind: subject.kind, eligiblePlanId: offer.plan.id, offerAccepted: false,
+      plans: [free, { ...offer, audiences: [audience], prices: [{ ...offer.prices[0], audiences: [audience], amountMinor: 10000 }] }] });
+    if (url.includes('/current?')) return response(current);
+    return response({ ...emptyDiscovery, items: [row] });
+  });
+  render(<SubscriptionWorkspace view="catalog" />);
+  expect(await screen.findByRole('button', { name: /Pay / }, { timeout: 10000 })).toBeEnabled();
+  expect(screen.queryByRole('link', { name: /Go to dashboard|View read-only dashboard/ })).toBeNull();
+  expect(screen.queryByRole('button', { name: /Get Started/ })).toBeNull();
 });

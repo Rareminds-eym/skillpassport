@@ -169,3 +169,21 @@ export async function readApplicationPlanProjections(database: SupabaseClient,
   }
   return result;
 }
+
+/**
+ * Same read as readApplicationPlanProjection(), looked up by revisionId alone —
+ * for callers (the commerce 'quote' request) that only carry a revisionId, not
+ * the planId. revision_id is the table's natural per-product lookup key here:
+ * each published revision belongs to exactly one plan, so this never needs a
+ * planId filter to resolve uniquely; the underlying single() call still fails
+ * if that ever stops being true.
+ */
+export async function readApplicationPlanProjectionByRevision(database: SupabaseClient, revisionId: string, productId: string) {
+  revisionId = uuid.parse(revisionId); productId = uuid.parse(productId);
+  const { data, error } = await database.from('subscription_plan_projections').select('projection,staged_by,staged_at')
+    .eq('revision_id', revisionId).eq('product_id', productId).abortSignal(AbortSignal.timeout(15000)).single();
+  if (error || !data) throw new Error('Application projection is unavailable');
+  const stored = await receipt(database, { projection: data.projection, stagedBy: data.staged_by, stagedAt: data.staged_at }, productId);
+  if (stored.projection.bundle.draft.id !== revisionId) throw new Error('Application projection read scope differs');
+  return stored;
+}

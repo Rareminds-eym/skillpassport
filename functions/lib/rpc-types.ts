@@ -17,7 +17,8 @@ export interface SsoWorkerRpc {
   listPublishedCatalogForAdministration(accessToken: string, productId: string,
     features: readonly { key: string; type: string; options?: readonly string[] }[], cursor: string | null): Promise<unknown>;
   listPublishedSubscriptionPlans(accessToken: string, productId: string,
-    features: readonly { key: string; type: string; options?: readonly string[] }[], cursor: string | null): Promise<unknown>;
+    features: readonly { key: string; type: string; options?: readonly string[] }[], cursor: string | null,
+    promoPlanId?: string, promoPriceAdjustmentMinor?: number): Promise<unknown>;
   prepareSubscriptionCreditExecution(accessToken: string, productId: string, request: unknown,
     features: readonly { key: string; type: string; options?: readonly string[] }[]): Promise<unknown>;
   executeSubscriptionLifecycle(accessToken: string, productId: string, operationId: string, request: unknown): Promise<unknown>;

@@ -81,12 +81,29 @@ export const catalogSchema = z.object({
     audiences: z.array(text).min(1), purchaseMode: z.enum(['self_service', 'contact_sales', 'free']),
     prices: z.array(price), features: z.array(featureGrant), presentation
   }).strict()), nextCursor: uuid.nullable(),
+  // Non-null only while a promo code maps this actor to exactly one plan (see
+  // functions/lib/subscriptions/discovery.ts); the frontend disables every other plan card
+  // while this is set, and shows the ordinary catalog whenever it's null.
+  eligiblePlanId: uuid.nullable().default(null),
+  // PRD R16/R17: true once the user has explicitly accepted this offer — the price shown is then
+  // the exact, immutable accepted price, not a live/provisional one. The frontend only shows the
+  // explicit "Accept this offer" confirmation step while this is false and eligiblePlanId is set.
+  offerAccepted: z.boolean().default(false),
 }).strict().refine(value => value.plans.every(row => row.plan.productId === value.productId
   && row.presentation.taxInclusive === (value.tax.priceDisplay === 'inclusive')
   && value.audience !== null && value.subjectKind !== null && row.audiences.includes(value.audience)
   && row.prices.every(p => p.audiences.every(a => row.audiences.includes(a))))
   && value.plans.every(plan => plan.purchaseMode !== 'free' || plan.prices.length === 0)
   && new Set(value.plans.map(p => p.plan.id)).size === value.plans.length, 'Inconsistent catalog scope');
+// PRD R16/R17: the exact, immutable terms the user explicitly accepted.
+export const promoOfferSchema = z.object({
+  planId: uuid, revisionId: uuid, revisionNumber: positive, priceId: uuid,
+  currency: z.string().regex(/^[A-Z]{3}$/), minorUnit: integer.max(20),
+  intervalUnit: z.enum(['month', 'year']), intervalCount: positive,
+  amountMinor: positive, acceptedAt: z.string().min(1),
+}).strict();
+const acceptPromoOfferSchema = z.object({ accepted: z.literal(true), offer: promoOfferSchema }).strict();
+export type PromoOffer = z.infer<typeof promoOfferSchema>;
 const creditScopeSchema = z.object({
   productId: uuid, subscriptionId: uuid,
   recipient: z.object({ kind: z.enum(['subscriber', 'organization', 'managed_learner']), id: uuid }).strict(),
@@ -342,6 +359,10 @@ export const subscriptionExecutionService = {
   },
   discover: (signal?: AbortSignal, cursor?: string) => request(cursorPath('', cursor), discoverySchema, signal),
   catalog: (signal?: AbortSignal, cursor?: string) => request(cursorPath('/catalog', cursor), catalogSchema, signal),
+  // PRD R16/R17: the only call that ever commits promo quota. Re-derives the live offer fresh
+  // on the server and atomically snapshots it; calling again once already accepted just returns
+  // the same immutable snapshot.
+  acceptPromoOffer: async (signal?: AbortSignal) => (await request('/promo-offer', acceptPromoOfferSchema, signal, {})).offer,
   current: async (row: Discovery['items'][number], context: Pick<Discovery, 'actorId' | 'productId'>, signal?: AbortSignal) => {
     const result = await request(`/current?subscriptionId=${encodeURIComponent(uuid.parse(row.id))}`, currentSchema, signal);
     if (result.actorId !== context.actorId || result.state.productId !== context.productId || result.state.id !== row.id
