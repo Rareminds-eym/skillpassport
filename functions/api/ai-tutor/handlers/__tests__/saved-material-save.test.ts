@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-const mocks=vi.hoisted(()=>({from:vi.fn(),rpc:vi.fn(),convert:vi.fn(),insert:vi.fn()}));
+const mocks=vi.hoisted(()=>({from:vi.fn(),rpc:vi.fn(),convert:vi.fn(),insert:vi.fn(),warn:vi.fn()}));
+vi.mock('../../../../lib/logger',()=>({createLogger:()=>({warn:mocks.warn})}));
 vi.mock('../../../../lib/auth',()=>({getContextUser:()=>({id:'teacher'}),getServiceClient:()=>mocks}));
 vi.mock('../../utils/course-index',()=>({requireCourseAccess:async()=>true}));
 vi.mock('../../utils/saved-assessment',async original=>({...await original<typeof import('../../utils/saved-assessment')>(),structureSavedWorksheet:mocks.convert}));
@@ -8,7 +9,7 @@ import { AssessmentModelError } from '../../utils/saved-assessment';
 import { handleSavedMaterials } from '../saved-materials';
 const id='00000000-0000-4000-8000-000000000001';
 beforeEach(()=>{
- vi.clearAllMocks();vi.spyOn(console,'warn').mockImplementation(()=>{});
+ vi.clearAllMocks();
  mocks.rpc.mockResolvedValue({data:true,error:null});
  mocks.convert.mockResolvedValue({questions:[],rules:[]});
  mocks.from.mockImplementation((table:string)=>{
@@ -24,7 +25,7 @@ it.each([401,402,403,429])('reports provider failure %s safely without inserting
  const response=await save();const body=await response.text();
  expect(response.status).toBe(status===429?429:503);expect(body).toContain(status===429?'service is busy':'provider access and credits');
  expect(body).not.toContain('storage configuration');expect(mocks.insert).not.toHaveBeenCalled();expect(mocks.rpc).not.toHaveBeenCalled();
- expect(console.warn).toHaveBeenCalledWith('Saved material operation failed',expect.objectContaining({stage:'worksheet_conversion',providerStatus:status}));
+ expect(mocks.warn).toHaveBeenCalledWith('Saved material operation failed',expect.objectContaining({stage:'worksheet_conversion',providerStatus:status}));
 });
 it('reports validated conversion failure without creating a partial assignment',async()=>{
  mocks.convert.mockRejectedValueOnce(new Error('Worksheet conversion failed validation'));

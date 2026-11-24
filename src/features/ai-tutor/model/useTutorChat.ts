@@ -98,6 +98,8 @@ export function useTutorChat({
   useEffect(() => {
     const navigation = ++navigationRef.current;
     activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    setIsStreaming(false); setIsReasoning(false); setCurrentReasoning('');
     setConversationId(null); setMessages([]); setFacilitatorMode('auto');
     setError(null); setIsLoading(false);
     if (!storageKey) return;
@@ -232,6 +234,7 @@ export function useTutorChat({
         }
       }
 
+      requestController.signal.throwIfAborted();
       // Update conversation ID if this was a new conversation (fallback)
       const newConvId = getLastConversationId();
       if (newConvId && !conversationId) {
@@ -240,16 +243,19 @@ export function useTutorChat({
         refreshConversations();
       }
     } catch (err: unknown) {
+      if (activeRequestRef.current !== requestController) return;
       if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to send message'));
       // Keep generated material available for export when persistence fails.
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
       // Voice needs the generation error, not a misleading persistence fallback.
       if (options?.voice && !requestController.signal.aborted) throw err;
     } finally {
-      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
-      setIsLoading(false);
-      setIsStreaming(false);
-      setIsReasoning(false);
+      if (activeRequestRef.current === requestController) {
+        activeRequestRef.current = null;
+        setIsLoading(false);
+        setIsStreaming(false);
+        setIsReasoning(false);
+      }
     }
   }, [
     conversationId,
@@ -266,12 +272,16 @@ export function useTutorChat({
 
   // Load an existing conversation
   const loadConversation = useCallback(async (convId: string) => {
-    ++navigationRef.current;
+    const navigation = ++navigationRef.current;
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    setIsStreaming(false); setIsReasoning(false); setCurrentReasoning('');
     setIsLoading(true);
     setError(null);
 
     try {
       const conv = await getConversation(convId);
+      if (navigation !== navigationRef.current) return;
       if (conv) {
         setConversationId(conv.id);
         rememberConversation(conv.id);
@@ -281,15 +291,18 @@ export function useTutorChat({
         setError('Conversation not found');
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Failed to load conversation'));
+      if (navigation === navigationRef.current) setError(getErrorMessage(err, 'Failed to load conversation'));
     } finally {
-      setIsLoading(false);
+      if (navigation === navigationRef.current) setIsLoading(false);
     }
   }, [rememberConversation]);
 
   // Start a new conversation
   const startNewConversation = useCallback(() => {
     ++navigationRef.current;
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
+    setIsStreaming(false); setIsReasoning(false); setCurrentReasoning('');
     setIsLoading(false);
     rememberConversation(null);
     setConversationId(null);
@@ -378,6 +391,7 @@ export function useTutorChat({
         }
       }
 
+      requestController.signal.throwIfAborted();
       const newConvId = getLastConversationId();
       if (newConvId && !conversationId) {
         setConversationId(newConvId);
@@ -385,13 +399,16 @@ export function useTutorChat({
         refreshConversations();
       }
     } catch (err: unknown) {
+      if (activeRequestRef.current !== requestController) return;
       if (!requestController.signal.aborted) setError(getErrorMessage(err, 'Failed to regenerate response'));
       setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId || msg.content.trim()).map(msg => msg.id === assistantMessageId ? { ...msg, status: requestController.signal.aborted ? 'stopped' as const : 'failed' as const } : msg));
     } finally {
-      if (activeRequestRef.current === requestController) activeRequestRef.current = null;
-      setIsLoading(false);
-      setIsStreaming(false);
-      setIsReasoning(false);
+      if (activeRequestRef.current === requestController) {
+        activeRequestRef.current = null;
+        setIsLoading(false);
+        setIsStreaming(false);
+        setIsReasoning(false);
+      }
     }
   }, [
     messages,
