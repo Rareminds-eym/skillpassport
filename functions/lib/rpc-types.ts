@@ -49,6 +49,14 @@ export interface SsoWorkerRpc {
   syncSubscription(userId: string): Promise<{ subscription: Record<string, unknown> | null; plan: Record<string, unknown> | null }>;
   syncPlans(): Promise<{ plans: Record<string, unknown>[] }>;
   listRoles(): Promise<{ roles: { id: string; name: string; description: string | null }[] }>;
+  getLearnerSeatAvailability(organizationId: string): Promise<{
+    allowed: boolean;
+    limited: boolean;
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+    message?: string;
+  }>;
   // Generic fallback for other RPCs
   [key: string]: (...args: any[]) => Promise<any>;
 }
