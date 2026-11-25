@@ -6,8 +6,9 @@ import { getAuthToken, getServiceClient } from '../../../lib/supabase';
 import { isHealEnabled } from '../../../lib/healConfig';
 import { withResilience } from '../../../lib/resilience';
 import { ssoSyncSubscription, type SsoEnv } from '../../../lib/sso-client';
-import { syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
-import { resolveUserEntitlement, subscriptionScope, type EntitlementResult } from '../../../shared/lib/org-subscription';
+import { syncPlanCache, syncSubscriptionCache, syncUserShadow } from '../../../lib/sync-shadow';
+import { ensureAppUserAndLearner } from '../../../lib/heal-user';
+import { ApplicationProfilePending, resolveUserEntitlement, subscriptionScope, type EntitlementResult } from '../../../shared/lib/org-subscription';
 import { readCurrentSubscriptionOwner } from '../../../lib/subscriptions/current-subscription';
 import type { PagesEnv } from '../../../lib/types';
 import { SubscriptionReadDenied } from '../../../lib/subscriptions/read-cache';
@@ -43,13 +44,24 @@ export async function handleGetActiveSubscription(context: SeatRequestContext): 
         subscription_end_date: current.state.periodEndsAt === null ? null : new Date(current.state.periodEndsAt).toISOString() };
     };
     const readPolicy = { authorizeRead };
-    let subscription = await resolveUserEntitlement(supabase, user.id, identity, readPolicy);
+    let subscription: EntitlementResult | null;
+    try {
+      subscription = await resolveUserEntitlement(supabase, user.id, identity, readPolicy);
+    } catch (error) {
+      // OAuth projection events and the background auth heal may still be in flight.
+      // Wait for identity recovery before evaluating access, then apply the same policy.
+      if (!(error instanceof ApplicationProfilePending)
+        || !await isHealEnabled(context.env as Record<string, unknown>, 'heal-user')) throw error;
+      await ensureAppUserAndLearner(supabase, context.env, { sub: user.id, email: user.email });
+      subscription = await resolveUserEntitlement(supabase, user.id, identity, readPolicy);
+    }
     if (!subscription && await isHealEnabled(context.env as Record<string, unknown>, 'subscription-cache-heal')) {
       const synced = await withResilience('heal:syncSubscription',
         () => ssoSyncSubscription(context.env as unknown as SsoEnv, user.id),
         { env: context.env as Record<string, unknown> });
       if (synced.subscription) {
         await syncUserShadow(supabase, user.id, user.email);
+        if (synced.plan) await syncPlanCache(supabase, synced.plan);
         await syncSubscriptionCache(supabase, synced.subscription, synced.plan);
         // Never return an unvalidated RPC payload or manufacture access on sync failure.
         subscription = await resolveUserEntitlement(supabase, user.id, identity, readPolicy);
