@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from './logger';
 import { withResilience } from './resilience';
-import { syncSubscriptionCache, syncUserShadow } from './sync-shadow';
+import { syncPlanCache, syncSubscriptionCache, syncUserShadow } from './sync-shadow';
 import { isValidUUID } from './validation';
 
 export interface HealEnv {
@@ -313,6 +313,7 @@ export async function ensureAppUserAndLearner(
 
     // 5) subscription_cache — always sync if exists
     if (subscription) {
+      if (plan) await syncPlanCache(supabase, plan);
       await syncUserShadow(supabase, userId, ssoEmail);
       await syncSubscriptionCache(supabase, subscription as Record<string, unknown>, plan as Record<string, unknown> | null);
       log.info('heal: subscription_cache synced', { requestId, userId, plan_code: (subscription as any).plan_code });

@@ -1,15 +1,17 @@
 import { SKILLPASSPORT_PRODUCT_ID } from '../lib/subscription-config';
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from 'vitest';
-const mocks = vi.hoisted(() => ({ resolve: vi.fn(), heal: vi.fn(), sync: vi.fn(), cache: vi.fn(), owner: vi.fn() }));
+const mocks = vi.hoisted(() => ({ resolve: vi.fn(), heal: vi.fn(), sync: vi.fn(), cache: vi.fn(), planCache: vi.fn(), profileHeal: vi.fn(), owner: vi.fn() }));
 vi.mock('../shared/lib/org-subscription', async importOriginal => ({ ...(await importOriginal<any>()), resolveUserEntitlement: mocks.resolve }));
 vi.mock('../lib/auth', () => ({ getContextUser: () => ({ id: actor, email: 'u@example.test', roles: ['learner'] }) }));
 vi.mock('../lib/supabase', () => ({ getServiceClient: () => ({}), getAuthToken: () => 'synthetic-token' }));
 vi.mock('../lib/healConfig', () => ({ isHealEnabled: mocks.heal }));
 vi.mock('../lib/sso-client', () => ({ ssoSyncSubscription: mocks.sync }));
-vi.mock('../lib/sync-shadow', () => ({ syncUserShadow: vi.fn(), syncSubscriptionCache: mocks.cache }));
+vi.mock('../lib/sync-shadow', () => ({ syncUserShadow: vi.fn(), syncSubscriptionCache: mocks.cache, syncPlanCache: mocks.planCache }));
+vi.mock('../lib/heal-user', () => ({ ensureAppUserAndLearner: mocks.profileHeal }));
 vi.mock('../lib/resilience', () => ({ withResilience: (_key: string, call: () => Promise<unknown>) => call() }));
 import { handleGetActiveSubscription } from '../api/payments/handlers/get-active-subscription';
+import { ApplicationProfilePending } from '../shared/lib/org-subscription';
 const actor = 'a0000000-0000-4000-8000-000000000001', product = SKILLPASSPORT_PRODUCT_ID;
 const subscription = 'c0000000-0000-4000-8000-000000000001', plan = 'd0000000-0000-4000-8000-000000000001', revision = 'e0000000-0000-4000-8000-000000000001';
 const run = (scope = '') => handleGetActiveSubscription({ request: new Request(`https://example.test/api/payments/get-active-subscription${scope ? `?scope=${scope}` : ''}`),
@@ -21,6 +23,30 @@ it('returns no subscription for a verified user without applicable coverage', as
 it('returns verification errors instead of an empty success response', async () => {
   mocks.resolve.mockRejectedValue(new Error('Database offline'));
   expect((await run()).status).toBe(503);
+  expect(mocks.profileHeal).not.toHaveBeenCalled();
+});
+it('waits for first-login profile recovery and returns the validated free subscription', async () => {
+  const free = { id: subscription, plan_code: 'freemium', billing_cycle: 'free', status: 'active' };
+  mocks.heal.mockResolvedValue(true);
+  mocks.resolve.mockRejectedValueOnce(new ApplicationProfilePending()).mockResolvedValueOnce(free);
+  mocks.profileHeal.mockResolvedValue({ healed: true, reason: 'healed' });
+  const response = await run('learner');
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ success: true, data: free });
+  expect(mocks.profileHeal).toHaveBeenCalledWith({}, expect.anything(), { sub: actor, email: 'u@example.test' });
+  expect(mocks.resolve).toHaveBeenCalledTimes(2);
+  expect(mocks.sync).not.toHaveBeenCalled();
+});
+it('keeps verification unavailable if first-login recovery fails to produce a profile', async () => {
+  mocks.heal.mockResolvedValue(true);
+  mocks.resolve.mockRejectedValue(new ApplicationProfilePending());
+  expect((await run()).status).toBe(503);
+  expect(mocks.profileHeal).toHaveBeenCalledOnce();
+});
+it('respects disabled identity recovery', async () => {
+  mocks.resolve.mockRejectedValue(new ApplicationProfilePending());
+  expect((await run()).status).toBe(503);
+  expect(mocks.profileHeal).not.toHaveBeenCalled();
 });
 it('does not mask a source-of-truth failure as no subscription', async () => {
   mocks.heal.mockResolvedValue(true); mocks.sync.mockRejectedValue(new Error('SSO offline'));
@@ -30,6 +56,8 @@ it('revalidates synced data instead of granting access from the raw RPC payload'
   mocks.heal.mockResolvedValue(true); mocks.sync.mockResolvedValue({ subscription: { id: 'wrong-plan' }, plan: {} });
   expect(await (await run()).json()).toMatchObject({ data: null });
   expect(mocks.resolve).toHaveBeenCalledTimes(2);
+  expect(mocks.planCache).toHaveBeenCalledWith({}, {});
+  expect(mocks.planCache.mock.invocationCallOrder[0]).toBeLessThan(mocks.cache.mock.invocationCallOrder[0]);
 });
 it('rejects a requested dashboard missing from the authenticated roles', async () => {
   expect((await run('college_admin')).status).toBe(403);

@@ -35,6 +35,10 @@ interface Organization { id: string; organization_type?: string; name?: string; 
 interface Profile { metadata?: Record<string, unknown> }
 interface LearnerOrganization { school_id?: string; college_id?: string; is_deleted?: boolean | null; deleted_at?: string | null }
 
+export class ApplicationProfilePending extends Error {
+  constructor() { super('Application profile is still being synchronized'); }
+}
+
 export async function checked<T>(query: PromiseLike<{ data: T | null; error: unknown }>): Promise<T | null> {
   const { data, error } = await query;
   if (error) throw new Error('Unable to verify subscription data');
@@ -64,7 +68,7 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
     checked<LearnerOrganization>(supabase.from('learners').select('school_id, college_id, is_deleted, deleted_at').eq('user_id', userId).maybeSingle()),
     checked(supabase.from('organizations').select('id, organization_type, name, email, phone').eq('admin_id', userId)),
   ]);
-  if (!profile) throw new Error('Application profile is still being synchronized');
+  if (!profile) throw new ApplicationProfilePending();
   let promoRequirement: Promise<boolean> | undefined;
   const requiresPromoPayment = () => promoRequirement ??= promoPaymentRequired(supabase, userId, { role: scope, metadata: profile.metadata });
   const purchased = (sub: Subscription) => Number(sub.plan_amount) > 0 || Boolean(sub.razorpay_payment_id);
