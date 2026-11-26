@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiGet } from '@/shared/api/apiClient';
+import { isOrganizationRegistrationComplete } from '../lib/registrationReadiness';
 
 export type OrganizationType = 'school' | 'college' | 'university';
 
@@ -86,7 +87,7 @@ export function useOrganizationCheck(
     await fetchOrganization();
   }, [fetchOrganization]);
 
-  return { organization, loading, error, hasOrganization: organization !== null, refetch };
+  return { organization, loading, error, hasOrganization: isOrganizationRegistrationComplete(organization, organizationType), refetch };
 }
 
 export default useOrganizationCheck;
