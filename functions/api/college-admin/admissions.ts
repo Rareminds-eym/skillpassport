@@ -67,8 +67,17 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
     }
     switch (action) {
-      case 'get-admission-context':
-        return apiSuccess({ id: scope!.organizationId, organization_type: scope!.type }, context.request);
+      case 'get-admission-context': {
+        let seat_availability = null;
+        if (env.SSO_SERVICE) {
+          try {
+            seat_availability = await env.SSO_SERVICE.getLearnerSeatAvailability(scope!.organizationId);
+          } catch (err) {
+            console.warn('[admissions] Failed to fetch seat availability:', err instanceof Error ? err.message : String(err));
+          }
+        }
+        return apiSuccess({ id: scope!.organizationId, organization_type: scope!.type, seat_availability }, context.request);
+      }
       case 'get-admission-classes': {
         const type = scope!.type;
         const { data, error } = await supabase.from(type === 'college' ? 'college_classes' : 'school_classes')
@@ -106,7 +115,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
         
         if (!ssoResult.success) {
-          return apiError(500, 'SSO_ERROR', ssoResult.error || 'Failed to create learner user', context.request, { startTime });
+          const isSeatLimit = (ssoResult as { errorCode?: string }).errorCode === 'SEAT_LIMIT_EXCEEDED';
+          return apiError(isSeatLimit ? 403 : 500, isSeatLimit ? 'SEAT_LIMIT_EXCEEDED' : 'SSO_ERROR', ssoResult.error || 'Failed to create learner user', context.request, { startTime });
         }
         
         console.log(`[admissions] Created learner user ${ssoResult.user_id} via SSO`);
@@ -256,7 +266,8 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         }
         
         if (!result.success) {
-          return apiError(500, 'QUEUE_ERROR', result.error || 'Failed to queue bulk upload', context.request, { startTime });
+          const isSeatLimit = (result as { errorCode?: string }).errorCode === 'SEAT_LIMIT_EXCEEDED';
+          return apiError(isSeatLimit ? 403 : 500, isSeatLimit ? 'SEAT_LIMIT_EXCEEDED' : 'QUEUE_ERROR', result.error || 'Failed to queue bulk upload', context.request, { startTime });
         }
         
         console.log(`[admissions] Queued bulk upload batch ${result.batch_id}`);

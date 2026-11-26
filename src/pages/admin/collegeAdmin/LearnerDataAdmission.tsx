@@ -23,6 +23,7 @@ import {
 } from '@/shared/ui';
 import { LearnerProfileDrawer, AdmissionNoteModal } from '@/features/learner-profile';
 import { AddLearnerModal } from '@/features/college-admin';
+import type { SeatAvailability } from '@/features/college-admin/ui/modals/AddLearnerModal';
 import { useLearners } from '@/entities/learner';
 import { useUser } from '@/shared/model/authStore';
 import { toast } from 'react-hot-toast';
@@ -243,6 +244,7 @@ const LearnerDataAdmission = () => {
   const [assessmentResult, setAssessmentResult] = useState<any>(null);
   const [loadingAssessmentForLearner, setLoadingAssessmentForLearner] = useState<string | null>(null);
   const [showAddlearnerModal, setShowAddlearnerModal] = useState(false);
+  const [seatAvailability, setSeatAvailability] = useState<SeatAvailability | null>(null);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [learnerForNote, setlearnerForNote] = useState<any>(null);
 
@@ -287,6 +289,19 @@ const LearnerDataAdmission = () => {
     };
     fetchCollegeId();
   }, [user?.id, user?.email]);
+
+  const refreshSeatAvailability = async () => {
+    try {
+      const ctxRes: any = await apiPost('/college-admin/admissions', {
+        action: 'get-admission-context',
+      });
+      if (ctxRes?.data?.seat_availability) {
+        setSeatAvailability(ctxRes.data.seat_availability);
+      }
+    } catch {
+      // Non-fatal: backend still enforces seat limits on write
+    }
+  };
 
   // Fetch course mappings + programs for the Course Mapping filter
   useEffect(() => {
@@ -920,7 +935,10 @@ const LearnerDataAdmission = () => {
           <p className="text-base md:text-lg mt-2 text-gray-600">Manage learner enrollments and profiles for your college.</p>
         </div>
         <button
-          onClick={() => setShowAddlearnerModal(true)}
+          onClick={() => {
+            void refreshSeatAvailability();
+            setShowAddlearnerModal(true);
+          }}
           className="mt-3 sm:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
         >
           <UserPlusIcon className="h-5 w-5 mr-2" />
@@ -1482,10 +1500,12 @@ const LearnerDataAdmission = () => {
       {/* Add Learner Modal */}
       <AddLearnerModal
         isOpen={showAddlearnerModal}
+        seatAvailability={seatAvailability}
         onClose={() => {
           setShowAddlearnerModal(false);
         }}
         onSuccess={async (result) => {
+          void refreshSeatAvailability();
           if (!result?.bulk) {
             setShowAddlearnerModal(false);
             toast.success('Learner added successfully');

@@ -129,6 +129,9 @@ export async function handleCreateLearner(request: Request, env: PagesEnv, actor
     });
 
     if (!ssoResult.success) {
+      if ((ssoResult as { errorCode?: string }).errorCode === 'SEAT_LIMIT_EXCEEDED') {
+        return apiError(403, 'SEAT_LIMIT_EXCEEDED', ssoResult.error || 'Seat limit reached. Please upgrade or purchase additional seats.', request);
+      }
       // SSO rejects an email that already has an account; surface it as a clear 409, not a 500.
       if (/already exists/i.test(ssoResult.error || '')) {
         return apiError(409, 'LEARNER_ALREADY_EXISTS', `A learner with email ${learner.email.toLowerCase()} already exists.`, request);

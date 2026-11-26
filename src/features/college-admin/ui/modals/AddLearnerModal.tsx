@@ -44,11 +44,29 @@ interface ValidatedLearner {
   errors: string[]
 }
 
+export interface SeatAvailability {
+  limited: boolean
+  used: number
+  limit: number | null
+  remaining: number | null
+  message?: string
+}
+
+function getSeatLimitError(avail: SeatAvailability | null | undefined, count: number): string | null {
+  if (!avail?.limited || avail.limit === null || avail.remaining === null || count <= avail.remaining) return null
+  return avail.message || (
+    avail.remaining <= 0
+      ? `Seat limit reached (${avail.used}/${avail.limit} seats used). Please upgrade or purchase additional seats.`
+      : `Seat limit reached (${avail.remaining} of ${avail.limit} seats remaining). Please upgrade or purchase additional seats.`
+  )
+}
+
 interface Props {
   isOpen: boolean
   onClose: () => void
   // For CSV imports the page may return a promise that resolves once the imported learners are visible.
   onSuccess?: (result?: { bulk?: boolean; emails?: string[]; expected?: number; partial?: boolean }) => void | Promise<void>
+  seatAvailability?: SeatAvailability | null
 }
 
 interface LearnerFormData {
@@ -77,8 +95,12 @@ interface LearnerFormData {
 
 const logger = getLogger('add-learner-modal')
 
-const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
+const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess, seatAvailability: initialSeatAvailability = null }) => {
   const [loading, setLoading] = useState(false)
+  const [seatAvailability, setSeatAvailability] = useState<SeatAvailability | null>(initialSeatAvailability)
+  useEffect(() => {
+    setSeatAvailability(initialSeatAvailability)
+  }, [initialSeatAvailability, isOpen])
   const [enrollment, setEnrollment] = useState<PendingEnrollment | null>(null)
   const enrollmentRef = useRef<PendingEnrollment | null>(null)
   const submitting = useRef(false)
@@ -374,10 +396,15 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
         throw new Error('You are not logged in. Please login and try again.')
       }
 
-      const context = await apiPost<{ data: { id: string; organization_type: string } }>('/college-admin/admissions', {
+      const context = await apiPost<{ data: { id: string; organization_type: string; seat_availability?: SeatAvailability | null } }>('/college-admin/admissions', {
         action: 'get-admission-context',
       })
       if (!context?.data?.id) throw new Error('Your enrollment organization could not be verified.')
+      if (context.data.seat_availability) {
+        setSeatAvailability(context.data.seat_availability)
+        const seatErr = !enrollmentRef.current ? getSeatLimitError(context.data.seat_availability, 1) : null
+        if (seatErr) throw new Error(seatErr)
+      }
       const schoolId = context.data.organization_type === 'school' ? context.data.id : null
       const collegeId = context.data.organization_type === 'college' ? context.data.id : null
 
@@ -699,11 +726,15 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             return
           }
 
-          const context = await apiPost<{ data: { id: string; organization_type: string } }>('/college-admin/admissions', {
+          const context = await apiPost<{ data: { id: string; organization_type: string; seat_availability?: SeatAvailability | null } }>('/college-admin/admissions', {
             action: 'get-admission-context',
           })
           if (!current()) return
           if (!context?.data?.id) throw new Error('Your enrollment organization could not be verified.')
+          if (context.data.seat_availability) {
+            setSeatAvailability(context.data.seat_availability)
+          }
+          const latestSeatAvailability = context.data.seat_availability ?? seatAvailability
           const schoolId = context.data.organization_type === 'school' ? context.data.id : null
           const collegeId = context.data.organization_type === 'college' ? context.data.id : null
 
@@ -801,6 +832,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
           setValidatedlearners(validated)
           setShowEnhancedPreview(true)
+          const seatErr = getSeatLimitError(latestSeatAvailability, validated.filter(s => s.isValid).length)
+          if (seatErr) setError(seatErr)
         } catch (err: unknown) {
           if (current()) setError(`Error validating CSV: ${err instanceof Error ? err.message : String(err)}`)
         } finally {
@@ -828,7 +861,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
     setSuccess(null)
 
     try {
-      const context = await apiPost<{ data: { id: string } }>('/college-admin/admissions', {
+      const context = await apiPost<{ data: { id: string; seat_availability?: SeatAvailability | null } }>('/college-admin/admissions', {
         action: 'get-admission-context',
       })
       if (!current()) return
@@ -838,6 +871,11 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
       // Submit exactly the rows shown as importable; the worker validates them again.
       const importable = validatedlearners.filter(row => row.isValid).map(row => row.data)
       if (!importable.length) throw new Error('There are no valid rows to import. Correct the CSV and validate it again.')
+      if (context.data.seat_availability) {
+        setSeatAvailability(context.data.seat_availability)
+        const seatErr = getSeatLimitError(context.data.seat_availability, importable.length)
+        if (seatErr) throw new Error(seatErr)
+      }
       const csvText = Papa.unparse(importable)
 
       // Queue bulk upload
@@ -945,6 +983,8 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
 
   if (!isOpen) return null
 
+  const validCsvCount = validatedlearners.filter(s => s.isValid).length
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -962,6 +1002,26 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
           </div>
 
           {enrollment && !enrollment.complete && !loading && <p role="status" className="mb-4 text-sm text-amber-800">The account for {enrollment.name} was created, but enrollment is not finished. Retry documents here; do not enroll this learner again. Keep this page open until document linking completes.</p>}
+          {seatAvailability?.limited && seatAvailability.limit !== null && (
+            <div
+              role="status"
+              className={`mb-4 rounded-md border px-4 py-2.5 text-sm ${
+                (seatAvailability.remaining ?? 0) <= 0
+                  ? 'border-red-200 bg-red-50 text-red-800'
+                  : 'border-blue-200 bg-blue-50 text-blue-800'
+              }`}
+            >
+              {(seatAvailability.remaining ?? 0) <= 0 ? (
+                <span>
+                  Seat limit reached: <strong>{seatAvailability.used} / {seatAvailability.limit}</strong> seats used (0 remaining). Please upgrade or purchase additional seats.
+                </span>
+              ) : (
+                <span>
+                  Seats used: <strong>{seatAvailability.used} / {seatAvailability.limit}</strong> ({seatAvailability.remaining} remaining)
+                </span>
+              )}
+            </div>
+          )}
           {/* Mode Selection */}
           <div className="flex space-x-2 mb-6">
             <button
@@ -1790,7 +1850,13 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
             </button>
             <button
               onClick={mode === 'manual' ? handleSubmit : handleCSVSubmit}
-              disabled={loading || Boolean(enrollment?.complete) || Boolean(enrollment && !enrollment.userId) || (mode === 'csv' && !csvFile) || (mode === 'csv' && showEnhancedPreview && validatedlearners.filter(s => s.isValid).length === 0)}
+              disabled={
+                loading ||
+                Boolean(enrollment?.complete) ||
+                Boolean(enrollment && !enrollment.userId) ||
+                (mode === 'manual' && !enrollment && Boolean(getSeatLimitError(seatAvailability, 1))) ||
+                (mode === 'csv' && (!csvFile || (showEnhancedPreview && (validCsvCount === 0 || Boolean(getSeatLimitError(seatAvailability, validCsvCount))))))
+              }
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed inline-flex items-center"
             >
               {loading ? (
@@ -1806,7 +1872,7 @@ const AddLearnerModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => {
                   <UserPlusIcon className="h-4 w-4 mr-1" />
                   {mode === 'manual' ? (enrollment ? (enrollment.complete ? 'Enrollment complete' : 'Retry documents') : 'Add Learner') : (
                     showEnhancedPreview && validatedlearners.length > 0
-                      ? `Import ${validatedlearners.filter(s => s.isValid).length} Valid Learner${validatedlearners.filter(s => s.isValid).length !== 1 ? 's' : ''}`
+                      ? `Import ${validCsvCount} Valid Learner${validCsvCount !== 1 ? 's' : ''}`
                       : 'Upload CSV'
                   )}
                 </>
