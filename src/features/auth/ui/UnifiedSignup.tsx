@@ -25,6 +25,7 @@ import {
 } from '@/shared/config/registrationConfig';
 // Import OTP functions directly from otpService (not from index which has stubs)
 import { sendOtp, verifyOtp as verifyOtpApi } from '@/features/auth/api/otpService';
+import { INVALID_SIGNUP_PROMO, validateSignupPromo } from '@/features/auth/api/validateSignupPromo';
 // @ts-ignore - JS module without types
 import { DatePicker } from '@/features/subscription';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -351,6 +352,32 @@ const UnifiedSignup = () => {
   const hasStartedFormRef = useRef(false);
 
   const normalizedReferralCode = normalizePromoCode(state.referralCode);
+  const [promoFeedback, setPromoFeedback] = useState<{ checking: boolean; error: string; valid: boolean }>({ checking: false, error: '', valid: false });
+  const promoSubmitRef = useRef(false);
+  const promoVerifyRef = useRef<AbortController | null>(null);
+  const handleVerifyPromo = useCallback(async () => {
+    if (!normalizedReferralCode || !state.selectedRole || promoVerifyRef.current || promoSubmitRef.current || stateRef.current.loading) return;
+    const controller = new AbortController();
+    promoVerifyRef.current = controller;
+    setPromoFeedback({ checking: true, error: '', valid: false });
+    try {
+      const valid = await validateSignupPromo(normalizedReferralCode, state.selectedRole, controller.signal);
+      if (!controller.signal.aborted) setPromoFeedback({ checking: false, valid, error: valid ? '' : INVALID_SIGNUP_PROMO });
+    } catch {
+      if (!controller.signal.aborted) setPromoFeedback({ checking: false, valid: false, error: 'Unable to verify the promo code. Please try again.' });
+    } finally {
+      if (promoVerifyRef.current === controller) promoVerifyRef.current = null;
+    }
+  }, [normalizedReferralCode, state.selectedRole]);
+
+  useEffect(() => {
+    promoVerifyRef.current?.abort();
+    promoVerifyRef.current = null;
+    setPromoFeedback({ checking: false, error: '', valid: false });
+    // Link campaigns apply automatically; manually entered codes require Verify.
+    if (isReferralCodeLocked && currentStep === 2) void handleVerifyPromo();
+    return () => { promoVerifyRef.current?.abort(); };
+  }, [handleVerifyPromo, isReferralCodeLocked, currentStep]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -661,7 +688,24 @@ const UnifiedSignup = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (promoSubmitRef.current || state.loading) return;
     if (!validateForm()) return;
+    if (normalizedReferralCode) {
+      promoVerifyRef.current?.abort();
+      promoVerifyRef.current = null;
+      promoSubmitRef.current = true;
+      setPromoFeedback({ checking: true, error: '', valid: false });
+      try {
+        const valid = await validateSignupPromo(normalizedReferralCode, state.selectedRole!);
+        // Do not submit an old form snapshot if the user edits code/role during the check.
+        if (normalizePromoCode(stateRef.current.referralCode) !== normalizedReferralCode || stateRef.current.selectedRole !== state.selectedRole) return;
+        setPromoFeedback({ checking: false, error: valid ? '' : INVALID_SIGNUP_PROMO, valid });
+        if (!valid) { document.getElementById('signup-promo-code')?.focus(); return; }
+      } catch {
+        setPromoFeedback({ checking: false, error: 'Unable to verify the promo code. Please try again.', valid: false });
+        document.getElementById('signup-promo-code')?.focus(); return;
+      } finally { promoSubmitRef.current = false; }
+    }
 
     console.log('=== SIGNUP FORM SUBMITTED ===');
     console.log('[UnifiedSignup] Checking invitation token at form submit');
@@ -1563,21 +1607,34 @@ const UnifiedSignup = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Referral Code <span className="text-gray-400 font-normal">(Optional)</span></label>
+                  <label htmlFor="signup-promo-code" className="block text-sm font-medium text-gray-700 mb-1.5">Promo / Referral Code <span className="text-gray-400 font-normal">(Optional)</span></label>
+                  <div className="flex items-stretch gap-2">
                   <input
+                    id="signup-promo-code"
                     type="text"
                     name="referralCode"
                     value={state.referralCode}
                     onChange={handleInputChange}
                     placeholder="Code"
+                    maxLength={100}
+                    disabled={state.loading}
                     readOnly={isReferralCodeLocked}
                     aria-readonly={isReferralCodeLocked}
-                    title={isReferralCodeLocked ? 'Referral code applied from signup link' : undefined}
-                    className={`block w-full px-4 py-3 border border-gray-200 rounded-xl transition-all outline-none ${isReferralCodeLocked
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                      : 'bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500'
-                      }`}
+                    title={isReferralCodeLocked ? 'Promo code supplied by your signup link' : undefined}
+                    aria-invalid={Boolean(promoFeedback.error)}
+                    aria-describedby="signup-promo-feedback"
+                    className={`block min-w-0 flex-1 px-4 py-3 border rounded-xl transition-all outline-none focus:ring-2 ${promoFeedback.error ? 'border-red-500 bg-gray-50 focus:ring-red-500/20' : promoFeedback.valid ? 'border-green-500 bg-green-50 focus:ring-green-500/20' : 'border-gray-200 bg-gray-50 focus:bg-white focus:ring-blue-500/20 focus:border-blue-500'} ${isReferralCodeLocked ? 'cursor-default' : ''}`}
                   />
+                  {promoFeedback.valid ? <span className="flex items-center px-2 text-green-600" aria-label="Promo code applied"><CheckCircle className="h-5 w-5" aria-hidden="true" /></span> : (!isReferralCodeLocked || promoFeedback.error) &&
+                  <button type="button" onClick={handleVerifyPromo} disabled={!normalizedReferralCode || !state.selectedRole || state.loading || promoFeedback.checking}
+                    title={!state.selectedRole ? 'Select your role before verifying the code' : undefined}
+                    className="shrink-0 rounded-xl border border-blue-600 px-4 py-3 text-sm font-semibold text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
+                    {promoFeedback.checking ? 'Verifying…' : isReferralCodeLocked ? 'Retry' : 'Verify'}
+                  </button>}
+                  </div>
+                  <p id="signup-promo-feedback" role={promoFeedback.error ? 'alert' : 'status'} className={`mt-2 text-sm ${promoFeedback.error ? 'text-red-600' : promoFeedback.valid ? 'font-medium text-green-700' : 'text-gray-600'}`}>
+                    {promoFeedback.checking ? 'Applying promo code…' : promoFeedback.error || (promoFeedback.valid ? 'Promo code applied.' : isReferralCodeLocked && !state.selectedRole ? 'Select your role to apply this code.' : '')}
+                  </p>
                 </div>
 
                 <div className="pt-2">
