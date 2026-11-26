@@ -5,7 +5,11 @@ import UnifiedForgotPassword from '../UnifiedForgotPassword';
 import TokenPasswordReset from '../TokenPasswordReset';
 
 const client = vi.hoisted(() => ({ forgotPassword: vi.fn(), resetPassword: vi.fn() }));
-const setup = vi.hoisted(() => ({user:null as any,change:vi.fn(),logout:vi.fn()}));
+const setup = vi.hoisted(() => ({
+  user: null as { id: string; user_metadata?: { first_login_setup_required?: boolean; must_change_password?: boolean } } | null,
+  change: vi.fn(),
+  logout: vi.fn(),
+}));
 vi.mock('@/shared/model/authStore',()=>({useUser:()=>setup.user,useAuthStore:{getState:()=>({logout:setup.logout})}}));
 vi.mock('@/entities/user',()=>({updatePassword:setup.change}));
 vi.mock('@/shared/api/authClient', () => ({ authClient: client }));
@@ -40,6 +44,38 @@ describe('password recovery with real SSO wrapper', () => {
     fireEvent.change(screen.getByLabelText('Email Address'), { target: { value: 'person@example.com' } });
     fireEvent.submit(screen.getByLabelText('Email Address').closest('form')!);
     await screen.findByText(code === 'rate_limited' ? /Too many requests/ : /Unable to request/);
+    expect(screen.queryByText('Reset link sent!')).not.toBeInTheDocument();
+  });
+  it('rejects malformed email on the forgot-password page before calling SSO', async () => {
+    mount();
+    fireEvent.change(screen.getByLabelText('Email Address'), { target: { value: 'not-an-email' } });
+    fireEvent.submit(screen.getByLabelText('Email Address').closest('form')!);
+    await screen.findByText('Please enter a valid email address.');
+    expect(client.forgotPassword).not.toHaveBeenCalled();
+  });
+  it('rejects malformed email on the reset-password email form before calling SSO', async () => {
+    render(<MemoryRouter><TokenPasswordReset /></MemoryRouter>);
+    const emailInput = await screen.findByLabelText('Email Address');
+    fireEvent.change(emailInput, { target: { value: 'not-an-email' } });
+    fireEvent.submit(emailInput.closest('form')!);
+    await screen.findByText('Please enter a valid email address.');
+    expect(client.forgotPassword).not.toHaveBeenCalled();
+  });
+  it('uses a generic confirmation on the forgot-password page', async () => {
+    client.forgotPassword.mockResolvedValue({ status: 'succeeded' });
+    mount();
+    fireEvent.change(screen.getByLabelText('Email Address'), { target: { value: 'person@example.com' } });
+    fireEvent.submit(screen.getByLabelText('Email Address').closest('form')!);
+    await screen.findByText(/If an account exists for this email/);
+    expect(screen.queryByText('Reset link sent!')).not.toBeInTheDocument();
+  });
+  it('uses a generic confirmation on the reset-password email form', async () => {
+    client.forgotPassword.mockResolvedValue({ status: 'succeeded' });
+    render(<MemoryRouter><TokenPasswordReset /></MemoryRouter>);
+    const emailInput = await screen.findByLabelText('Email Address');
+    fireEvent.change(emailInput, { target: { value: 'person@example.com' } });
+    fireEvent.submit(emailInput.closest('form')!);
+    await screen.findByText(/If an account exists for this email/);
     expect(screen.queryByText('Reset link sent!')).not.toBeInTheDocument();
   });
   it('shows expired-link guidance', async () => {
