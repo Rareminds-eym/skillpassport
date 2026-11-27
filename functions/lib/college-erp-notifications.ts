@@ -24,6 +24,9 @@ export interface ErpNotificationContext {
   /** faculty_assigned / faculty_unassigned */
   lecturer_ids?: string[];
   department_name?: string;
+  /** faculty_assigned — true when this assignment is specifically as Head of
+   * Department, to distinguish it from a regular faculty assignment message. */
+  is_hod?: boolean;
   /** low_attendance / attendance_submitted — scopes the college admin lookup */
   college_id?: string;
   subject_name?: string;
@@ -41,7 +44,9 @@ export interface ErpNotificationContext {
 function buildContent(type: ErpNotificationType, ctx: ErpNotificationContext): { title: string; message: string } {
   switch (type) {
     case 'faculty_assigned':
-      return { title: 'Department Assignment', message: `You have been assigned to ${ctx.department_name}.` };
+      return ctx.is_hod
+        ? { title: 'Department Assignment', message: `You have been assigned as the Head of Department for ${ctx.department_name}.` }
+        : { title: 'Department Assignment', message: `You have been assigned to ${ctx.department_name}.` };
     case 'faculty_unassigned':
       return { title: 'Department Assignment Ended', message: `Your assignment to ${ctx.department_name} has ended.` };
     case 'low_attendance':

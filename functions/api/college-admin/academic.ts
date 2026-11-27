@@ -877,9 +877,18 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
         if (error) return apiDbError(error, context.request, { startTime });
 
-        // If HOD specified in metadata, assign
+        // If HOD specified in metadata, assign and notify — same pattern as
+        // the dedicated assign-hod action. If assignHodInternal throws, this
+        // line is never reached, so no notification is sent for a failed
+        // assignment; if metadata.hod_id is empty, the condition above is
+        // already false, so nothing is sent for "no faculty selected" either.
         if (data && metadata?.hod_id) {
           await assignHodInternal(supabase, data.id, metadata.hod_id, user.id);
+          context.waitUntil(publishErpNotification(supabase, context.env, 'faculty_assigned', {
+            lecturer_ids: [metadata.hod_id],
+            department_name: data.name,
+            is_hod: true,
+          }));
         }
 
         return apiSuccess(data, context.request, { startTime });
@@ -1044,6 +1053,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           context.waitUntil(publishErpNotification(supabase, context.env, 'faculty_assigned', {
             lecturer_ids: [lecturer_id],
             department_name: dept?.name || 'your department',
+            is_hod: true,
           }));
         }
 
