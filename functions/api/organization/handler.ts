@@ -568,7 +568,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     const userId = getUserId(context);
     
     // Validate required fields
-    if (!orgFields.name || !orgFields.name.trim()) {
+    if (typeof orgFields.name !== 'string' || !orgFields.name.trim()) {
       return apiError(400, 'VALIDATION_ERROR', 'Organization name is required', context.request);
     }
     
@@ -579,6 +579,32 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     if (!['school', 'college', 'university'].includes(orgFields.organization_type)) {
       return apiError(400, 'VALIDATION_ERROR', 'Invalid organization type. Must be school, college, or university', context.request);
     }
+
+    if (!user.roles?.includes(`${orgFields.organization_type}_admin`)) {
+      return apiError(403, 'FORBIDDEN', 'Only the matching institution admin can complete registration', context.request);
+    }
+
+    // Institution profile data belongs in the existing SkillPassport columns.
+    // SSO owns the organization identity and its canonical name.
+    const profile: Record<string, unknown> = {
+      name: orgFields.name.trim(), organization_type: orgFields.organization_type, admin_id: userId,
+    };
+    for (const field of ['address', 'city', 'state', 'country', 'phone', 'email', 'website']) {
+      if (orgFields[field] !== undefined) {
+        if (typeof orgFields[field] !== 'string') return apiError(400, 'VALIDATION_ERROR', `${field} must be text`, context.request);
+        profile[field] = orgFields[field].trim();
+      }
+    }
+    if ((profile.name as string).length < 3 || (profile.name as string).length > 200 || !profile.city || !profile.state) {
+      return apiError(400, 'VALIDATION_ERROR', 'Institution name, city and state are required', context.request);
+    }
+    const saveProfile = async (id: string) => {
+      const { error } = await getSupabase(context).from('organizations').upsert({
+        ...profile, id, updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (error) return apiError(503, 'REGISTRATION_SAVE_FAILED', 'Institution details could not be saved. Retry registration; do not make another payment.', context.request);
+      return apiSuccess({ ...profile, id }, context.request);
+    };
     
     if (!userId) {
       return apiError(401, 'UNAUTHORIZED', 'User authentication required', context.request);
@@ -591,12 +617,9 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
       console.log(`[organization] Updating existing org ${existingOrgId}`);
       
       try {
-        const updateResult = await env.SSO_SERVICE.updateOrganizationDetails({
+        const updateResult = await env.SSO_SERVICE.updateOrganization({
           id: existingOrgId,
-          metadata: {
-            ...orgFields,
-            organization_type: orgFields.organization_type
-          }
+          name: profile.name as string,
         });
         
         if (!updateResult.success) {
@@ -605,13 +628,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
           return apiError(500, 'SSO_UPDATE_FAILED', errorMsg, context.request);
         }
         
-        return apiSuccess({
-          id: existingOrgId,
-          name: orgFields.name,
-          admin_id: orgFields.admin_id || userId,
-          organization_type: orgFields.organization_type,
-          ...orgFields
-        }, context.request);
+        return await saveProfile(existingOrgId);
       } catch (ssoError) {
         const errorMsg = ssoError instanceof Error ? ssoError.message : 'Unknown SSO error';
         console.error(`[organization] SSO update exception:`, ssoError);
@@ -624,11 +641,10 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
     
     try {
       const ssoResult = await env.SSO_SERVICE.createOrganization({
-        name: orgFields.name,
+        name: profile.name as string,
         slug: orgFields.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || `org-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        created_by: orgFields.admin_id || userId,
+        created_by: userId,
         metadata: {
-          ...orgFields,
           organization_type: orgFields.organization_type
         }
       });
@@ -646,13 +662,7 @@ async function createOrganizationHandler(context: AuthenticatedContext, body: an
       
       console.log(`[organization] Successfully created org ${ssoResult.org_id} in SSO`);
       
-      return apiSuccess({
-        id: ssoResult.org_id,
-        name: orgFields.name,
-        admin_id: orgFields.admin_id || userId,
-        organization_type: orgFields.organization_type,
-        ...orgFields
-      }, context.request);
+      return await saveProfile(ssoResult.org_id);
     } catch (ssoError) {
       const errorMsg = ssoError instanceof Error ? ssoError.message : 'Unknown SSO error';
       console.error(`[organization] SSO creation exception:`, ssoError);

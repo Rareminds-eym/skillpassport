@@ -1,6 +1,19 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { waitForOrganizationReadiness } from '../organizationReadiness';
+import { isOrganizationRegistrationComplete } from '@/entities/organization/lib/registrationReadiness';
 afterEach(() => vi.useRealTimers());
+it.each(['school', 'college'] as const)('waits for saved %s registration details instead of accepting a signup record', async type => {
+  vi.useFakeTimers();
+  const records = [
+    { id: 'org', organization_type: type, name: 'Signup Admin', city: null, state: null },
+    { id: 'org', organization_type: type, name: 'Registered Institution', city: 'Chennai', state: 'Tamil Nadu' },
+  ];
+  const check = vi.fn(async () => isOrganizationRegistrationComplete(records.shift(), type));
+  const promise = waitForOrganizationReadiness(check);
+  await vi.runAllTimersAsync();
+  await expect(promise).resolves.toBeUndefined();
+  expect(check).toHaveBeenCalledTimes(2);
+});
 it('waits for projection before completing', async () => {
   vi.useFakeTimers();
   const check = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);

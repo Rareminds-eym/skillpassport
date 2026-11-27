@@ -1,4 +1,5 @@
 import { waitForOrganizationReadiness } from '../api/organizationReadiness';
+import { isOrganizationRegistrationComplete } from '@/entities/organization/lib/registrationReadiness';
 import {
     AlertCircle,
     ArrowRight,
@@ -149,7 +150,7 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
       await waitForOrganizationReadiness(async () => {
         const params = new URLSearchParams({ action: 'getOrganizationByAdminId', adminId: user!.id, orgType: organizationType });
         const result = await apiGet<{ data: unknown }>(`/organization?${params}`);
-        return result.data !== null && result.data !== undefined;
+        return isOrganizationRegistrationComplete(result.data, organizationType);
       });
       window.location.href = DASHBOARD_PATHS[organizationType];
     } catch (err) {
@@ -179,7 +180,8 @@ const OrganizationSetup: React.FC<OrganizationSetupProps> = ({ organizationType 
       const { data: existingOrg } = await apiGet<{ data: unknown }>(
         '/organization?action=checkOrganizationNameExists&name=' + 
         encodeURIComponent(formData.name.trim()) + 
-        '&orgType=' + organizationType
+        '&orgType=' + organizationType +
+        (user.orgId ? '&excludeId=' + encodeURIComponent(user.orgId) : '')
       );
 
       if (existingOrg) {
