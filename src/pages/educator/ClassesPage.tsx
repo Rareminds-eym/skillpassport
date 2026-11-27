@@ -1,18 +1,18 @@
 import {
-    ArrowPathIcon,
-    CalendarDaysIcon,
-    ChevronDownIcon,
-    ClipboardDocumentCheckIcon,
-    ClockIcon,
-    EnvelopeIcon,
-    EyeIcon,
-    FunnelIcon,
-    PencilIcon,
-    PlusCircleIcon,
-    Squares2X2Icon,
-    TableCellsIcon,
-    UserGroupIcon,
-    XMarkIcon
+  ArrowPathIcon,
+  CalendarDaysIcon,
+  ChevronDownIcon,
+  ClipboardDocumentCheckIcon,
+  ClockIcon,
+  EnvelopeIcon,
+  EyeIcon,
+  FunnelIcon,
+  PencilIcon,
+  PlusCircleIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  UserGroupIcon,
+  XMarkIcon
 } from "@heroicons/react/24/outline"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
@@ -218,9 +218,8 @@ const ClassDetailsDrawer = ({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <p className="text-xs uppercase tracking-wide text-gray-500">Learners</p>
-              <p className={`mt-2 text-2xl font-semibold ${
-                classItem.total_learners > classItem.max_learners ? 'text-red-600' : 'text-gray-900'
-              }`}>
+              <p className={`mt-2 text-2xl font-semibold ${classItem.total_learners > classItem.max_learners ? 'text-red-600' : 'text-gray-900'
+                }`}>
                 {classItem.total_learners} / {classItem.max_learners}
               </p>
               {classItem.total_learners > classItem.max_learners && (
@@ -482,7 +481,7 @@ const AddEditClassModal = ({
       setError("Fill in all required fields")
       return
     }
-    
+
     // Validate Class Name
     const trimmedName = name.trim()
     if (trimmedName.length < 2) {
@@ -527,7 +526,7 @@ const AddEditClassModal = ({
     const trimmedYear = academicYear.trim()
     const yearPattern = /^(\d{4})-(\d{4})$/
     const yearMatch = trimmedYear.match(yearPattern)
-    
+
     if (!yearMatch) {
       setError("Academic year must be in YYYY-YYYY format (e.g., 2024-2025)")
       return
@@ -619,7 +618,7 @@ const AddEditClassModal = ({
       }
 
       const { data, error: serviceError } = result
-      
+
       if (serviceError || !data) {
         setError(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
         toast.error(serviceError || `Unable to ${editingClass ? 'update' : 'create'} class`)
@@ -667,7 +666,9 @@ const AddEditClassModal = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  readOnly={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                   placeholder="Science A"
                   required
                 />
@@ -678,7 +679,9 @@ const AddEditClassModal = ({
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
                   type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  readOnly={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                   placeholder="10"
                   required
                 />
@@ -689,7 +692,9 @@ const AddEditClassModal = ({
                   value={section}
                   onChange={(e) => setSection(e.target.value)}
                   type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  readOnly={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                   placeholder="A"
                   required
                 />
@@ -700,7 +705,9 @@ const AddEditClassModal = ({
                   value={academicYear}
                   onChange={(e) => setAcademicYear(e.target.value)}
                   type="text"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  readOnly={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                   placeholder="2024-2025"
                   required
                 />
@@ -712,7 +719,9 @@ const AddEditClassModal = ({
                   onChange={(e) => setMaxlearners(e.target.value)}
                   type="number"
                   min="1"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  readOnly={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                   placeholder="40"
                   required
                 />
@@ -722,7 +731,8 @@ const AddEditClassModal = ({
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  disabled={Boolean(editingClass)}
+                  className={`w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none ${editingClass ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'focus:ring-2 focus:ring-indigo-500'}`}
                 >
                   {statusOptions.map((option) => (
                     <option key={option} value={option}>
@@ -799,26 +809,26 @@ const EmptyState = ({ onCreate }: { onCreate: () => void }) => {
 
 const ClassesPage = () => {
   const navigate = useNavigate()
-  
+
   // Get auth context
   const user = useUser()
   const isAuthenticated = useIsAuthenticated()
-  
+
   // Get educator's school/college information
   const { school: educatorSchool, college: educatorCollege, educatorType, loading: schoolLoading } = useEducatorSchool()
-  
+
   // Get educator ID securely
   const { educatorId, loading: educatorIdLoading, error: educatorIdError } = useEducatorId()
-  
+
   // Get educator information from auth context and database
   const [educatorInfo, setEducatorInfo] = useState<{ id: string; name: string; email: string } | null>(null)
-  
+
   useEffect(() => {
     const fetchEducatorInfo = async () => {
       if (!user || !educatorId) return
-      
+
       logger.info('Fetching educator info', { userEmail: user.email, educatorId, educatorType })
-      
+
       try {
         // Check if school or college educator
         if (educatorType === 'school') {
@@ -870,22 +880,22 @@ const ClassesPage = () => {
       navigate('/login')
       return
     }
-    
+
     if (user?.role !== 'educator' && user?.role !== 'school_educator' && user?.role !== 'college_educator') {
       logger.error('Unauthorized access attempt to educator classes page')
       navigate('/login')
       return
     }
   }, [isAuthenticated, user, navigate])
-  
+
   // Fetch classes - only for this specific educator
-  const { classes, loading, error, stats, upsertClass } = useClasses({ 
+  const { classes, loading, error, stats, upsertClass } = useClasses({
     schoolId: educatorSchool?.id,
     collegeId: educatorCollege?.id,
     educatorId: educatorId,
     educatorType: educatorType
   })
-  
+
   const [viewMode, setViewMode] = useState("grid")
   const [showFilters, setShowFilters] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1235,7 +1245,7 @@ const ClassesPage = () => {
                 </div>
 
                 <div className="space-y-0">
-                  <FilterSection title="Course / Subject" defaultOpen>
+                  <FilterSection title="Grade" defaultOpen>
                     <CheckboxGroup
                       options={courseOptions}
                       selectedValues={filters.courses}
@@ -1259,7 +1269,7 @@ const ClassesPage = () => {
                     />
                   </FilterSection>
 
-                  <FilterSection title="Department">
+                  <FilterSection title="Section">
                     <CheckboxGroup
                       options={departmentOptions}
                       selectedValues={filters.departments}
@@ -1345,25 +1355,23 @@ const ClassesPage = () => {
                     <div className="mb-4 space-y-3">
                       <div className="flex items-center justify-between text-sm text-gray-600">
                         <span>Enrolled Learners</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          classItem.total_learners > classItem.max_learners
-                            ? 'bg-red-100 text-red-700'
-                            : classItem.total_learners === classItem.max_learners
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${classItem.total_learners > classItem.max_learners
+                          ? 'bg-red-100 text-red-700'
+                          : classItem.total_learners === classItem.max_learners
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                          }`}>
                           {classItem.total_learners} / {classItem.max_learners}
                         </span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className={`h-2 rounded-full transition-all ${
-                            classItem.total_learners > classItem.max_learners
-                              ? 'bg-red-500'
-                              : classItem.total_learners === classItem.max_learners
-                                ? 'bg-yellow-500'
-                                : 'bg-indigo-600'
-                          }`}
+                          className={`h-2 rounded-full transition-all ${classItem.total_learners > classItem.max_learners
+                            ? 'bg-red-500'
+                            : classItem.total_learners === classItem.max_learners
+                              ? 'bg-yellow-500'
+                              : 'bg-indigo-600'
+                            }`}
                           style={{
                             width: `${Math.min(100, (classItem.total_learners / classItem.max_learners) * 100)}%`
                           }}
@@ -1448,7 +1456,7 @@ const ClassesPage = () => {
                           <div className="text-xs text-gray-500">{classItem.educator}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{classItem.course}</td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <div className="flex items-center space-x-2">
                             <span className={classItem.total_learners > classItem.max_learners ? 'text-red-600 font-medium' : ''}>
                               {classItem.total_learners} / {classItem.max_learners}

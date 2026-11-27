@@ -419,7 +419,7 @@ const AddEditClassModal = ({
       if (editingClass) {
         const resp: any = await apiPost('/school-admin/actions', {
           action: 'updateClass',
-          classId: editingClass.id,
+          id: editingClass.id,
           name: name.trim(),
           grade: grade.trim(),
           section: section.trim(),
@@ -621,7 +621,9 @@ const ClassManagement = () => {
     grades: [] as string[],
     sections: [] as string[],
     years: [] as string[],
-    statuses: [] as string[]
+    statuses: [] as string[],
+    educators: [] as string[],
+    subjects: [] as string[]
   })
 
   useEffect(() => {
@@ -681,7 +683,7 @@ const ClassManagement = () => {
         throw resp.error
       }
 
-      const data = resp.data?.classes || []
+      const data = resp.data || []
 
       logger.info("Fetched classes", { count: data.length })
 
@@ -740,7 +742,7 @@ const ClassManagement = () => {
     if (!confirm("Are you sure you want to delete this class?")) return
 
     try {
-      const resp: any = await apiPost('/school-admin/actions', { action: 'deleteClass', classId })
+      const resp: any = await apiPost('/school-admin/actions', { action: 'deleteClass', id: classId })
 
       if (resp.error) throw resp.error
 
@@ -807,6 +809,46 @@ const ClassManagement = () => {
       .sort((a, b) => b.count - a.count)
   }, [classes])
 
+  // Educator options — built from school_educator_class_assignments returned per class
+  const educatorOptions = useMemo(() => {
+    const counts: Record<string, { label: string; count: number }> = {}
+    classes.forEach((item) => {
+      const assignments = item.assignments || []
+      assignments.forEach((a: any) => {
+        const edu = a.school_educators
+        if (edu?.id) {
+          const name = `${edu.first_name} ${edu.last_name}`.trim()
+          if (!counts[edu.id]) counts[edu.id] = { label: name, count: 0 }
+          counts[edu.id].count += 1
+        }
+      })
+    })
+    return Object.entries(counts)
+      .map(([value, { label, count }]) => ({ value, label, count }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [classes])
+
+  // Subject options — built from school_educator_class_assignments.subject per class
+  const subjectOptions = useMemo(() => {
+    const counts: Record<string, number> = {}
+    classes.forEach((item) => {
+      const assignments = item.assignments || []
+      assignments.forEach((a: any) => {
+        if (a.subject) {
+          const value = a.subject.toLowerCase()
+          counts[value] = (counts[value] || 0) + 1
+        }
+      })
+    })
+    return Object.entries(counts)
+      .map(([value, count]) => ({
+        value,
+        label: value.replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        count
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [classes])
+
   const filteredClasses = useMemo(() => {
     const query = searchQuery.trim().toLowerCase()
 
@@ -820,7 +862,15 @@ const ClassManagement = () => {
       const matchesYear = filters.years.length ? filters.years.includes(item.academic_year) : true
       const matchesStatus = filters.statuses.length ? filters.statuses.includes(item.account_status.toLowerCase()) : true
 
-      return matchesSearch && matchesGrade && matchesSection && matchesYear && matchesStatus
+      const matchesEducator = filters.educators.length
+        ? (item.assignments || []).some((a: any) => filters.educators.includes(a.school_educators?.id))
+        : true
+
+      const matchesSubject = filters.subjects.length
+        ? (item.assignments || []).some((a: any) => filters.subjects.includes(a.subject?.toLowerCase()))
+        : true
+
+      return matchesSearch && matchesGrade && matchesSection && matchesYear && matchesStatus && matchesEducator && matchesSubject
     })
   }, [classes, searchQuery, filters])
 
@@ -835,11 +885,13 @@ const ClassManagement = () => {
       grades: [],
       sections: [],
       years: [],
-      statuses: []
+      statuses: [],
+      educators: [],
+      subjects: []
     })
   }
 
-  const totalFilters = filters.grades.length + filters.sections.length + filters.years.length + filters.statuses.length
+  const totalFilters = filters.grades.length + filters.sections.length + filters.years.length + filters.statuses.length + filters.educators.length + filters.subjects.length
   const isEmpty = !loading && classes.length === 0 && !searchQuery && totalFilters === 0
 
   if (!loading && !schoolId) {
@@ -1039,6 +1091,22 @@ const ClassManagement = () => {
                       onChange={(values: string[]) => setFilters((prev) => ({ ...prev, statuses: values }))}
                     />
                   </FilterSection>
+
+                  <FilterSection title="Educator">
+                    <CheckboxGroup
+                      options={educatorOptions}
+                      selectedValues={filters.educators}
+                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, educators: values }))}
+                    />
+                  </FilterSection>
+
+                  <FilterSection title="Subject">
+                    <CheckboxGroup
+                      options={subjectOptions}
+                      selectedValues={filters.subjects}
+                      onChange={(values: string[]) => setFilters((prev) => ({ ...prev, subjects: values }))}
+                    />
+                  </FilterSection>
                 </div>
               </div>
             </div>
@@ -1051,7 +1119,7 @@ const ClassManagement = () => {
               Showing <span className="font-medium">{filteredClasses.length}</span> result{filteredClasses.length === 1 ? "" : "s"}
               {searchQuery && <span className="text-gray-500"> for "{searchQuery}"</span>}
             </p>
-            {/* <button
+            <button
               onClick={() => {
                 setSelectedClass(null)
                 setShowAddModal(true)
@@ -1061,7 +1129,7 @@ const ClassManagement = () => {
             >
               <PlusCircleIcon className="h-4 w-4 mr-2" />
               Add New Class
-            </button> */}
+            </button>
           </div>
 
           <div className="px-4 sm:px-6 lg:px-8 flex-1 overflow-y-auto p-4">
@@ -1356,7 +1424,7 @@ const ClassManagement = () => {
 }
 
 // Import modal components
-import { AssignEducatorModal as AssignEducatorModalComponent, ManageLearnersModal as ManagelearnersModalComponent } from '@/features/college-admin'
+import { AssignEducatorModal as AssignEducatorModalComponent, ManageLearnersModal as ManagelearnersModalComponent } from '@/features/admin'
 import { Pagination } from '@/shared/ui'
 
 

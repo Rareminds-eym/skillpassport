@@ -2,6 +2,7 @@ import React, { ChangeEvent, useEffect, useMemo, useState } from "react"
 import { XMarkIcon, UserPlusIcon, UserMinusIcon } from "@heroicons/react/24/outline"
 import Papa from "papaparse"
 import toast from "react-hot-toast"
+import { apiPost } from '@/shared/api/apiClient'
 import {
   addlearnerToClass,
   EducatorClass,
@@ -138,6 +139,21 @@ const ManageLearnersModal: React.FC<Props> = ({ isOpen, onClose, classItem, onle
 
   const handleAddLearner = async () => {
     if (loading) return
+
+    const currentCount = classItem.learners.length
+    const maxLearners = classItem.max_learners || 40
+    const availableSpots = maxLearners - currentCount
+    const adding = addMode === "select" ? selectedLearnerIds.length : csvlearners.length
+
+    if (availableSpots <= 0) {
+      toast.error(`This class is already at maximum capacity (${currentCount}/${maxLearners})`)
+      return
+    }
+    if (adding > availableSpots) {
+      toast.error(`Cannot add ${adding} learner${adding === 1 ? '' : 's'}. Only ${availableSpots} spot${availableSpots === 1 ? '' : 's'} available (${currentCount}/${maxLearners})`)
+      return
+    }
+
     if (addMode === "select") {
       if (!selectedLearnerIds.length) {
         toast.error("Choose at least one learner to add")
@@ -186,22 +202,50 @@ const ManageLearnersModal: React.FC<Props> = ({ isOpen, onClose, classItem, onle
       const learnersToAdd = csvlearners
       setLoading(true)
       let latestClass: EducatorClass | null = null
-      for (const learner of learnersToAdd) {
-        const { data, error } = await addlearnerToClass({
-          classId: classItem.id,
-          learner: {
-            name: learner.name,
-            email: learner.email,
-            progress: learner.progress
-          },
-          educatorType
-        })
-        if (error || !data) {
-          toast.error(error || "Unable to add learners")
-          setLoading(false)
-          return
+      try {
+        for (const learner of learnersToAdd) {
+          // Look up learner by email to get their id
+          let learnerId: string | null = null
+          try {
+            const lookupRes: any = await apiPost('/educator/actions', {
+              action: 'get-learners-by-emails',
+              emails: [learner.email]
+            })
+            const found = (lookupRes?.data || []).find((l: any) => l.email === learner.email)
+            learnerId = found?.id || null
+          } catch (lookupErr: any) {
+            console.error('[ManageLearnersModal] Lookup failed:', lookupErr?.message || lookupErr)
+            learnerId = null
+          }
+
+          if (!learnerId) {
+            toast.error(`"${learner.name}" (${learner.email}) is not registered in the system. Please register this learner via Admissions first.`, { duration: 6000 })
+            setLoading(false)
+            return
+          }
+
+          const { data, error } = await addlearnerToClass({
+            classId: classItem.id,
+            learner: {
+              id: learnerId,
+              name: learner.name,
+              email: learner.email,
+              progress: learner.progress
+            },
+            educatorType
+          })
+          if (error || !data) {
+            toast.error(error || "Unable to add learners")
+            setLoading(false)
+            return
+          }
+          latestClass = data
         }
-        latestClass = data
+      } catch (err: any) {
+        console.error('[ManageLearnersModal] Unexpected error:', err?.message || err)
+        toast.error(err?.message || "An error occurred while adding learners")
+        setLoading(false)
+        return
       }
       setLoading(false)
       if (latestClass) {
