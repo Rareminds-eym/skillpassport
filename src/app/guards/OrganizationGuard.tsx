@@ -3,6 +3,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { OrganizationType, useOrganizationCheck } from '@/entities/organization/model/useOrganizationCheck';
 import { useUser } from '@/shared/model/authStore';
+import { useSubscriptionQuery } from '@/features/subscription/model/useSubscriptionQuery';
 
 
 interface OrganizationGuardProps {
@@ -27,7 +28,16 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
 }) => {
   const user = useUser();
   const location = useLocation();
-  const { loading, hasOrganization, error } = useOrganizationCheck(organizationType, user);
+  const { loading, organization, hasOrganization, error } = useOrganizationCheck(organizationType, user);
+  const { subscriptionData, hasAccess } = useSubscriptionQuery();
+
+  // Hybrid institutions are provisioned by platform admins in SP Dashboard.
+  // The backend identifies the plan; display names and URL parameters grant nothing.
+  if (hasAccess && subscriptionData?.isHybrid === true && subscriptionData.isOrganizationSubscription === true
+    && subscriptionData.organizationType === organizationType && subscriptionData.organizationId
+    && (subscriptionData.organizationId === user?.orgId || subscriptionData.organizationId === organization?.id)) {
+    return <>{children}</>;
+  }
 
   // Show loading state while checking
   if (loading) {
@@ -62,7 +72,9 @@ const OrganizationGuard: React.FC<OrganizationGuardProps> = ({
   }
 
   // Redirect to setup if no organization exists
-  if (!hasOrganization) {
+  const profileComplete = organizationType === 'university' || Boolean(organization?.name?.trim()
+    && organization?.city?.trim() && organization?.state?.trim());
+  if (!hasOrganization || !profileComplete) {
     return (
       <Navigate
         to={`/organization-setup?type=${organizationType}`}

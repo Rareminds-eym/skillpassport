@@ -43,6 +43,7 @@ export const formatSubscriptionData = (data) => {
     lifecycleState: data.lifecycle_state ?? null,
     lifecycleAccess: data.lifecycle_access ?? null,
     isOrganizationSubscription: data.is_organization_subscription === true,
+    isHybrid: data.is_hybrid === true,
     id: data.id, // Subscription ID for cancellation
     plan: planId,
     status: data.status,

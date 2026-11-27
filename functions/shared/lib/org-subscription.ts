@@ -1,4 +1,5 @@
 import { promoPaymentRequired } from './promo-access';
+import { HYBRID_PLAN_ID } from '../../lib/subscription-config';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type SubscriptionScope = 'learner' | 'educator' | 'recruiter' | 'school_admin' | 'college_admin' | 'university_admin';
@@ -100,6 +101,7 @@ export async function resolveUserEntitlement(supabase: SupabaseClient, userId: s
   const candidates = [...new Map([...assignedSubscriptions, ...orgSubscriptions, ...own].map(sub => [sub.id, sub])).values()];
   const format = (sub: Subscription, plan: Plan, org?: Organization, seat?: { id: string; expires_at?: string | null }): EntitlementResult => ({
     ...sub, user_id: userId, plan_code: plan.plan_code, plan_name: plan.name, plan_type: plan.name,
+    is_hybrid: Boolean(org) && sub.is_organization_subscription === true && plan.id === HYBRID_PLAN_ID,
     subscription_end_date: seat?.expires_at && (!sub.subscription_end_date || Date.parse(seat.expires_at) < Date.parse(sub.subscription_end_date)) ? seat.expires_at : sub.subscription_end_date,
     is_organization_license: Boolean(org) && !organizationDashboard, organization_wide: Boolean(org) && !seat,
     organization_type: org?.organization_type || sub.organization_type,

@@ -30,6 +30,11 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Manage Subscription compatibility', () => {
+  it('uses only the backend Hybrid flag instead of a plan label', () => {
+    expect(formatSubscriptionData({ ...legacy, is_hybrid: true }).isHybrid).toBe(true);
+    expect(formatSubscriptionData({ ...legacy, plan_type: 'Hybrid' }).isHybrid).toBe(false);
+    expect(formatSubscriptionData({ ...legacy, is_hybrid: 'true' }).isHybrid).toBe(false);
+  });
   it('retains plan identity and binding when formatting cached purchases', () => {
     expect(formatSubscriptionData(legacy)).toMatchObject({ plan: 'old-code', planName: 'Purchased membership', revisionId: null, autoRenew: null });
   });

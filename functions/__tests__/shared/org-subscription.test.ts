@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { promoPaymentRequired } from '../../shared/lib/promo-access';
+import { HYBRID_PLAN_ID } from '../../lib/subscription-config';
 import { completePlanSelection, isSubscriptionCurrent, resolveUserEntitlement, subscriptionScope } from '../../shared/lib/org-subscription';
 
 type Row = Record<string, any>;
@@ -54,6 +55,15 @@ beforeEach(() => {
 });
 
 describe('Catalogue-backed subscription gateway', () => {
+  it.each(['school', 'college'])('identifies %s Hybrid only by the canonical organization plan id', async type => {
+    tables.organizations[0].organization_type = type;
+    tables.plans_cache = [{ ...orgPlan, id: HYBRID_PLAN_ID, name: 'Negotiated institution contract', applicable_entities: [type] }];
+    tables.subscription_cache = [{ ...coverage, plan_id: HYBRID_PLAN_ID }];
+    expect(await resolve([`${type}_admin`])).toMatchObject({ is_hybrid: true, organization_id: 'org' });
+    tables.plans_cache = [{ ...orgPlan, name: 'Hybrid', applicable_entities: [type] }];
+    tables.subscription_cache = [{ ...coverage, plan_type: 'Hybrid' }];
+    expect(await resolve([`${type}_admin`])).toMatchObject({ is_hybrid: false });
+  });
   it('passes a cancelled initialized free contract to the live dashboard authorizer without changing it', async () => {
     tables.plans_cache = [{ ...personalPlan, plan_family: 'individual' }];
     tables.subscription_cache = [{ ...personal, status: 'cancelled', billing_cycle: 'free', subscription_end_date: null, plan_revision_id: 'revision' }];
