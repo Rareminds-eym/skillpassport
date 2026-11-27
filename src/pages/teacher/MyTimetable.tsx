@@ -310,6 +310,8 @@ const MyTimetable: React.FC = () => {
         if (timetable) {
           setTimetableId(timetable.id);
           setPublishStatus(timetable.status);
+        } else {
+          setLoading(false);
         }
 
         const breaksData = breaksRes.data;
@@ -325,6 +327,8 @@ const MyTimetable: React.FC = () => {
         if (timetable) {
           setTimetableId(timetable.id);
           setPublishStatus(timetable.status);
+        } else {
+          setLoading(false);
         }
 
         const breaksData = breaksRes.data;
@@ -335,6 +339,7 @@ const MyTimetable: React.FC = () => {
       }
     } catch (error) {
       logger.error('Error loading timetable data', error as Error);
+      setLoading(false);
     }
   };
 

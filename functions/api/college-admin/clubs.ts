@@ -120,8 +120,16 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
 
       case 'remove-learner': {
         const { club_id, learner_email } = params;
-        const { error } = await supabase.from('club_memberships').update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() }).eq('club_id', club_id).eq('learner_email', learner_email);
+        const { data, error } = await supabase.from('club_memberships')
+          .update({ status: 'withdrawn', withdrawn_at: new Date().toISOString() })
+          .eq('club_id', club_id)
+          .eq('learner_email', learner_email)
+          .eq('status', 'active')
+          .select();
         if (error) return apiDbError(error, context.request, { startTime });
+        if (!data || data.length === 0) {
+          return apiError(404, 'NOT_FOUND', 'Learner is not an active member of this club', context.request, { startTime });
+        }
         return apiSuccess(null, context.request, { startTime });
       }
 

@@ -15,6 +15,7 @@ import {
     Trash2,
     Trophy,
     User,
+    UserMinus,
     UserPlus,
     Users,
     X
@@ -351,7 +352,12 @@ export default function ClubsActivitiesPage() {
     const [selectedClub, setSelectedClub] = useState(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
     const [viewComp, setViewComp] = useState(null);
-    const [notice, setNotice] = useState(null);
+    const setNotice = (n: { type: "success" | "error" | "warning" | "info"; text: string } | null) => {
+        if (!n) return;
+        if (n.type === "success") toast.success(n.text);
+        else if (n.type === "error") toast.error(n.text);
+        else toast(n.text, { icon: "ℹ️", duration: 4000 });
+    };
     const [showExportMenu, setShowExportMenu] = useState(false);
     const [registerCompModal, setRegisterCompModal] = useState(null);
     const [addClubModal, setAddClubModal] = useState(false);
@@ -394,42 +400,16 @@ export default function ClubsActivitiesPage() {
                     return;
                 }
                 
-                // Try multiple approaches to get school_id
+                // Resolve school_id the same way ClassManagement.tsx does (the known-working path)
                 let schoolId = null;
-                
-                // 1. Check localStorage for school admin
-                const storedUser = (useAuthStore.getState().user ? JSON.stringify(useAuthStore.getState().user) : localStorage.getItem("user"));
-                if (storedUser) {
-                    try {
-                        const userData = JSON.parse(storedUser);
-                        if (userData.role === 'school_admin' && userData.schoolId) {
-                            schoolId = userData.schoolId;
-                            logger.info('Found school_id from localStorage', { schoolId });
-                        }
-                    } catch (e) {
-                        logger.error('Error parsing stored user', e);
+                try {
+                    const schoolResp: any = await apiPost('/school-admin/actions', { action: 'fetchSchoolId' });
+                    schoolId = schoolResp?.data?.schoolId || null;
+                    if (schoolId) {
+                        logger.info('Found school_id from fetchSchoolId', { schoolId });
                     }
-                }
-                
-                // 2-3. Check school_educators and organizations via API
-                if (!schoolId) {
-                    try {
-                        const { educator, school } = await apiPost<{
-                            educator: any;
-                            school: any;
-                        }>('/school-admin/actions', {
-                            action: 'getEducatorAndSchool',
-                            educatorId: null,
-                            schoolId: null
-                        });
-
-                        if (school?.id) {
-                            schoolId = school.id;
-                            logger.info('Found school_id from API', { schoolId });
-                        }
-                    } catch (apiErr) {
-                        logger.error('Error fetching educator/school from API', apiErr);
-                    }
+                } catch (apiErr) {
+                    logger.error('Error fetching school_id via fetchSchoolId', apiErr);
                 }
 
                 if (!schoolId) {
@@ -442,10 +422,11 @@ export default function ClubsActivitiesPage() {
                 logger.info('Fetching learners for school_id', { schoolId });
 
                 // Fetch learners from API
-                const data = await apiPost<any[]>('/school-admin/actions', {
+                const learnersResp: any = await apiPost('/school-admin/actions', {
                     action: 'getCurricularLearners',
                     schoolId
                 });
+                const data = learnersResp?.data || [];
 
                 if (!data || data.length === 0) {
                     logger.info('No learners found for school_id', { schoolId });
@@ -648,7 +629,7 @@ export default function ClubsActivitiesPage() {
     };
    const handlelearnerEnroll = async (learnerId, club) => {
     if (club.members.includes(learnerId)) {
-        setNotice({ type: "warning", text: "Learner is already enrolled in this club." });
+        setNotice({ type: "error", text: "Learner is already enrolled in this club." });
         return;
     }
 
@@ -676,7 +657,7 @@ export default function ClubsActivitiesPage() {
 
 const handlelearnerLeave = async (learnerId, club) => {
     if (!club.members.includes(learnerId)) {
-        setNotice({ type: "warning", text: "Learner is not a member of this club." });
+        setNotice({ type: "error", text: "Learner is not a member of this club." });
         return;
     }
 
@@ -690,7 +671,10 @@ const handlelearnerLeave = async (learnerId, club) => {
         );
         setClubs(updated);
         setlearnerDrawer({ open: true, club: updated.find(c => c.club_id === club.club_id) });
-        setNotice({ type: "info", text: `Learner removed from ${club.name}` });
+        toast("Learner removed successfully", {
+            icon: <UserMinus size={18} className="text-gray-500" />,
+            duration: 5000,
+        });
     } catch (error) {
         logger.error('Error removing learner', error);
         setNotice({ type: "error", text: "Failed to remove learner. Please try again." });
@@ -1657,29 +1641,6 @@ const handlelearnerLeave = async (learnerId, club) => {
                                     </button>
                                 )}
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Enhanced Notice */}
-                {notice && (
-                    <div className={`mb-6 p-4 rounded-xl border-l-4 ${
-                        notice.type === "error" 
-                            ? "bg-red-50 border-red-400 text-red-700" 
-                            : notice.type === "success" 
-                            ? "bg-green-50 border-green-400 text-green-700" 
-                            : "bg-blue-50 border-blue-400 text-blue-700"
-                    }`}>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium">{notice.text}</span>
-                            </div>
-                            <button 
-                                onClick={() => setNotice(null)} 
-                                className="text-sm underline hover:no-underline"
-                            >
-                                Dismiss
-                            </button>
                         </div>
                     </div>
                 )}

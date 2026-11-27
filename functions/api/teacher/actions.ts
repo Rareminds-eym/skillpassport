@@ -116,6 +116,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .select('id, status')
       .eq('college_id', collegeId)
       .eq('academic_year', academicYear)
+      .order('status', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -141,6 +142,7 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       .select('id, status')
       .eq('school_id', schoolId)
       .eq('academic_year', academicYear)
+      .order('status', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
