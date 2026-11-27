@@ -223,10 +223,16 @@ export async function authorizeProfileAction(db: SupabaseClient, user: any, acti
     if (params.receiverId !== undefined) check(participants.includes(params.receiverId)
       || params.receiverId === user.org_id);
     const senderRole = actor === conversation.data?.learner_id ? 'learner'
-      : actor === conversation.data?.educator_id ? 'educator' : 'admin';
+      : actor === conversation.data?.educator_id ? 'educator'
+      : user.roles?.includes('school_admin') ? 'school_admin'
+      : user.roles?.includes('college_admin') ? 'college_admin'
+      : 'school_admin'; // fallback for any other admin role
     params.senderRole = senderRole; params.senderType = senderRole;
     if (params.receiverId !== undefined) params.receiverType = params.receiverId === conversation.data?.learner_id
-      ? 'learner' : params.receiverId === conversation.data?.educator_id ? 'educator' : 'admin';
+      ? 'learner' : params.receiverId === conversation.data?.educator_id ? 'educator'
+      : user.roles?.includes('school_admin') ? 'school_admin'
+      : user.roles?.includes('college_admin') ? 'college_admin'
+      : 'school_admin';
     // Participation already authorizes this conversation; it grants no profile read.
   } else if (action === 'create-conversation') {
     const data = params.conversationData;

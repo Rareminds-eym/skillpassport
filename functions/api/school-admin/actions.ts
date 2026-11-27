@@ -226,8 +226,23 @@ async function handleFetchClasses(supabase: any, context: AuthenticatedContext, 
     if (cls.current_learners !== learnerCount) {
       await supabase.from('school_classes').update({ current_learners: learnerCount }).eq('id', cls.id);
     }
+    // Fetch educator assignments from school_educator_class_assignments joined with school_educators
+    const { data: assignments } = await supabase
+      .from('school_educator_class_assignments')
+      .select('id, subject, is_primary, educator_id, school_educators(id, first_name, last_name, email)')
+      .eq('class_id', cls.id);
     const meta = cls.metadata || {};
-    return { ...cls, current_learners: learnerCount, learners: classlearners || [], avg_progress: 0, performance_band: 'N/A', skillAreas: meta.skillAreas || [], educator: meta.educator || '', educatorEmail: meta.educatorEmail || '' };
+    return {
+      ...cls,
+      current_learners: learnerCount,
+      learners: classlearners || [],
+      avg_progress: 0,
+      performance_band: 'N/A',
+      skillAreas: meta.skillAreas || [],
+      educator: meta.educator || '',
+      educatorEmail: meta.educatorEmail || '',
+      assignments: assignments || [],
+    };
   }));
 
   return apiSuccess(enriched, context.request);

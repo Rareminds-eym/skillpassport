@@ -30,6 +30,7 @@ const HomePage: React.FC = () => {
   // For admins and educators, use the direct portfolio routes that don't require learner role
   const portfolioPath = isViewingAsNonLearner ? '/portfolio' : '/learner/digital-portfolio/portfolio';
   const passportPath = isViewingAsNonLearner ? '/passport' : '/learner/digital-portfolio/passport';
+  const videoPath = isViewingAsNonLearner ? '/video-portfolio' : '/learner/digital-portfolio/video';
 
   const handleGoBack = () => {
     // Go back to the previous page
@@ -514,7 +515,7 @@ const HomePage: React.FC = () => {
                   className="flex justify-center"
                 >
                   <Link
-                    to="/learner/digital-portfolio/video"
+                    to={videoPath}
                     className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
                   >
                     <span className="relative z-10 flex items-center">

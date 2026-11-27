@@ -357,7 +357,7 @@ export const AssignEducatorModal = ({
         assignedBy: user?.id,
       })
 
-      const educator = educators.find(e => e.id === selectedEducatorId)
+      const educator = Array.isArray(educators) ? educators.find(e => e.id === selectedEducatorId) : null
       const educatorName = educator ? `${educator.first_name} ${educator.last_name}` : "Educator"
       
       toast.success(`${educatorName} assigned to ${subject}`)
@@ -487,7 +487,7 @@ export const AssignEducatorModal = ({
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">Choose an educator...</option>
-                      {educators.map((educator) => (
+                      {Array.isArray(educators) && educators.map((educator) => (
                         <option key={educator.id} value={educator.id}>
                           {educator.first_name} {educator.last_name}
                         </option>

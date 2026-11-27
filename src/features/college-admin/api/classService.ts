@@ -123,7 +123,7 @@ const transformDBClassToClass = (dbClass: any, educatorType: 'school' | 'college
 
 export const getEducatorAssignedClassIds = async (educatorId: string, educatorType: 'school' | 'college'): Promise<string[]> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'get-educator-assigned-class-ids', educatorId, educatorType })
+    const result = await apiPost('/college-admin/classes', { action: 'get-educator-assigned-class-ids', educator_id: educatorId, educator_type: educatorType })
     if (!result.success) return []
     return result.data || []
   } catch {
@@ -142,15 +142,25 @@ export const fetchEducatorClasses = async (
       return { data: [], error: null }
     }
 
-    const result = await apiPost('/college-admin/classes', { action: 'fetch-educator-classes', schoolId, collegeId, educatorId, educatorType })
+    const result = await apiPost('/college-admin/classes', {
+      action: 'fetch-educator-classes',
+      school_id: schoolId,
+      college_id: collegeId,
+      educator_id: educatorId,
+      educator_type: educatorType
+    })
     if (!result.success) {
       return { data: null, error: result.error || 'Unable to fetch classes' }
     }
 
     const classes = (result.data || []).map((dbClass: any) => {
-      const classItem = transformDBClassToClass(dbClass, educatorType)
-      classItem.learners = dbClass.learners || []
-      classItem.tasks = dbClass.tasks || []
+      // Backend already transforms the data — use it directly, just attach learners/tasks
+      const classItem: EducatorClass = {
+        ...dbClass,
+        learners: dbClass.learners || [],
+        tasks: dbClass.tasks || [],
+        notes: dbClass.notes || [],
+      }
       return syncClassAggregates(classItem)
     })
 
@@ -182,7 +192,7 @@ export const fetchAllSchoolClasses = async (schoolId?: string): Promise<ServiceR
 
 export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'fetch-class-tasks', classId })
+    const result = await apiPost('/college-admin/classes', { action: 'fetch-class-tasks', class_id: classId })
     if (!result.success) return []
     return result.data || []
   } catch {
@@ -192,7 +202,7 @@ export const fetchClassTasks = async (classId: string): Promise<ClassTask[]> => 
 
 export const fetchClasslearners = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ClassLearner[]> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'fetch-class-learners', classId, educatorType })
+    const result = await apiPost('/college-admin/classes', { action: 'fetch-class-learners', class_id: classId, educator_type: educatorType })
     if (!result.success) return []
     return result.data || []
   } catch {
@@ -202,7 +212,7 @@ export const fetchClasslearners = async (classId: string, educatorType: 'school'
 
 export const getClassById = async (classId: string, educatorType: 'school' | 'college' = 'school'): Promise<ServiceResponse<EducatorClass>> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'get-class-by-id', classId, educatorType })
+    const result = await apiPost('/college-admin/classes', { action: 'get-class-by-id', class_id: classId, educator_type: educatorType })
     if (!result.success || !result.data) {
       return { data: null, error: result.error || 'Class not found' }
     }
@@ -219,7 +229,7 @@ export const getClassById = async (classId: string, educatorType: 'school' | 'co
 
 export const fetchlearnerDirectory = async (schoolId?: string, collegeId?: string): Promise<ServiceResponse<LearnerDirectoryEntry[]>> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'fetch-learner-directory', schoolId, collegeId })
+    const result = await apiPost('/college-admin/classes', { action: 'fetch-learner-directory', school_id: schoolId, college_id: collegeId })
     if (!result.success) {
       return { data: null, error: result.error || 'Unable to load learners' }
     }
@@ -236,7 +246,13 @@ type AddlearnerPayload = {
 
 export const addlearnerToClass = async ({ classId, learner, educatorType = 'school' }: AddlearnerPayload & { educatorType?: 'school' | 'college' }): Promise<MutateResponse<EducatorClass>> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'add-learner-to-class', classId, learner, educatorType })
+    const result = await apiPost('/college-admin/classes', {
+      action: 'add-learner-to-class',
+      class_id: classId,
+      learner_id: learner.id,
+      educator_type: educatorType,
+      learner
+    })
     if (!result.success || !result.data) {
       return { data: null, error: result.error || 'Unable to add learner' }
     }
@@ -253,7 +269,12 @@ export const addlearnerToClass = async ({ classId, learner, educatorType = 'scho
 
 export const removelearnerFromClass = async (classId: string, learnerId: string, educatorType: 'school' | 'college' = 'school'): Promise<MutateResponse<EducatorClass>> => {
   try {
-    const result = await apiPost('/college-admin/classes', { action: 'remove-learner-from-class', classId, learnerId, educatorType })
+    const result = await apiPost('/college-admin/classes', {
+      action: 'remove-learner-from-class',
+      class_id: classId,
+      learner_id: learnerId,
+      educator_type: educatorType
+    })
     if (!result.success || !result.data) {
       return { data: null, error: result.error || 'Unable to remove learner' }
     }
@@ -287,7 +308,22 @@ type CreateClassPayload = {
 export const createClass = async (payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
   try {
     const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
-    const result = await apiPost('/college-admin/classes', { action: 'create-class', ...payload, skills })
+    const result = await apiPost('/college-admin/classes', {
+      action: 'create-class',
+      name: payload.name,
+      grade: payload.grade,
+      section: payload.section,
+      academic_year: payload.academicYear,
+      max_learners: payload.maxlearners,
+      status: payload.status,
+      skill_areas: skills,
+      school_id: payload.schoolId,
+      college_id: payload.collegeId,
+      educator_id: payload.educatorId,
+      educator_name: payload.educatorName,
+      educator_email: payload.educatorEmail,
+      educator_type: payload.educatorType,
+    })
     if (!result.success || !result.data) {
       return { data: null, error: result.error || 'Unable to create class' }
     }
@@ -306,7 +342,23 @@ export const createClass = async (payload: CreateClassPayload): Promise<MutateRe
 export const updateClass = async (classId: string, payload: CreateClassPayload): Promise<MutateResponse<EducatorClass>> => {
   try {
     const skills = Array.from(new Set(payload.skillAreas.map((skill) => skill.trim()).filter(Boolean)))
-    const result = await apiPost('/college-admin/classes', { action: 'update-class', classId, ...payload, skills })
+    const result = await apiPost('/college-admin/classes', {
+      action: 'update-class',
+      class_id: classId,
+      name: payload.name,
+      grade: payload.grade,
+      section: payload.section,
+      academic_year: payload.academicYear,
+      max_learners: payload.maxlearners,
+      status: payload.status,
+      skill_areas: skills,
+      school_id: payload.schoolId,
+      college_id: payload.collegeId,
+      educator_id: payload.educatorId,
+      educator_name: payload.educatorName,
+      educator_email: payload.educatorEmail,
+      educator_type: payload.educatorType,
+    })
     if (!result.success || !result.data) {
       return { data: null, error: result.error || 'Unable to update class' }
     }
