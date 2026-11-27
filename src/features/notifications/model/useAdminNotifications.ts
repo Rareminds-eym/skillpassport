@@ -189,6 +189,29 @@ export function useAdminNotifications(
     if (adminContext.userId) fetchNotifications(true);
   }, [adminContext.userId]);
 
+  // SK-92: lazily sweep this college for unmarked attendance sessions and
+  // notify the responsible faculty. Runs at most once per browser session
+  // per day (sessionStorage flag) — the backend also dedupes per session+
+  // recipient, so this is a cost guard, not a correctness requirement.
+  useEffect(() => {
+    if (adminContext.adminType !== 'college_admin' || !adminContext.collegeId) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const flagKey = `sk92:missing-attendance-checked:${adminContext.collegeId}:${todayStr}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    sessionStorage.setItem(flagKey, '1');
+
+    apiPost('/college-admin/erp-notifications', {
+      action: 'check-missing-attendance',
+      college_id: adminContext.collegeId,
+    })
+      .then(() => refresh())
+      .catch(() => {
+        // Best-effort: clear the flag so the next page load can retry.
+        sessionStorage.removeItem(flagKey);
+      });
+  }, [adminContext.adminType, adminContext.collegeId]);
+
   const markRead = async (id: string) => {
     await apiPost('/notifications', { action: 'mark-read', ids: [id] });
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));

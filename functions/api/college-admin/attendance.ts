@@ -6,6 +6,7 @@ import { getServiceClient as getUnscopedServiceClient } from '../../lib/supabase
 import { legacyTeachingClient } from '../../lib/legacy-teaching-client';
 const getServiceClient = (env: Parameters<typeof getUnscopedServiceClient>[0]) => legacyTeachingClient(getUnscopedServiceClient(env));
 import { createLogger } from '../../lib/logger';
+import { publishErpNotification } from '../../lib/college-erp-notifications';
 
 const logger = createLogger('college-admin-attendance');
 
@@ -1132,6 +1133,28 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         });
 
         if (rpcError) return apiDbError(rpcError, context.request, { startTime });
+
+        if (!trainingSession) {
+          const attendancePercentage = (rpcData as Record<string, unknown> | null)?.attendance_percentage as number | undefined;
+          const session = result.session;
+
+          if (typeof attendancePercentage === 'number' && attendancePercentage < 75) {
+            context.waitUntil(publishErpNotification(importDb, context.env, 'low_attendance', {
+              college_id: session.college_id,
+              subject_name: session.subject_name,
+              session_date: session.date,
+              attendance_percentage: attendancePercentage,
+            }));
+          }
+
+          context.waitUntil(publishErpNotification(importDb, context.env, 'attendance_submitted', {
+            college_id: session.college_id,
+            faculty_name: session.faculty_name,
+            subject_name: session.subject_name,
+            session_date: session.date,
+          }));
+        }
+
         return apiSuccess({ imported: true, ...(rpcData as Record<string, unknown> || {}) }, context.request, { startTime });
       }
 

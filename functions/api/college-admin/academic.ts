@@ -2,6 +2,7 @@ import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { getContextUser, withAuth } from '../../lib/auth';
 import { apiDbError, apiError, apiMethodNotAllowed, apiSuccess } from '../../lib/response';
 import { getServiceClient } from '../../lib/supabase';
+import { publishErpNotification } from '../../lib/college-erp-notifications';
 
 
 async function getUserCollegeId(userId: string, supabase: any): Promise<string | null> {
@@ -1028,7 +1029,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           return apiError(400, 'VALIDATION_ERROR', 'department_id and lecturer_id are required', context.request, { startTime });
         }
 
+        const { data: currentHod } = await supabase
+          .from('department_faculty_assignments')
+          .select('lecturer_id')
+          .eq('department_id', department_id)
+          .eq('is_hod', true)
+          .eq('is_active', true)
+          .maybeSingle();
+
         await assignHodInternal(supabase, department_id, lecturer_id, user.id);
+
+        if (currentHod?.lecturer_id !== lecturer_id) {
+          const { data: dept } = await supabase.from('departments').select('name').eq('id', department_id).maybeSingle();
+          context.waitUntil(publishErpNotification(supabase, context.env, 'faculty_assigned', {
+            lecturer_ids: [lecturer_id],
+            department_name: dept?.name || 'your department',
+          }));
+        }
+
         return apiSuccess({ success: true }, context.request, { startTime });
       }
 
@@ -1037,6 +1055,13 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         if (!department_id || !lecturer_ids || !Array.isArray(lecturer_ids)) {
           return apiError(400, 'VALIDATION_ERROR', 'department_id and lecturer_ids array are required', context.request, { startTime });
         }
+
+        const { data: beforeState } = await supabase
+          .from('department_faculty_assignments')
+          .select('lecturer_id')
+          .eq('department_id', department_id)
+          .eq('is_active', true);
+        const previousLecturerIds: string[] = (beforeState || []).map((row: { lecturer_id: string }) => row.lecturer_id);
 
         // Deactivate existing
         await supabase
@@ -1062,6 +1087,21 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
             });
 
           if (error) return apiDbError(error, context.request, { startTime });
+        }
+
+        const addedLecturerIds = lecturer_ids.filter((lid: string) => !previousLecturerIds.includes(lid));
+        const removedLecturerIds = previousLecturerIds.filter((lid: string) => !lecturer_ids.includes(lid));
+
+        if (addedLecturerIds.length > 0 || removedLecturerIds.length > 0) {
+          const { data: dept } = await supabase.from('departments').select('name').eq('id', department_id).maybeSingle();
+          const department_name = dept?.name || 'your department';
+
+          if (addedLecturerIds.length > 0) {
+            context.waitUntil(publishErpNotification(supabase, context.env, 'faculty_assigned', { lecturer_ids: addedLecturerIds, department_name }));
+          }
+          if (removedLecturerIds.length > 0) {
+            context.waitUntil(publishErpNotification(supabase, context.env, 'faculty_unassigned', { lecturer_ids: removedLecturerIds, department_name }));
+          }
         }
 
         return apiSuccess({ success: true }, context.request, { startTime });
