@@ -146,6 +146,13 @@ const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({
       return;
     }
 
+    // A typed name that was never actually picked from the dropdown must not
+    // silently submit as an empty HOD — force an explicit choice or a clear.
+    if (facultySearchTerm.trim() && !selectedFaculty) {
+      setError("Please select a faculty member from the Head of Department list, or clear that field.");
+      return;
+    }
+
     setError(null);
     onSubmit({
       name: name.trim(),
