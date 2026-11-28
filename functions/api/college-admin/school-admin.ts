@@ -476,9 +476,9 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       case 'get-or-create-timetable': {
         const { academic_year, status, school_id, ...createParams } = params;
         const year = academic_year || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`;
-        let query = supabase.from('timetables').select('id, status').eq('academic_year', year).eq('status', status || 'draft');
+        let query = supabase.from('timetables').select('id, status').eq('academic_year', year);
         if (school_id) query = query.eq('school_id', school_id);
-        query = query.order('created_at', { ascending: false }).limit(1).maybeSingle();
+        query = query.order('status', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle();
         const { data: existing } = await query;
         if (existing) return apiSuccess(existing, context.request, { startTime });
         const { data: newTimetable, error } = await supabase.from('timetables').insert({ school_id, academic_year: year, term: createParams.term || 'Term 1', start_date: createParams.start_date, end_date: createParams.end_date, status: status || 'draft' }).select('id, status').single();

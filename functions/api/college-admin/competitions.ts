@@ -7,6 +7,13 @@ import { getServiceClient } from '../../lib/supabase';
 import type { AuthenticatedContext } from '@rareminds-eym/auth-core';
 import { apiSuccess, apiDbError, apiError, apiMethodNotAllowed } from '../../lib/response';
 
+function isPastDateStr(dateStr: string | undefined | null): boolean {
+  if (!dateStr) return false;
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return String(dateStr).slice(0, 10) < todayStr;
+}
+
 async function getUserSchoolContext(supabase: any, userId: string): Promise<{ schoolId: string; type: 'educator' | 'admin'; id: string } | null> {
   const { data: educator } = await supabase.from('school_educators').select('id, school_id').eq('user_id', userId).maybeSingle();
   if (educator?.school_id) return { schoolId: educator.school_id, type: 'educator', id: educator.id };
@@ -61,15 +68,24 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
         const ctx = await getUserSchoolContext(supabase, user.id);
         if (!ctx) return apiError(403, 'AUTH_ERROR', 'Unable to determine school affiliation', context.request, { startTime });
         const { name, level, date, participatingClubs, ...rest } = params;
-        const newCompetition: any = { school_id: ctx.schoolId, name, level, competition_date: date, status: 'upcoming', team_size_min: 1, team_size_max: 1, created_by_type: ctx.type };
+        if (!date) return apiError(400, 'VALIDATION_ERROR', 'Competition date is required', context.request, { startTime });
+        if (isPastDateStr(date)) return apiError(400, 'VALIDATION_ERROR', 'Competition date cannot be in the past', context.request, { startTime });
+        const newCompetition: any = { ...rest, school_id: ctx.schoolId, name, level, competition_date: date, status: rest.status || 'upcoming', team_size_min: 1, team_size_max: 1, created_by_type: ctx.type };
         if (ctx.type === 'educator') newCompetition.created_by_educator_id = ctx.id;
         else newCompetition.created_by_admin_id = ctx.id;
         const { data, error } = await supabase.from('competitions').insert([newCompetition]).select().single();
         if (error) return apiDbError(error, context.request, { startTime });
 
         if (participatingClubs?.length > 0) {
-          const clubRecords = (participatingClubs as string[]).map((clubId: string) => ({ comp_id: data.comp_id, club_id: clubId }));
-          await supabase.from('competition_clubs').insert(clubRecords);
+          const clubRecords = (participatingClubs as string[]).map((clubId: string) => ({
+            comp_id: data.comp_id,
+            club_id: clubId,
+            registered_by_type: ctx.type,
+            registered_by_educator_id: ctx.type === 'educator' ? ctx.id : null,
+            registered_by_admin_id: ctx.type === 'admin' ? ctx.id : null,
+          }));
+          const { error: clubsError } = await supabase.from('competition_clubs').insert(clubRecords);
+          if (clubsError) return apiDbError(clubsError, context.request, { startTime });
         }
         return apiSuccess({ ...data, participatingClubs: participatingClubs || [], results: [] }, context.request, { startTime });
       }
@@ -119,11 +135,20 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
       }
 
       case 'update': {
+        const ctx = await getUserSchoolContext(supabase, user.id);
+        if (!ctx) return apiError(403, 'AUTH_ERROR', 'Unable to determine school affiliation', context.request, { startTime });
         const { comp_id, ...updates } = params;
         const updateData: any = {};
         if (updates.name) updateData.name = updates.name;
         if (updates.level) updateData.level = updates.level;
-        if (updates.date) updateData.competition_date = updates.date;
+        if (updates.date) {
+          const { data: existingComp } = await supabase.from('competitions').select('competition_date').eq('comp_id', comp_id).maybeSingle();
+          const isDateChanging = !existingComp || existingComp.competition_date !== updates.date;
+          if (isDateChanging && isPastDateStr(updates.date)) {
+            return apiError(400, 'VALIDATION_ERROR', 'Competition date cannot be changed to a past date', context.request, { startTime });
+          }
+          updateData.competition_date = updates.date;
+        }
         if (updates.description !== undefined) updateData.description = updates.description;
         if (updates.category !== undefined) updateData.category = updates.category;
         if (updates.status !== undefined) updateData.status = updates.status;
@@ -139,8 +164,15 @@ export const onRequestPost = withAuth(async (context: AuthenticatedContext) => {
           const toAdd = [...newIds].filter(id => !currentIds.has(id));
           if (toRemove.length > 0) await supabase.from('competition_clubs').delete().eq('comp_id', comp_id).in('club_id', toRemove);
           if (toAdd.length > 0) {
-            const clubRecords = toAdd.map((clubId: string) => ({ comp_id, club_id: clubId }));
-            await supabase.from('competition_clubs').insert(clubRecords);
+            const clubRecords = toAdd.map((clubId: string) => ({
+              comp_id,
+              club_id: clubId,
+              registered_by_type: ctx.type,
+              registered_by_educator_id: ctx.type === 'educator' ? ctx.id : null,
+              registered_by_admin_id: ctx.type === 'admin' ? ctx.id : null,
+            }));
+            const { error: clubsError } = await supabase.from('competition_clubs').insert(clubRecords);
+            if (clubsError) return apiDbError(clubsError, context.request, { startTime });
           }
         }
         return apiSuccess(null, context.request, { startTime });

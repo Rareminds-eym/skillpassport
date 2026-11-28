@@ -18,7 +18,8 @@ import {
   selectCanUploadMore,
   type VideoEntry as VideoEntryType
 } from '@/features/digital-portfolio';
-import { useUser } from '@/shared/model/authStore';
+import { useUser, useUserRole } from '@/shared/model/authStore';
+import { usePortfolio } from '@/features/digital-portfolio/model/portfolioStore';
 import { useLearnerDataByEmail } from '@/entities/learner/model/useLearnerDataByEmail';
 import { getVideoPortfolioUrl } from '@/shared/api/storageApiService';
 import { ssoClient } from '@/shared/api/ssoClient';
@@ -106,6 +107,17 @@ const getRelativeTime = (date: string | Date): string => {
 };
 
 function VideoPortfolioPage() {
+  const { role } = useUserRole();
+  const roleStr = String(role || '');
+  const isViewingAsNonLearner = roleStr.includes('admin') || roleStr === 'educator';
+
+  // The "video_portfolio" add-on is purchased by learners to unlock uploading;
+  // college admins/educators are never an eligible purchaser role for it, but
+  // they still need to view a learner's already-published videos read-only.
+  if (isViewingAsNonLearner) {
+    return <VideoPortfolioPageContent />;
+  }
+
   return (
     <FeatureGate featureKey="video_portfolio">
       <VideoPortfolioPageContent />
@@ -129,9 +141,22 @@ const VideoPortfolioPageContent: React.FC = () => {
 
   // Get user and learner data
   const user = useUser();
-  const { learnerData, loading: learnerLoading } = useLearnerDataByEmail(user?.email);
-  const learnerId = learnerData?.id || '';
-  const userName = user?.name || learnerData?.name || 'User';
+  const { role } = useUserRole();
+  const { learner: viewedLearner } = usePortfolio();
+
+  // College admins/educators view a specific learner's published videos (set via
+  // the portfolio context when navigating from Digital Portfolio), rather than
+  // their own - they have no learner profile of their own.
+  const roleStr = String(role || '');
+  const isViewingAsNonLearner = roleStr.includes('admin') || roleStr === 'educator';
+
+  const { learnerData, loading: learnerLoading } = useLearnerDataByEmail(
+    isViewingAsNonLearner ? undefined : user?.email
+  );
+  const learnerId = isViewingAsNonLearner ? (viewedLearner?.id || '') : (learnerData?.id || '');
+  const userName = isViewingAsNonLearner
+    ? (viewedLearner?.name || 'Learner')
+    : (user?.name || learnerData?.name || 'User');
 
   // Store state
   const videos = useVideoPortfolioStore(selectVideos);
@@ -474,16 +499,26 @@ const VideoPortfolioPageContent: React.FC = () => {
             </p>
           </div>
 
-          {/* Settings Icon */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/learner/digital-portfolio/video/manage')}
-            className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700"
-            title="Manage Videos"
-          >
-            <Settings className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-          </motion.button>
+          {/* Settings Icon - learners only; admins/educators are viewing someone else's portfolio */}
+          {!isViewingAsNonLearner && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+              className="p-3 bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all border border-gray-200 dark:border-gray-700"
+              title="Manage Videos"
+            >
+              <Settings className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </motion.button>
+          )}
+          {isViewingAsNonLearner && (
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all"
+            >
+              <span className="text-sm font-medium">Back</span>
+            </button>
+          )}
         </div>
 
         {/* Main Content */}
@@ -494,23 +529,27 @@ const VideoPortfolioPageContent: React.FC = () => {
               <Video className="w-10 h-10 text-indigo-600 dark:text-indigo-400" />
             </div>
             <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-              Publish Your Portfolio
+              {isViewingAsNonLearner ? 'No Published Videos' : 'Publish Your Portfolio'}
             </h3>
             <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-              Upload your first video and publish it to showcase your skills and projects to the world
+              {isViewingAsNonLearner
+                ? 'This learner has not published any videos yet.'
+                : 'Upload your first video and publish it to showcase your skills and projects to the world'}
             </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/learner/digital-portfolio/video/manage')}
-              className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
-            >
-              <span className="relative z-10 flex items-center">
-                Upload Your First Video
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </span>
-              <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
-            </motion.button>
+            {!isViewingAsNonLearner && (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/learner/digital-portfolio/video/manage')}
+                className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-500 dark:to-blue-500 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all group relative overflow-hidden"
+              >
+                <span className="relative z-10 flex items-center">
+                  Upload Your First Video
+                  <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                </span>
+                <span className="absolute top-0 left-[-40px] h-full w-0 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-600 dark:to-indigo-600 transform skew-x-[45deg] transition-all duration-700 group-hover:w-[160%] -z-0"></span>
+              </motion.button>
+            )}
           </div>
         ) : (
           // Video Display Layout (YouTube-style)

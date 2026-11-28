@@ -123,7 +123,7 @@ const TimetableBuilderEnhanced: React.FC = () => {
       }
 
       const result = await apiPost('/college-admin/school-admin', { action: 'get-school-id', email: user.email, user_id: user.id }) as any;
-      return result?.school_id || null;
+      return result?.data?.school_id || null;
     } catch (error) {
       logger.error("Error fetching school ID", error as Error);
       return null;
@@ -139,8 +139,8 @@ const TimetableBuilderEnhanced: React.FC = () => {
 
     // Load teachers from school_educators
     const data = await apiPost('/college-admin/school-admin', { action: 'get-teachers-dropdown', school_id: schoolId }) as any;
-    
-    if (data) setTeachers(data);
+
+    if (data?.data) setTeachers(data.data);
   };
 
 
@@ -153,9 +153,9 @@ const loadClasses = async () => {
 
     // Load classes with room_number
     const data = await apiPost('/college-admin/school-admin', { action: 'get-classes', school_id: schoolId }) as any;
-    
-    logger.info('Loaded classes', { count: data?.length || 0 });
-    if (data) setClasses(data);
+
+    logger.info('Loaded classes', { count: data?.data?.length || 0 });
+    if (data?.data) setClasses(data.data);
   };
   const loadOrCreateTimetable = async () => {
     const schoolId = await getSchoolId();
@@ -168,10 +168,10 @@ const loadClasses = async () => {
     const yearStr = `${currentYear}-${currentYear + 1}`;
     const result = await apiPost('/college-admin/school-admin', { action: 'get-or-create-timetable', school_id: schoolId, academic_year: yearStr, term: 'Term 1', start_date: `${currentYear}-06-01`, end_date: `${currentYear}-12-31`, status: 'draft' }) as any;
 
-    if (result?.id) {
-      logger.info('Found/created timetable', { timetableId: result.id });
-      setTimetableId(result.id);
-      setPublishStatus(result.status || 'draft');
+    if (result?.data?.id) {
+      logger.info('Found/created timetable', { timetableId: result.data.id });
+      setTimetableId(result.data.id);
+      setPublishStatus(result.data.status || 'draft');
     } else {
       logger.error('Error creating timetable');
     }
@@ -185,9 +185,9 @@ const loadSubjects = async () => {
   }
 
   const data = await apiPost('/college-admin/school-admin', { action: 'get-subjects', school_id: schoolId }) as any;
-  
-  logger.info('Loaded subjects', { count: data?.length || 0 });
-  if (data) setSubjects(data);
+
+  logger.info('Loaded subjects', { count: data?.data?.length || 0 });
+  if (data?.data) setSubjects(data.data);
 };
 
 // Add loadSubjects to the initial useEffect
@@ -224,13 +224,14 @@ useEffect(() => {
   }
 }, [classes]);
   const loadAllSlots = async () => {
-    const data = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId }) as any;
-    
+    const resp = await apiPost('/college-admin/school-admin', { action: 'get-timetable-slots', timetable_id: timetableId }) as any;
+    const data = resp?.data;
+
     if (!data) {
       logger.error("Error loading slots");
       return;
     }
-    
+
     if (data) {
       logger.info("Raw slots data", { count: data.length });
       const slotsWithNames = data.map((slot: any) => ({
